@@ -76,6 +76,16 @@ class MusicManager: ObservableObject {
     @Published var canFavoriteTrack: Bool = false
     @Published var isFavoriteTrack: Bool = false
 
+    /// A favourite toggle the user just performed, held until the read-back
+    /// settles. The liked state is read back asynchronously and can briefly
+    /// report the pre-toggle value; without this guard that stale value would
+    /// undo the tap. Because `toggleFavoriteTrack()` inverts the current state,
+    /// an undone tap also made the *next* tap apply the opposite of what was
+    /// intended (like → looks unliked → tap again → likes instead of unlikes).
+    private var favoriteIntent: (value: Bool, expiresAt: Date)?
+    private let favoriteIntentWindow: TimeInterval = 2
+    private var favoriteWriteTask: Task<Void, Never>?
+
     /// Identifies the track the currently loaded lyrics belong to. Used both as
     /// the cache key and to discard responses that arrive after the user has
     /// already skipped to another track.
@@ -275,6 +285,8 @@ class MusicManager: ObservableObject {
         
         if state.title != self.songTitle {
             self.songTitle = state.title
+            // A different track means any pending toggle belongs to the old one.
+            self.favoriteIntent = nil
         }
 
         if state.artist != self.artistName {
@@ -310,7 +322,17 @@ class MusicManager: ObservableObject {
         if repeatModeChanged {
             self.repeatMode = state.repeatMode
         }
-        if state.isFavorite != self.isFavoriteTrack {
+        // A pending user toggle outranks the read-back, which may still carry
+        // the pre-toggle value. Once the read agrees — or the window lapses —
+        // the polled value takes over again.
+        if let intent = favoriteIntent {
+            if state.isFavorite == intent.value || Date() >= intent.expiresAt {
+                favoriteIntent = nil
+                if state.isFavorite != self.isFavoriteTrack {
+                    self.isFavoriteTrack = state.isFavorite
+                }
+            }
+        } else if state.isFavorite != self.isFavoriteTrack {
             self.isFavoriteTrack = state.isFavorite
         }
         
@@ -348,8 +370,7 @@ class MusicManager: ObservableObject {
         """
 
         if let result = try? await AppleScriptHelper.execute(script) {
-            let loved = result.booleanValue
-            self.isFavoriteTrack = loved
+            self.isFavoriteTrack = AppleScriptBoolean.isTrue(result)
             self.forceUpdate()
         }
     }
@@ -358,10 +379,19 @@ class MusicManager: ObservableObject {
         guard canFavoriteTrack else { return }
         guard let controller = activeController else { return }
 
-        Task { @MainActor in
+        // Paint the new state straight away so the tap feels instant; the
+        // controller writes to Music and reconciles afterwards. The intent is
+        // recorded so the reconcile cannot undo it with a stale read.
+        favoriteIntent = (value: favorite, expiresAt: Date().addingTimeInterval(favoriteIntentWindow))
+        isFavoriteTrack = favorite
+
+        // A single tap could start several overlapping writes (the button fires
+        // more than once, and each write costs a few AppleScript round trips).
+        // Overlapping writers fought each other inside Music, so only the newest
+        // request is allowed to run — earlier ones are cancelled.
+        favoriteWriteTask?.cancel()
+        favoriteWriteTask = Task { @MainActor in
             await controller.setFavorite(favorite)
-            try? await Task.sleep(for: .milliseconds(150))
-            await controller.updatePlaybackInfo()
         }
     }
 

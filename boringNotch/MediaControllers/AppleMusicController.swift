@@ -133,19 +133,19 @@ class AppleMusicController: MediaControllerProtocol {
         guard descriptor.numberOfItems >= 11 else { return }
         var updatedState = self.playbackState
         
-        updatedState.isPlaying = descriptor.atIndex(1)?.booleanValue ?? false
+        updatedState.isPlaying = descriptor.atIndex(1).map(AppleScriptBoolean.isTrue) ?? false
         updatedState.title = descriptor.atIndex(2)?.stringValue ?? "Unknown"
         updatedState.artist = descriptor.atIndex(3)?.stringValue ?? "Unknown"
         updatedState.album = descriptor.atIndex(4)?.stringValue ?? "Unknown"
         updatedState.currentTime = descriptor.atIndex(5)?.doubleValue ?? 0
         updatedState.duration = descriptor.atIndex(6)?.doubleValue ?? 0
-        updatedState.isShuffled = descriptor.atIndex(7)?.booleanValue ?? false
+        updatedState.isShuffled = descriptor.atIndex(7).map(AppleScriptBoolean.isTrue) ?? false
         let repeatModeValue = descriptor.atIndex(8)?.int32Value ?? 0
         updatedState.repeatMode = RepeatMode(rawValue: Int(repeatModeValue)) ?? .off
         let volumePercentage = descriptor.atIndex(9)?.int32Value ?? 50
         updatedState.volume = Double(volumePercentage) / 100.0
         updatedState.artwork = descriptor.atIndex(10)?.data as Data?
-        let lovedState = descriptor.atIndex(11)?.booleanValue ?? false
+        let lovedState = descriptor.atIndex(11).map(AppleScriptBoolean.isTrue) ?? false
         updatedState.isFavorite = lovedState
         updatedState.lastUpdated = Date()
         self.playbackState = updatedState

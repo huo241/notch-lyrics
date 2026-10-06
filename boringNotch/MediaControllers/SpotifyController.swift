@@ -100,14 +100,14 @@ class SpotifyController: MediaControllerProtocol {
         guard let descriptor = try? await fetchPlaybackInfoAsync() else { return }
         guard descriptor.numberOfItems >= 10 else { return }
         
-        let isPlaying = descriptor.atIndex(1)?.booleanValue ?? false
+        let isPlaying = descriptor.atIndex(1).map(AppleScriptBoolean.isTrue) ?? false
         let currentTrack = descriptor.atIndex(2)?.stringValue ?? "Unknown"
         let currentTrackArtist = descriptor.atIndex(3)?.stringValue ?? "Unknown"
         let currentTrackAlbum = descriptor.atIndex(4)?.stringValue ?? "Unknown"
         let currentTime = descriptor.atIndex(5)?.doubleValue ?? 0
         let duration = (descriptor.atIndex(6)?.doubleValue ?? 0)/1000
-        let isShuffled = descriptor.atIndex(7)?.booleanValue ?? false
-        let isRepeating = descriptor.atIndex(8)?.booleanValue ?? false
+        let isShuffled = descriptor.atIndex(7).map(AppleScriptBoolean.isTrue) ?? false
+        let isRepeating = descriptor.atIndex(8).map(AppleScriptBoolean.isTrue) ?? false
         let volumePercentage = descriptor.atIndex(9)?.int32Value ?? 50
         let artworkURL = descriptor.atIndex(10)?.stringValue ?? ""
         
