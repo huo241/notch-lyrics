@@ -11,7 +11,7 @@
 >
 > Differences from upstream, for transparency:
 >
-> - App display name is **Boring Notch Lyrics** (bundle identifier unchanged)
+> - App display name is **Notch Lyrics** (bundle identifier unchanged)
 > - **Auto-update is disabled** — the upstream appcast ships builds without these
 >   changes, so updating against it would silently remove them
 >
@@ -22,7 +22,7 @@
   <br>
   <a href="http://theboring.name"><img src="https://framerusercontent.com/images/RFK4vs0kn8pRMuOO58JeyoemXA.png?scale-down-to=256" alt="Boring Notch" width="150"></a>
   <br>
-  Boring Notch Lyrics
+  Notch Lyrics
   <br>
 </h1>
 
@@ -72,9 +72,9 @@ Say hello to **Boring Notch**, the coolest way to make your MacBook’s notch th
 
 ### Option 1: Download and Install Manually
 
-<a href="https://github.com/TheBoredTeam/boring.notch/releases/latest/download/boringNotch.dmg" target="_self"><img width="200" src="https://github.com/user-attachments/assets/e3179be1-8416-4b8a-b417-743e1ecc67d6" alt="Download for macOS" /></a>
+<a href="https://github.com/huo241/notch-lyrics/releases/latest" target="_self"><img width="200" src="https://github.com/user-attachments/assets/e3179be1-8416-4b8a-b417-743e1ecc67d6" alt="Download for macOS" /></a>
 
-Once downloaded, open the `.dmg` and move **Boring Notch** to your `/Applications` folder.
+Once downloaded, open the `.dmg` and move **Notch Lyrics** to your `/Applications` folder.
 
 > [!IMPORTANT]
 > We don't have an Apple Developer account (yet 👀), so macOS will warn you that Boring Notch is from an unidentified developer on first launch. This is expected behavior.
@@ -90,7 +90,7 @@ This is the quickest and easiest method. It only requires a single command and w
 After moving Boring Notch to your Applications folder, run:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Boring Notch.app"
+xattr -dr com.apple.quarantine "/Applications/Notch Lyrics.app"
 ```
 
 Then open the app normally.
@@ -112,7 +112,9 @@ Then open the app normally.
 
 ### Option 2: Install via Homebrew
 
-You can also install using [Homebrew](https://brew.sh). The Homebrew installation automatically bypasses the macOS security warning described above.
+The upstream Homebrew cask installs the **official** build, which does *not*
+include the lyrics features in this fork. For this fork, install from the DMG
+above. The cask is listed here only for reference:
 
 ```bash
 brew install --cask TheBoredTeam/boring-notch/boring-notch
@@ -161,8 +163,8 @@ brew install --cask TheBoredTeam/boring-notch/boring-notch
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/TheBoredTeam/boring.notch.git
-   cd boring.notch
+   git clone https://github.com/huo241/notch-lyrics.git
+   cd notch-lyrics
    ```
 
 2. **Open the Project in Xcode**:
