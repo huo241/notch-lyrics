@@ -42,7 +42,7 @@ struct DynamicNotchApp: App {
             .keyboardShortcut(KeyEquivalent(","), modifiers: .command)
             CheckForUpdatesView(updater: updaterController.updater)
             Divider()
-            Button("Restart Boring Notch Lyrics") {
+            Button("Restart Notch Lyrics") {
                 ApplicationRelauncher.restart()
             }
             Button("Quit", role: .destructive) {
