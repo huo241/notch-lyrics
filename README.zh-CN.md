@@ -46,7 +46,7 @@ Boring Notch 本来就有歌词开关，但它**永远只显示一行字**——
 顺带修掉了几个上游就存在的 bug，见[本分支修复的问题](#本分支修复的问题)。
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/2d5f69c1-6e7b-4bc2-a6f1-bb9e27cf88a8" alt="Notch Lyrics 效果" width="720" />
+  <img src="docs/assets/lyrics-demo.gif" alt="Notch Lyrics 效果" width="720" />
 </div>
 
 ## 功能

@@ -50,7 +50,7 @@ It also fixes a handful of upstream bugs found along the way — see
 [Fixes carried here](#fixes-carried-here).
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/2d5f69c1-6e7b-4bc2-a6f1-bb9e27cf88a8" alt="Notch Lyrics demo" width="720" />
+  <img src="docs/assets/lyrics-demo.gif" alt="Notch Lyrics demo" width="720" />
 </div>
 
 ## Features
