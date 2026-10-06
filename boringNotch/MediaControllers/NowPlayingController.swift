@@ -33,25 +33,65 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         return bundleID == "com.apple.Music"
     }
 
+    /// Bumped on every favourite write. A write loop whose generation no longer
+    /// matches is stale and stops, so overlapping requests cannot fight over the
+    /// same track.
+    private var favoriteGeneration = 0
+
     func setFavorite(_ favorite: Bool) async {
         let bundleID = playbackState.bundleIdentifier
-        
-        if bundleID == "com.apple.Music" {
-            let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music")
-            if !runningApps.isEmpty {
-                let script = """
-                tell application "Music"
-                    try
-                        set favorited of current track to \(favorite ? "true" : "false")
-                    end try
-                end tell
-                """
-                try? await AppleScriptHelper.executeVoid(script)
+        favoriteGeneration += 1
+        let generation = favoriteGeneration
+
+        // Reflect the change immediately — waiting on the write made the heart
+        // feel unresponsive.
+        var optimistic = playbackState
+        optimistic.isFavorite = favorite
+        playbackState = optimistic
+
+        guard bundleID == "com.apple.Music" else { return }
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music")
+        guard !runningApps.isEmpty else { return }
+
+        let target = favorite ? "true" : "false"
+        let writeScript = """
+        tell application "Music"
+            try
+                set favorited of current track to \(target)
+            end try
+        end tell
+        """
+        let readScript = """
+        tell application "Music"
+            try
+                return (favorited of current track) as text
+            on error
+                return "ERR"
+            end try
+        end tell
+        """
+
+        // A single `set favorited` does not reliably stick while Music.app is
+        // busy — it can silently keep the previous value. Write, verify, and
+        // re-assert until it takes. A newer request makes this loop stale, and
+        // stale loops stop rather than fight the newer one.
+        for attempt in 1...3 {
+            guard generation == favoriteGeneration else {
+                return
             }
+            try? await AppleScriptHelper.executeVoid(writeScript)
+            var observed = "?"
+            for _ in 0..<5 {
+                try? await Task.sleep(for: .milliseconds(80))
+                if let r = try? await AppleScriptHelper.execute(readScript), let text = r.stringValue {
+                    observed = text
+                    if text == target { break }
+                }
+            }
+            if observed == target { break }
         }
-        
-        // Update the favorite state locally and fetch updated info
-        try? await Task.sleep(for: .milliseconds(150))
+
+        guard generation == favoriteGeneration else { return }
         await updatePlaybackInfo()
     }
 
@@ -292,11 +332,19 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         )
         
         newPlaybackState.volume = payload.volume ?? (diff ? self.playbackState.volume : 0.5)
-        
+        // MediaRemote does not report Apple Music's liked state, so it has to be
+        // carried over here — otherwise every adapter push resets it to false.
+        newPlaybackState.isFavorite = self.playbackState.isFavorite
+
         self.playbackState = newPlaybackState
-        
-        // Fetch favorite state for supported apps asynchronously
-        // await fetchFavoriteStateIfSupported()
+
+        // Refresh the liked state only on a full snapshot (i.e. when the track
+        // changes). The value is absent from the payload, so doing it on every
+        // diff tick would just be repeated AppleScript traffic. The state is
+        // refreshed explicitly after a toggle by `updatePlaybackInfo()`.
+        if !diff {
+            await fetchFavoriteStateIfSupported()
+        }
     }
     
      private func fetchFavoriteStateIfSupported() async {
@@ -309,16 +357,19 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
              let script = """
              tell application "Music"
                  try
-                     return favorited of current track
+                     return (favorited of current track) as text
                  on error
-                     return false
+                     return "false"
                  end try
              end tell
              """
              if let result = try? await AppleScriptHelper.execute(script) {
                  var updated = self.playbackState
-                 updated.isFavorite = result.booleanValue
+                 // Music returns the value as text; `booleanValue` is not
+                 // reliable for these descriptors.
+                 updated.isFavorite = (result.stringValue ?? "false").trimmingCharacters(in: .whitespaces) == "true"
                  self.playbackState = updated
+             } else {
              }
          }
      }
