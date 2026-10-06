@@ -153,39 +153,6 @@ struct MusicControlsView: View {
                 frameWidth: width
             )
             .fontWeight(.medium)
-            if Defaults[.enableLyrics] {
-                TimelineView(.animation(minimumInterval: 0.25)) { timeline in
-                    let currentElapsed: Double = {
-                        guard musicManager.isPlaying else { return musicManager.elapsedTime }
-                        let delta = timeline.date.timeIntervalSince(musicManager.timestampDate)
-                        let progressed = musicManager.elapsedTime + (delta * musicManager.playbackRate)
-                        return min(max(progressed, 0), musicManager.songDuration)
-                    }()
-                    let line: String = {
-                        if musicManager.isFetchingLyrics { return "Loading lyrics…" }
-                        if !musicManager.syncedLyrics.isEmpty {
-                            return musicManager.lyricLine(at: currentElapsed)
-                        }
-                        let trimmed = musicManager.currentLyrics.trimmingCharacters(in: .whitespacesAndNewlines)
-                        return trimmed.isEmpty ? "No lyrics found" : trimmed.replacingOccurrences(of: "\n", with: " ")
-                    }()
-                    let isPersian = line.unicodeScalars.contains { scalar in
-                        let v = scalar.value
-                        return v >= 0x0600 && v <= 0x06FF
-                    }
-                    MarqueeText(
-                        .constant(line),
-                        font: .subheadline,
-                        nsFont: .subheadline,
-                        textColor: musicManager.isFetchingLyrics ? .gray.opacity(0.7) : .gray,
-                        frameWidth: width
-                    )
-                    .font(isPersian ? .custom("Vazirmatn-Regular", size: NSFont.preferredFont(forTextStyle: .subheadline).pointSize) : .subheadline)
-                    .lineLimit(1)
-                    .opacity(musicManager.isPlaying ? 1 : 0)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
         }
     }
 
@@ -423,6 +390,7 @@ struct NotchHomeView: View {
     @ObservedObject var webcamManager = WebcamManager.shared
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var coordinator = BoringViewCoordinator.shared
+    @ObservedObject var musicManager = MusicManager.shared
     let albumArtNamespace: Namespace.ID
 
     var body: some View {
@@ -439,30 +407,50 @@ struct NotchHomeView: View {
         Defaults[.showMirror] && webcamManager.cameraAvailable && vm.isCameraExpanded
     }
 
+    /// Lyrics claim the right-hand pane whenever the feature is on and a track
+    /// is loaded; calendar and camera fall back into that space otherwise.
+    /// Keyed on `hasActiveTrack` rather than `isPlayerIdle` so that pausing does
+    /// not make the lyrics disappear.
+    private var isShowingLyrics: Bool {
+        Defaults[.enableLyrics] && musicManager.hasActiveTrack
+    }
+
     private var mainContent: some View {
-        HStack(alignment: .top, spacing: (shouldShowCamera && Defaults[.showCalendar]) ? 10 : 15) {
+        HStack(alignment: .top, spacing: openNotchPaneSpacing) {
             MusicPlayerView(albumArtNamespace: albumArtNamespace)
+                .frame(width: musicPaneWidth)
 
-            if Defaults[.showCalendar] {
-                CalendarView()
-                    .frame(width: shouldShowCamera ? 170 : 215)
-                    .onHover { isHovering in
-                        vm.isHoveringCalendar = isHovering
-                    }
-                    .environmentObject(vm)
-                    .transition(.opacity)
-            }
-
-            if shouldShowCamera {
-                CameraPreviewView(webcamManager: webcamManager)
-                    .scaledToFit()
-                    .opacity(vm.notchState == .closed ? 0 : 1)
-                    .blur(radius: vm.notchState == .closed ? 20 : 0)
-                    .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.76, blendDuration: 0), value: shouldShowCamera)
-            }
+            secondaryPane
         }
         .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
         .blur(radius: vm.notchState == .closed ? 30 : 0)
+    }
+
+    /// Right-hand pane: lyrics, else calendar, else camera. When none of them
+    /// apply the pane is omitted entirely, so the notch does not carry an empty
+    /// gap on the right.
+    @ViewBuilder
+    private var secondaryPane: some View {
+        if isShowingLyrics {
+            ScrollingLyricsView(width: secondaryPaneWidth)
+                .frame(width: secondaryPaneWidth)
+                .transition(.opacity)
+        } else if Defaults[.showCalendar] {
+            CalendarView()
+                .onHover { isHovering in
+                    vm.isHoveringCalendar = isHovering
+                }
+                .environmentObject(vm)
+                .frame(width: secondaryPaneWidth)
+                .transition(.opacity)
+        } else if shouldShowCamera {
+            CameraPreviewView(webcamManager: webcamManager)
+                .scaledToFit()
+                .frame(width: secondaryPaneWidth)
+                .opacity(vm.notchState == .closed ? 0 : 1)
+                .blur(radius: vm.notchState == .closed ? 20 : 0)
+                .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.76, blendDuration: 0), value: shouldShowCamera)
+        }
     }
 }
 

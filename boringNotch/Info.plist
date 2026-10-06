@@ -11,8 +11,14 @@
 	<true/>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
+	<!--
+	  Auto-update intentionally disabled for this fork.
+	  The upstream feed (TheBoredTeam.github.io/boring.notch) ships releases
+	  without this fork's lyrics changes, so checking against it would silently
+	  replace them. Set SUFeedURL to your own appcast to re-enable updates.
+	-->
 	<key>SUFeedURL</key>
-	<string>https://TheBoredTeam.github.io/boring.notch/appcast.xml</string>
+	<string></string>
 	<key>SUPublicEDKey</key>
 	<string>B1Y47t8C/v8ImurYA+9arEsuCrpxwJSviekiflMElbI=</string>
 	<key>UTImportedTypeDeclarations</key>
