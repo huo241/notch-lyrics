@@ -1,221 +1,232 @@
-> [!NOTE]
-> **This is a fork of [TheBoredTeam/boring.notch](https://github.com/TheBoredTeam/boring.notch).**
->
-> It adds **dynamic (time-synced, line-scrolling) lyrics** and a split layout in
-> the open notch — player details on the left, lyrics on the right:
->
-> - Lyrics pane shows a scrolling window with the current line highlighted, driven by LRC timestamps
-> - Falls back to static multi-line text when only unsynced lyrics exist (it does not fake synchronisation)
-> - Lookup prefers LRCLIB's `/api/get` exact match, with `User-Agent` and `Retry-After` handling
-> - Per-track caching, plus a guard against a previous track's late response overwriting the current one
->
-> Differences from upstream, for transparency:
->
-> - App display name is **Notch Lyrics** (bundle identifier unchanged)
-> - **Auto-update is disabled** — the upstream appcast ships builds without these
->   changes, so updating against it would silently remove them
->
-> All credit for the original project goes to The Bored Team and its contributors.
-> Licensed under GPL-3.0, same as upstream.
+<div align="center">
 
-<h1 align="center">
-  <br>
-  <a href="http://theboring.name"><img src="https://framerusercontent.com/images/RFK4vs0kn8pRMuOO58JeyoemXA.png?scale-down-to=256" alt="Boring Notch" width="150"></a>
-  <br>
-  Notch Lyrics
-  <br>
-</h1>
+# Notch Lyrics
 
+**Time-synced, line-scrolling lyrics in your MacBook's notch.**
 
-<p align="center">
-  <a title="Crowdin" target="_blank" href="https://crowdin.com/project/boring-notch"><img src="https://badges.crowdin.net/boring-notch/localized.svg"></a>
-  <img src="https://github.com/TheBoredTeam/boring.notch/actions/workflows/cicd.yml/badge.svg" alt="TheBoringNotch Build & Test" style="margin-right: 10px;" />
-  <a href="https://discord.gg/c8JXA7qrPm">
-    <img src="https://dcbadge.limes.pink/api/server/https://discord.gg/c8JXA7qrPm?style=flat" alt="Discord Badge" />
-  </a>
-  <a href="https://www.ko-fi.com/alexander5015">
-    <img src="https://srv-cdn.himpfen.io/badges/kofi/kofi-flat.svg" alt="Ko-Fi" />
-  </a>
-</p>
+A fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch) that adds a
+real lyrics pane and splits the open notch into player controls and lyrics.
 
-<p align="center">
-  <a href="https://trendshift.io/repositories/14815?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-14815" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/14815" alt="TheBoredTeam%2Fboring.notch |    Trendshift" width="250" height="55"/></a>
-</p>
-<!--Welcome to **Boring.Notch**, the coolest way to make your MacBook's notch the star of the show! Forget about those boring status bars—our notch turns into a dynamic music control center, complete with a snazzy visualizer and all the music controls you need. It's like having a mini concert right at the top of your screen! -->
+[English](README.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md)
 
-Say hello to **Boring Notch**, the coolest way to make your MacBook’s notch the star of the show! Say goodbye to boring status bars: with Boring Notch, your notch transforms into a dynamic music control center, complete with a vibrant visualizer and all the essential music controls you need. But that’s just the start! Boring Notch also offers calendar integration, a handy file shelf with AirDrop support, a complete MacOS HUD replacement and more!
+<!-- Badges -->
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black.svg)](#requirements)
+[![Fork of](https://img.shields.io/badge/fork%20of-TheBoredTeam%2Fboring.notch-orange.svg)](https://github.com/TheBoredTeam/boring.notch)
+[![Release](https://img.shields.io/github/v/release/huo241/notch-lyrics?include_prereleases&sort=semver)](https://github.com/huo241/notch-lyrics/releases)
+[![Downloads](https://img.shields.io/github/downloads/huo241/notch-lyrics/total)](https://github.com/huo241/notch-lyrics/releases)
+[![Stars](https://img.shields.io/github/stars/huo241/notch-lyrics?style=flat)](https://github.com/huo241/notch-lyrics/stargazers)
+[![Issues](https://img.shields.io/github/issues/huo241/notch-lyrics)](https://github.com/huo241/notch-lyrics/issues)
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/2d5f69c1-6e7b-4bc2-a6f1-bb9e27cf88a8" alt="Demo GIF" />
-</p>
+<!-- Quick buttons -->
+[![Download](https://img.shields.io/badge/⬇%20Download-DMG-2ea44f?style=for-the-badge)](https://github.com/huo241/notch-lyrics/releases/latest)
+[![Star](https://img.shields.io/badge/⭐%20Star-this%20repo-yellow?style=for-the-badge)](https://github.com/huo241/notch-lyrics/stargazers)
+[![Report](https://img.shields.io/badge/🐞%20Report-an%20issue-red?style=for-the-badge)](https://github.com/huo241/notch-lyrics/issues)
+[![Upstream](https://img.shields.io/badge/⬆%20Upstream-boring.notch-lightgrey?style=for-the-badge)](https://github.com/TheBoredTeam/boring.notch)
 
-<!--https://github.com/user-attachments/assets/19b87973-4b3a-4853-b532-7e82d1d6b040-->
+</div>
+
 ---
-<!--## Table of Contents
-- [Installation](#installation)
-- [Usage](#usage)
-- [Roadmap](#-roadmap)
-- [Building from Source](#building-from-source)
-- [Contributing](#-contributing)
-- [Join our Discord Server](#join-our-discord-server)
-- [Star History](#star-history)
-- [Buy us a coffee!](#buy-us-a-coffee)
-- [Acknowledgments](#-acknowledgments)-->
+
+## Why this fork exists
+
+Boring Notch has a lyrics toggle, but it only ever renders **a single line of
+text** — the timing data was being thrown away before it reached the screen.
+Turning it on got you one static line that swapped text as the song played.
+
+This fork fixes the pipeline and the presentation:
+
+| | Upstream | This fork |
+|---|---|---|
+| Lyrics display | One line, no scrolling | **5-line scrolling window, current line highlighted** |
+| Timing source | Discarded | **LRC timestamps from LRCLIB** |
+| Unsynced lyrics | Shown as plain text | Shown as a static block — **never fakes sync** |
+| Lookup | `/api/search` only | **`/api/get` exact match, then `/api/search`** |
+| Layout | Everything stacked on the left | **Player on the left, lyrics on the right** |
+| Repeat requests | Re-fetched every time | **Cached per track** |
+| Skipping tracks | Late response could overwrite the new song | **Guarded against** |
+
+It also fixes a handful of upstream bugs found along the way — see
+[Fixes carried here](#fixes-carried-here).
+
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/2d5f69c1-6e7b-4bc2-a6f1-bb9e27cf88a8" alt="Notch Lyrics demo" width="720" />
+</div>
+
+## Features
+
+Everything Boring Notch does, plus:
+
+- 📜 **Scrolling lyrics** — the current line is highlighted, neighbours fade out
+- 🎯 **Accurate sync** — driven by LRC timestamps, with `[offset:]`, multi-tag
+  lines and word-level tags all handled
+- 🧭 **Honest fallback** — when only unsynced lyrics exist you get a static,
+  scrollable block instead of fake synchronisation, and it keeps trying to
+  upgrade in the background
+- 🪟 **Split layout** — player details on the left, lyrics on the right
+- 🔁 **Per-track caching** — same song, no repeated network calls
+- 🛡️ **Race-proof** — a previous track's late response can't overwrite the
+  current one
+
+## Requirements
+
+- **macOS 14 Sonoma** or later
+- Apple Silicon or Intel Mac
+- An internet connection for lyrics lookup (LRCLIB)
 
 ## Installation
 
-**System Requirements:**
-- macOS **14 Sonoma** or later
-- Apple Silicon or Intel Mac
+### Download
 
----
+Grab the latest `.dmg` from [**Releases**](https://github.com/huo241/notch-lyrics/releases/latest),
+open it, and drag **Notch Lyrics** into `/Applications`.
 
-### Option 1: Download and Install Manually
+### First launch
 
-<a href="https://github.com/huo241/notch-lyrics/releases/latest" target="_self"><img width="200" src="https://github.com/user-attachments/assets/e3179be1-8416-4b8a-b417-743e1ecc67d6" alt="Download for macOS" /></a>
-
-Once downloaded, open the `.dmg` and move **Notch Lyrics** to your `/Applications` folder.
-
-> [!IMPORTANT]
-> We don't have an Apple Developer account (yet 👀), so macOS will warn you that Boring Notch is from an unidentified developer on first launch. This is expected behavior.
->
-> You'll need to bypass this before the app will open. You only need to do this once. Use one of the methods below.
-
----
-
-#### Recommended: Terminal (Always Works)
-
-This is the quickest and easiest method. It only requires a single command and works consistently for all users. System Settings can sometimes fail and won't work for non-admin users.
-
-After moving Boring Notch to your Applications folder, run:
+This build is **ad-hoc signed** (no Apple Developer account), so macOS will warn
+you about an unidentified developer. Clear the quarantine flag once:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Notch Lyrics.app"
 ```
 
-Then open the app normally.
+Then open it normally.
 
----
+> [!IMPORTANT]
+> Because the signing identity differs from upstream, macOS treats this as a
+> different app: **you will need to re-grant Accessibility, Automation and
+> Calendar permissions** the first time you run it.
 
-#### Alternative: System Settings
+### Permissions worth granting
 
-> [!NOTE]
-> This method doesn't work for all users. If this doesn't work, use the Terminal method above.
-
-1. Try to open the app — you'll see a security warning.
-2. Click **OK** to dismiss it.
-3. Open **System Settings** > **Privacy & Security**.
-4. Scroll to the bottom and click **Open Anyway** next to the Boring Notch warning.
-5. Confirm if prompted.
-
----
-
-### Option 2: Install via Homebrew
-
-The upstream Homebrew cask installs the **official** build, which does *not*
-include the lyrics features in this fork. For this fork, install from the DMG
-above. The cask is listed here only for reference:
-
-```bash
-brew install --cask TheBoredTeam/boring-notch/boring-notch
-```
+| Permission | What needs it |
+|---|---|
+| **Automation** (`Music`) | Favourite toggle, volume, play state |
+| **Accessibility** | System HUD replacement |
+| **Calendar / Reminders** | Calendar tab (optional) |
+| **Camera** | Mirror (optional) |
 
 ## Usage
 
-- Launch the app, and voilà—your notch is now the coolest part of your screen.
-- Hover over the notch to see it expand and reveal all its secrets.
-- Use the controls to manage your music like a rockstar.
-- Click the star in your menu bar to customize your notch to your heart's content.
+1. Launch the app — your notch becomes the control surface.
+2. Hover the notch to expand it.
+3. Play something in Apple Music or Spotify.
+4. **The right-hand pane shows the lyrics**, scrolling and highlighting as the
+   song plays.
 
-## 📋 Roadmap
-- [x] Playback live activity 🎧
-- [x] Calendar integration 📆
-- [x] Reminders integration ☑️
-- [x] Mirror 📷
-- [x] Charging indicator and current percentage 🔋
-- [x] Customizable gesture control 👆🏻
-- [x] Shelf functionality with AirDrop 📚
-- [x] Notch sizing customization, finetuning on different display sizes 🖥️
-- [x] System HUD replacements (volume, brightness, backlight) 🎚️💡⌨️
-- [ ] Bluetooth Live Activity (connect/disconnect for bluetooth devices) 
-- [ ] Weather integration ⛅️
-- [ ] Customizable Layout options 🛠️
-- [ ] Lock Screen Widgets 🔒
-- [ ] Extension system 🧩
-- [ ] Notifications (under consideration) 🔔
-<!-- - [ ] Clipboard history manager 📌 `Extension` -->
-<!-- - [ ] Download indicator of different browsers (Safari, Chromium browsers, Firefox) 🌍 `Extension`-->
-<!-- - [ ] Customizable function buttons 🎛️ -->
-<!-- - [ ] App switcher 🪄 -->
+### A note on lyrics sources
 
-<!-- ## 🧩 Extensions
-> [!NOTE]
-> We’re hard at work on some awesome extensions! Stay tuned, and we’ll keep you updated as soon as they’re released. -->
+Time-synced lyrics come from [LRCLIB](https://lrclib.net). Two things are worth
+knowing:
 
-## Building from Source
+- **Apple Music's own lyrics are not usable.** AppleScript's `lyrics` property
+  returns plain text only; the time-synced lines are rendered through a private
+  API that scripts cannot reach. So even with Apple Music, sync depends on
+  LRCLIB.
+- **Media controller matters for artwork and the heart.** Set
+  **Settings → Media Controller → Now Playing** for reliable artwork on
+  streamed tracks and a working favourite button. The `Apple Music` mode talks
+  to Music.app over AppleScript, which cannot read artwork from streaming
+  (URL) tracks.
+
+## Building from source
 
 ### Prerequisites
 
-- **macOS 15.6 or later**
-- **Xcode 26 or later**
+- **macOS 15.6** or later
+- **Xcode 26** or later
 
-### Installation
+### Steps
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/huo241/notch-lyrics.git
-   cd notch-lyrics
-   ```
+```bash
+git clone https://github.com/huo241/notch-lyrics.git
+cd notch-lyrics
+open boringNotch.xcodeproj
+```
 
-2. **Open the Project in Xcode**:
-   ```bash
-   open boringNotch.xcodeproj
-   ```
+Then press `Cmd + R`.
 
-3. **Build and Run**:
-    - Click the "Run" button or press `Cmd + R`. Watch the magic unfold!
+> [!NOTE]
+> The project pulls 12 Swift Package dependencies. If `Resolve Package Graph`
+> stalls, your network is likely the problem — see
+> [TROUBLESHOOTING.md](TROUBLESHOOTING.md#build-fails-at-resolve-package-graph)
+> for a workaround that sidesteps the network.
 
-## 🤝 Contributing
+## Testing
 
-We’re all about good vibes and awesome contributions! Read [CONTRIBUTING.md](CONTRIBUTING.md) to learn how you can join the fun!
+```bash
+xcodebuild build -project boringNotch.xcodeproj -scheme boringNotch \
+  -configuration Release -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+```
 
-## Join our Discord Server
+The LRC parser (`boringNotch/helpers/LyricsParser.swift`) is dependency-free by
+design so it can be exercised on its own:
 
-<a href="https://discord.gg/GvYcYpAKTu" target="_blank"><img src="https://iili.io/28m3GHv.png" alt="Join The Boring Server!" style="height: 60px !important;width: 217px !important;" ></a>
+```bash
+swiftc -O boringNotch/helpers/LyricsParser.swift your_test.swift -o t && ./t
+```
 
-## Star History
-<!-- BROKEN: GitHub now restricts the stargazer API for privacy reasons
-<a href="https://www.star-history.com/#TheBoredTeam/boring.notch&Timeline">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=TheBoredTeam/boring.notch&type=Timeline&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=TheBoredTeam/boring.notch&type=Timeline" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=TheBoredTeam/boring.notch&type=Timeline" />
- </picture>
-</a>
--->
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/TheBoredTeam/org-star-chart-updater/main/projects/boring.notch/chart-dark.svg">
-   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/TheBoredTeam/org-star-chart-updater/main/projects/boring.notch/chart-light.svg">
-   <img src="https://raw.githubusercontent.com/TheBoredTeam/org-star-chart-updater/main/projects/boring.notch/chart-light.svg" alt="TheBoredTeam/boring.notch GitHub star history">
- </picture>
+## Fixes carried here
 
-## Support us on Ko-fi!
-<!-- <a href="https://www.buymeacoffee.com/jfxh67wvfxq" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a> -->
-<a href="https://www.ko-fi.com/alexander5015" target="_blank"><img src="https://github.com/user-attachments/assets//a76175ef-7e93-475a-8b67-4922ba5964c2" alt="Support us on Ko-fi" style="height: 70px !important;width: 346px !important;" ></a>
+Bugs found in upstream while working on lyrics, fixed in this fork:
 
-## 🎉 Acknowledgments
+| Fix | Symptom upstream |
+|---|---|
+| `AppleScriptHelper` now serialises scripts | `NSAppleScript` isn't thread-safe; concurrent calls threw or returned the *previous* call's result |
+| Booleans read via `AppleScriptBoolean` | `favorited` returns `'true'`/`'fals'`, for which `booleanValue` is always `false` — the heart never lit up |
+| Generation guard on favourite writes | A single tap started overlapping writes that fought each other |
+| Intent guard on the heart | A stale read-back undid the tap, so the next tap inverted the wrong way |
 
-We would like to express our gratitude to the authors and maintainers of the open-source projects that made this possible. 
+## Differences from upstream
 
-## Notable Projects
-- **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** –  An open-source project that allowed us to use the Now Playing source in macOS 15.4+
-- **[NotchDrop](https://github.com/Lakr233/NotchDrop)** – An open-source project that has been instrumental in developing the first version of the "Shelf" feature in Boring Notch.
+- App name is **Notch Lyrics**; the bundle identifier is unchanged, so existing
+  preferences keep working.
+- **Auto-update is disabled.** The upstream appcast ships builds without these
+  changes, so updating against it would silently remove them. Re-enable it by
+  setting `SUFeedURL` in `boringNotch/Info.plist` to your own feed.
 
-For a full list of licenses and attributions, please see the [Third-Party Licenses](./THIRD_PARTY_LICENSES.md) file.
+## Roadmap
 
-### Icon credits: [@maxtron95](https://github.com/maxtron95)
-### Website credits: [@himanshhhhuv](https://github.com/himanshhhhuv)
+- [x] Time-synced scrolling lyrics
+- [x] Split player / lyrics layout
+- [x] Per-track lyrics cache
+- [ ] Word-by-word (karaoke) highlighting
+- [ ] User-adjustable lyric font and line count
+- [ ] Offline lyrics cache
 
-- **SwiftUI**: For making us look like coding wizards.
-- **You**: For being awesome and checking out **boring.notch**!
+## Contributing
 
+Issues and pull requests are welcome — please open them
+[here](https://github.com/huo241/notch-lyrics/issues).
+
+Since this is a fork, consider whether your change belongs
+[upstream](https://github.com/TheBoredTeam/boring.notch) instead. Fixes that
+aren't lyrics-specific are usually better contributed there.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the upstream contribution guidelines.
+
+## Acknowledgments
+
+This project is a fork; the vast majority of the code is other people's work.
+
+- **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — the
+  original Boring Notch and everything it does
+- **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** — the
+  Now Playing source on macOS 15.4+
+- **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — basis of the Shelf feature
+- **[LRCLIB](https://lrclib.net)** — the lyrics database this fork depends on
+- Icon credits: [@maxtron95](https://github.com/maxtron95)
+- Website credits: [@himanshhhhuv](https://github.com/himanshhhhuv)
+
+See [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES) for the full list.
+
+If you'd like to support the original project:
+**[Ko-fi for the upstream author](https://www.ko-fi.com/alexander5015)**.
+
+## License
+
+**GPL-3.0**, same as upstream — see [LICENSE](LICENSE).
+
+As required by the licence, this fork is distributed with its complete source
+code and notes its modifications. If you redistribute it, keep the licence, the
+source, and the attribution intact.
