@@ -21,8 +21,12 @@ struct DynamicNotchApp: App {
     let updaterController: SPUStandardUpdaterController
 
     init() {
+        // This fork ships changes the upstream release feed does not contain, so
+        // the updater is not started automatically — pointing it at the upstream
+        // appcast would replace those changes. "Check for Updates…" stays
+        // available in the menu for a manual, explicit check.
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+            startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
 
         // Initialize the settings window controller with the updater controller
         SettingsWindowController.shared.setUpdaterController(updaterController)
@@ -38,7 +42,7 @@ struct DynamicNotchApp: App {
             .keyboardShortcut(KeyEquivalent(","), modifiers: .command)
             CheckForUpdatesView(updater: updaterController.updater)
             Divider()
-            Button("Restart Boring Notch") {
+            Button("Restart Boring Notch Lyrics") {
                 ApplicationRelauncher.restart()
             }
             Button("Quit", role: .destructive) {

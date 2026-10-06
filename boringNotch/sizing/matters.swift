@@ -15,6 +15,16 @@ let batterySneakSize: CGSize = .init(width: 160, height: 1)
 let shadowPadding: CGFloat = 20
 let openNotchSize: CGSize = .init(width: 640, height: 190)
 let windowSize: CGSize = .init(width: openNotchSize.width, height: openNotchSize.height + shadowPadding)
+
+/// Width split of the open notch between the music player (left) and the
+/// secondary pane holding lyrics / calendar / camera (right).
+/// Kept next to `openNotchSize` so a change to the notch width cannot silently
+/// break the horizontal layout.
+let musicPaneWidth: CGFloat = 380
+let secondaryPaneWidth: CGFloat = 230
+/// Horizontal gap between the two panes.
+let openNotchPaneSpacing: CGFloat = 12
+
 let cornerRadiusInsets: (opened: (top: CGFloat, bottom: CGFloat), closed: (top: CGFloat, bottom: CGFloat)) = (opened: (top: 19, bottom: 24), closed: (top: 6, bottom: 14))
 
 enum MusicPlayerImageSizes {

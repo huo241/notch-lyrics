@@ -1,8 +1,28 @@
+> [!NOTE]
+> **This is a fork of [TheBoredTeam/boring.notch](https://github.com/TheBoredTeam/boring.notch).**
+>
+> It adds **dynamic (time-synced, line-scrolling) lyrics** and a split layout in
+> the open notch — player details on the left, lyrics on the right:
+>
+> - Lyrics pane shows a scrolling window with the current line highlighted, driven by LRC timestamps
+> - Falls back to static multi-line text when only unsynced lyrics exist (it does not fake synchronisation)
+> - Lookup prefers LRCLIB's `/api/get` exact match, with `User-Agent` and `Retry-After` handling
+> - Per-track caching, plus a guard against a previous track's late response overwriting the current one
+>
+> Differences from upstream, for transparency:
+>
+> - App display name is **Boring Notch Lyrics** (bundle identifier unchanged)
+> - **Auto-update is disabled** — the upstream appcast ships builds without these
+>   changes, so updating against it would silently remove them
+>
+> All credit for the original project goes to The Bored Team and its contributors.
+> Licensed under GPL-3.0, same as upstream.
+
 <h1 align="center">
   <br>
   <a href="http://theboring.name"><img src="https://framerusercontent.com/images/RFK4vs0kn8pRMuOO58JeyoemXA.png?scale-down-to=256" alt="Boring Notch" width="150"></a>
   <br>
-  Boring Notch
+  Boring Notch Lyrics
   <br>
 </h1>
 
