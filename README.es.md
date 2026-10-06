@@ -51,7 +51,7 @@ También corrige varios fallos que ya existían en el proyecto original; consult
 [Correcciones incluidas](#correcciones-incluidas).
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/2d5f69c1-6e7b-4bc2-a6f1-bb9e27cf88a8" alt="Demostración de Notch Lyrics" width="720" />
+  <img src="docs/assets/lyrics-demo.gif" alt="Demostración de Notch Lyrics" width="720" />
 </div>
 
 ## Funciones
