@@ -115,7 +115,8 @@ class AppleMusicController: MediaControllerProtocol {
         return runningApps.contains { $0.bundleIdentifier == "com.apple.Music" }
     }
 
-    func setFavorite(_ favorite: Bool) async {
+    @discardableResult
+    func setFavorite(_ favorite: Bool) async -> Bool {
         let script = """
         tell application \"Music\"
             try
@@ -126,6 +127,7 @@ class AppleMusicController: MediaControllerProtocol {
         try? await AppleScriptHelper.executeVoid(script)
         try? await Task.sleep(for: .milliseconds(150))
         await updatePlaybackInfo()
+        return true
     }
     
     func updatePlaybackInfo() async {

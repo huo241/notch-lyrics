@@ -139,6 +139,66 @@ identity. Because this fork is signed differently from upstream, it is treated
 as a **separate application** — open **System Settings → Privacy & Security →
 Automation** and make sure Music is enabled for **Notch Lyrics**.
 
+### A tap that appears to undo itself
+
+If tapping the heart flips it and it then reverts a second later, that is a
+different problem, and it is fixed as of 2.7.4. The cause was a race between the
+optimistic UI update and the confirmation read:
+
+1. The controller sets the new value locally so the heart responds instantly,
+   and publishes that state.
+2. `MusicManager` used to treat "the state now matches what I asked for" as proof
+   the write had landed, and released its guard.
+3. Music.app had not committed yet, so the next real read still returned the old
+   value — with the guard gone, it overwrote the UI.
+
+The guard is now released only when the write is **confirmed**, or when its
+window lapses — never on a value that merely happens to match. Confirmation also
+needs time: Music.app was measured taking 1–4 s to reflect a write, so the
+verify loop has a 5 s budget.
+
+**This means the heart can take a moment to settle on a loaded machine.** A
+single AppleScript round trip costs ~200 ms under load, so a tap may take a
+second or two to be confirmed. The UI shows your intent immediately; the
+underlying value catches up.
+
+---
+
+## Playback shows as playing but there is no sound
+
+**This is Apple Music, not this app.** It was reproducible without the notch
+running at all, by reading Music.app directly:
+
+```bash
+osascript -e 'tell application "Music" to return player position'
+```
+
+Run that twice, a few seconds apart. If the number never changes while `player
+state` reports `playing`, Music.app has wedged — usually after a track change or
+near the end of a track. Pausing and resuming does not clear it.
+
+The notch is reporting the truth in that case; its progress bar freezes because
+the position genuinely is not advancing.
+
+What to do: skip to another track, or quit and reopen Music.app. Rebooting
+clears it if nothing else does.
+
+---
+
+## The app feels slow, or the system is sluggish
+
+Check whether the notch is actually responsible before assuming it is — it
+normally idles around **0.4% CPU**:
+
+```bash
+ps -eo pid,%cpu,comm -r | head -10     # top CPU consumers
+uptime                                  # load average
+```
+
+WindowServer, spell-checking, input methods, or any long-running utility can
+easily consume far more. If `load average` is well above the number of CPU
+cores, everything on the machine will feel slow.
+
 ---
 
 ## Lyrics do not scroll

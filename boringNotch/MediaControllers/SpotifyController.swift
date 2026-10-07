@@ -10,8 +10,10 @@ import Combine
 import SwiftUI
 
 class SpotifyController: MediaControllerProtocol {
-    func setFavorite(_ favorite: Bool) async {
+    @discardableResult
+    func setFavorite(_ favorite: Bool) async -> Bool {
         //Placeholder
+        return true
     }
     
     // MARK: - Properties
