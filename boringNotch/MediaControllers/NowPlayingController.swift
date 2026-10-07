@@ -38,7 +38,8 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     /// same track.
     private var favoriteGeneration = 0
 
-    func setFavorite(_ favorite: Bool) async {
+    @discardableResult
+    func setFavorite(_ favorite: Bool) async -> Bool {
         let bundleID = playbackState.bundleIdentifier
         favoriteGeneration += 1
         let generation = favoriteGeneration
@@ -49,9 +50,9 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         optimistic.isFavorite = favorite
         playbackState = optimistic
 
-        guard bundleID == "com.apple.Music" else { return }
+        guard bundleID == "com.apple.Music" else { return true }
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music")
-        guard !runningApps.isEmpty else { return }
+        guard !runningApps.isEmpty else { return true }
 
         let target = favorite ? "true" : "false"
         let writeScript = """
@@ -72,27 +73,36 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         """
 
         // A single `set favorited` does not reliably stick while Music.app is
-        // busy — it can silently keep the previous value. Write, verify, and
-        // re-assert until it takes. A newer request makes this loop stale, and
-        // stale loops stop rather than fight the newer one.
-        for attempt in 1...3 {
-            guard generation == favoriteGeneration else {
-                return
-            }
+        // busy — it can silently keep the previous value for a while. Write,
+        // then poll until the read-back agrees.
+        //
+        // The loop is bounded by wall-clock rather than a poll count, because a
+        // single AppleScript round trip costs ~200ms under load: a fixed count
+        // of polls both overshot the caller's intent window and could still
+        // finish before Music had committed. Music was measured taking 1–4s to
+        // reflect a write, so the budget has to cover that.
+        let deadline = Date().addingTimeInterval(5)
+        var observed = "?"
+
+        pollLoop: for _ in 1...3 {
+            guard generation == favoriteGeneration else { return false }
             try? await AppleScriptHelper.executeVoid(writeScript)
-            var observed = "?"
-            for _ in 0..<5 {
-                try? await Task.sleep(for: .milliseconds(80))
-                if let r = try? await AppleScriptHelper.execute(readScript), let text = r.stringValue {
+
+            while Date() < deadline {
+                try? await Task.sleep(for: .milliseconds(120))
+                guard generation == favoriteGeneration else { return false }
+                if let r = try? await AppleScriptHelper.execute(readScript),
+                   let text = r.stringValue {
                     observed = text
-                    if text == target { break }
+                    if text == target { break pollLoop }
                 }
             }
-            if observed == target { break }
+            if Date() >= deadline { break }
         }
 
-        guard generation == favoriteGeneration else { return }
+        guard generation == favoriteGeneration else { return false }
         await updatePlaybackInfo()
+        return observed == target
     }
 
     private var lastMusicItem:
@@ -114,17 +124,19 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         guard
             let bundle = CFBundleCreate(
                 kCFAllocatorDefault,
-                NSURL(fileURLWithPath: "/System/Library/PrivateFrameworks/MediaRemote.framework")),
-            let MRMediaRemoteSendCommandPointer = CFBundleGetFunctionPointerForName(
-                bundle, "MRMediaRemoteSendCommand" as CFString),
-            let MRMediaRemoteSetElapsedTimePointer = CFBundleGetFunctionPointerForName(
-                bundle, "MRMediaRemoteSetElapsedTime" as CFString),
-            let MRMediaRemoteSetShuffleModePointer = CFBundleGetFunctionPointerForName(
-                bundle, "MRMediaRemoteSetShuffleMode" as CFString),
-            let MRMediaRemoteSetRepeatModePointer = CFBundleGetFunctionPointerForName(
-                bundle, "MRMediaRemoteSetRepeatMode" as CFString)
-            
-        else { return nil }
+                NSURL(fileURLWithPath: "/System/Library/PrivateFrameworks/MediaRemote.framework"))
+        else {
+            return nil
+        }
+
+        guard let MRMediaRemoteSendCommandPointer = CFBundleGetFunctionPointerForName(
+                bundle, "MRMediaRemoteSendCommand" as CFString) else { return nil }
+        guard let MRMediaRemoteSetElapsedTimePointer = CFBundleGetFunctionPointerForName(
+                bundle, "MRMediaRemoteSetElapsedTime" as CFString) else { return nil }
+        guard let MRMediaRemoteSetShuffleModePointer = CFBundleGetFunctionPointerForName(
+                bundle, "MRMediaRemoteSetShuffleMode" as CFString) else { return nil }
+        guard let MRMediaRemoteSetRepeatModePointer = CFBundleGetFunctionPointerForName(
+                bundle, "MRMediaRemoteSetRepeatMode" as CFString) else { return nil }
 
         mediaRemoteBundle = bundle
         MRMediaRemoteSendCommandFunction = unsafeBitCast(
@@ -324,6 +336,12 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         }
 
         newPlaybackState.playbackRate = payload.playbackRate ?? (diff ? self.playbackState.playbackRate : 1.0)
+        // `playing` and `playbackRate` arrive in *separate* diff messages, so
+        // the two must not be combined into one stored flag: a message carrying
+        // `playing: true` while the rate is still 0 would latch the flag to
+        // false, and the later rate message would read that false back and AND
+        // it again — permanently stuck. The raw value is stored here and the
+        // "is it really advancing" question is answered at read time.
         newPlaybackState.isPlaying = payload.playing ?? (diff ? self.playbackState.isPlaying : false)
         newPlaybackState.bundleIdentifier = (
             payload.parentApplicationBundleIdentifier ??

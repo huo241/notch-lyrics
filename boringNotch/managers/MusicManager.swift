@@ -83,7 +83,15 @@ class MusicManager: ObservableObject {
     /// an undone tap also made the *next* tap apply the opposite of what was
     /// intended (like → looks unliked → tap again → likes instead of unlikes).
     private var favoriteIntent: (value: Bool, expiresAt: Date)?
-    private let favoriteIntentWindow: TimeInterval = 2
+    /// How long a tap is protected from being reverted by an out-of-date
+    /// read-back.
+    ///
+    /// Must outlast the controller's write-verify loop, which has a 5s budget
+    /// (Music takes 1–4s to reflect a write, and each AppleScript round trip
+    /// costs ~200ms under load). This leaves headroom for the write to be
+    /// confirmed before the guard lapses; releasing it early is what let a
+    /// stale value undo the tap.
+    private let favoriteIntentWindow: TimeInterval = 12
     private var favoriteWriteTask: Task<Void, Never>?
 
     /// Identifies the track the currently loaded lyrics belong to. Used both as
@@ -190,7 +198,6 @@ class MusicManager: ObservableObject {
 
     private func setActiveControllerBasedOnPreference() {
         let preferredType = Defaults[.mediaController]
-        print("Preferred Media Controller: \(preferredType)")
 
         // If NowPlaying is deprecated but that's the preference, use Apple Music instead
         let controllerType = (self.isNowPlayingDeprecated && preferredType == .nowPlaying)
@@ -199,9 +206,10 @@ class MusicManager: ObservableObject {
 
         if let controller = createController(for: controllerType) {
             setActiveController(controller)
-        } else if controllerType != .appleMusic, let fallbackController = createController(for: .appleMusic) {
-            // Fallback to Apple Music if preferred controller couldn't be created
-            setActiveController(fallbackController)
+        } else {
+            if controllerType != .appleMusic, let fallbackController = createController(for: .appleMusic) {
+                setActiveController(fallbackController)
+            }
         }
     }
 
@@ -211,7 +219,7 @@ class MusicManager: ObservableObject {
 
         // Set new active controller
         activeController = controller
-        
+
         self.canFavoriteTrack = controller.supportsFavorite
 
         // Get current state from active controller
@@ -221,7 +229,11 @@ class MusicManager: ObservableObject {
     // MARK: - Update Methods
     @MainActor
     private func updateFromPlaybackState(_ state: PlaybackState) {
-        // Check for playback state changes (playing/paused)
+        // Playback state is taken at face value here. Deriving "is it really
+        // producing sound" from `playbackRate` seemed sensible but froze the UI:
+        // MediaRemote pushes updates only every ~20s, so a rate of 0 observed
+        // right after a track change latched this false with no correction
+        // arriving. `syncPositionFromMusic` below is the authority instead.
         if state.isPlaying != self.isPlaying {
             NSLog("Playback state changed: \(state.isPlaying ? "Playing" : "Paused")")
             withAnimation(.smooth) {
@@ -251,8 +263,15 @@ class MusicManager: ObservableObject {
             if artworkChanged, let artwork = state.artwork {
                 self.updateArtwork(artwork)
             } else if state.artwork == nil {
-                // Try to use app icon if no artwork but track changed
-                if let appIconImage = AppIconAsNSImage(for: state.bundleIdentifier) {
+                if state.title.isEmpty {
+                    // Nothing is playing any more. MediaRemote announces this
+                    // with an empty snapshot, and the previous artwork used to
+                    // linger because the app-icon fallback below finds no
+                    // bundle to load an icon for and simply does nothing.
+                    self.usingAppIconForArtwork = false
+                    self.updateAlbumArt(newAlbumArt: defaultImage)
+                } else if let appIconImage = AppIconAsNSImage(for: state.bundleIdentifier) {
+                    // A real track with no embedded artwork — show its app icon.
                     self.usingAppIconForArtwork = true
                     self.updateAlbumArt(newAlbumArt: appIconImage)
                 }
@@ -325,13 +344,23 @@ class MusicManager: ObservableObject {
         // A pending user toggle outranks the read-back, which may still carry
         // the pre-toggle value. Once the read agrees — or the window lapses —
         // the polled value takes over again.
+        // The guard is released only when the window lapses, or by the write
+        // task once Music has actually accepted the change.
+        //
+        // It must NOT be released just because a state arrived carrying the
+        // expected value: the controller applies an optimistic update straight
+        // away, and that update is published back here within milliseconds —
+        // long before the AppleScript write has run. Releasing on that echo let
+        // the next real read-back (still the old value) overwrite the UI, which
+        // is why a tap appeared to undo itself a second later.
         if let intent = favoriteIntent {
-            if state.isFavorite == intent.value || Date() >= intent.expiresAt {
+            if Date() >= intent.expiresAt {
                 favoriteIntent = nil
                 if state.isFavorite != self.isFavoriteTrack {
                     self.isFavoriteTrack = state.isFavorite
                 }
             }
+            // Otherwise: hold the user's value, ignore this state's opinion.
         } else if state.isFavorite != self.isFavoriteTrack {
             self.isFavoriteTrack = state.isFavorite
         }
@@ -391,7 +420,16 @@ class MusicManager: ObservableObject {
         // request is allowed to run — earlier ones are cancelled.
         favoriteWriteTask?.cancel()
         favoriteWriteTask = Task { @MainActor in
-            await controller.setFavorite(favorite)
+            let landed = await controller.setFavorite(favorite)
+            guard !Task.isCancelled else { return }
+            // Only release the guard when the controller confirmed the write.
+            // On failure the guard stays until the window lapses, so the UI
+            // keeps showing what the user asked for rather than silently
+            // snapping back to a value Music never accepted.
+            guard landed, favoriteIntent?.value == favorite else {
+                return
+            }
+            favoriteIntent = nil
         }
     }
 
@@ -723,7 +761,13 @@ class MusicManager: ObservableObject {
         guard isPlaying else { return min(elapsedTime, songDuration) }
 
         let timeDifference = date.timeIntervalSince(timestampDate)
-        let estimated = elapsedTime + (timeDifference * playbackRate)
+        // A rate of 0 while `isPlaying` is true is not a real pause — MediaRemote
+        // simply stopped updating the rate after a track change. Multiplying by
+        // it pinned the position to the last reported elapsed value, so the
+        // progress bar and lyrics sat frozen while audio played on. Assume
+        // normal speed in that case.
+        let effectiveRate = playbackRate > 0 ? playbackRate : 1
+        let estimated = elapsedTime + (timeDifference * effectiveRate)
         return min(max(0, estimated), songDuration)
     }
 

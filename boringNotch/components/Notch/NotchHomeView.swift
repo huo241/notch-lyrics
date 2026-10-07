@@ -157,7 +157,13 @@ struct MusicControlsView: View {
     }
 
     private var musicSlider: some View {
-        TimelineView(.animation(minimumInterval: musicManager.playbackRate > 0 ? 0.1 : nil)) { timeline in
+        // The interval must not depend on `playbackRate`. Passing `nil` when the
+        // rate was 0 stopped the timeline entirely, so the progress bar and
+        // lyrics froze with no way to notice that state had changed — which is
+        // exactly what happened after a track change, when MediaRemote briefly
+        // reports rate 0. Refreshing unconditionally lets the data layer decide
+        // whether the position should advance.
+        TimelineView(.animation(minimumInterval: 0.1)) { timeline in
             MusicSliderView(
                 sliderValue: $sliderValue,
                 duration: $musicManager.songDuration,

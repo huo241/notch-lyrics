@@ -28,7 +28,8 @@ final class YouTubeMusicController: MediaControllerProtocol {
 
     var supportsFavorite: Bool { true }
 
-    func setFavorite(_ favorite: Bool) async {
+    @discardableResult
+    func setFavorite(_ favorite: Bool) async -> Bool {
         do {
             let token = try await authManager.authenticate()
             if favorite && !playbackState.isFavorite {
@@ -41,6 +42,7 @@ final class YouTubeMusicController: MediaControllerProtocol {
         } catch {
             print("[YouTubeMusicController] Failed to set favorite: \(error)")
         }
+        return true
     }
 
     // MARK: - Private Properties

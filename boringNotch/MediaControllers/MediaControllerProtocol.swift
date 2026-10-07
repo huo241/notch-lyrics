@@ -14,7 +14,12 @@ protocol MediaControllerProtocol: ObservableObject {
     var supportsVolumeControl: Bool { get }
     var supportsFavorite: Bool { get }
     
-    func setFavorite(_ favorite: Bool) async
+    /// - Returns: `true` when the write was confirmed to have landed, `false`
+    ///   when it timed out or was superseded. Callers use this to decide whether
+    ///   the optimistic UI value can be considered authoritative.
+    ///   Defaults to `true` for controllers that cannot verify.
+    @discardableResult
+    func setFavorite(_ favorite: Bool) async -> Bool
     func play() async
     func pause() async
     func seek(to time: Double) async

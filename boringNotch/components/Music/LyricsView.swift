@@ -147,7 +147,11 @@ struct ScrollingLyricsView: View {
     private func currentElapsed(at date: Date) -> Double {
         guard musicManager.isPlaying else { return musicManager.elapsedTime }
         let delta = date.timeIntervalSince(musicManager.timestampDate)
-        let progressed = musicManager.elapsedTime + (delta * musicManager.playbackRate)
+        // Same reasoning as MusicManager.estimatedPlaybackPosition: a rate of 0
+        // here means MediaRemote stopped reporting it, not that playback halted,
+        // and multiplying by it would freeze the lyrics.
+        let rate = musicManager.playbackRate > 0 ? musicManager.playbackRate : 1
+        let progressed = musicManager.elapsedTime + (delta * rate)
         guard musicManager.songDuration > 0 else { return max(0, progressed) }
         return min(max(progressed, 0), musicManager.songDuration)
     }
