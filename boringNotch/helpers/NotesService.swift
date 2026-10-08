@@ -228,9 +228,14 @@ final class NotesService: Sendable {
     ///
     /// Separated from the call so the exact source text can be asserted without
     /// driving Notes — the escaping rules are what break, not the AppleScript.
-    static func createNoteScript(title: String, body: String, folderID: String) -> String {
+    ///
+    /// `html` must already be note HTML: it only gets AppleScript string
+    /// escaping here. Escaping it a second time would show the tags as literal
+    /// text in the note. Plain-text callers go through the `body:` overload,
+    /// which applies the text-to-HTML conversion first.
+    static func createNoteScript(title: String, html: String, folderID: String) -> String {
         let safeFolderID = escapeForAppleScript(folderID)
-        let safeBody = escapeForAppleScript(escapeForNotesHTML(body))
+        let safeBody = escapeForAppleScript(html)
 
         if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             // Leave `name` off entirely rather than sending an empty one: Notes
@@ -252,8 +257,20 @@ final class NotesService: Sendable {
         """
     }
 
-    /// Creates a new note in the given folder. Always a new note — the design
-    /// chose not to append, so a stray Enter can never overwrite earlier text.
+    /// Plain-text variant: escapes the text and converts newlines to `<br>`
+    /// before the script is built.
+    static func createNoteScript(title: String, body: String, folderID: String) -> String {
+        createNoteScript(title: title, html: escapeForNotesHTML(body), folderID: folderID)
+    }
+
+    /// Creates a new note in the given folder from ready-made note HTML.
+    /// Always a new note — the design chose not to append, so a stray Enter can
+    /// never overwrite earlier text.
+    func createNote(title: String, html: String, in folderID: String) async throws {
+        try await run(Self.createNoteScript(title: title, html: html, folderID: folderID))
+    }
+
+    /// Creates a new note in the given folder from plain text.
     func createNote(title: String, body: String, in folderID: String) async throws {
         try await run(Self.createNoteScript(title: title, body: body, folderID: folderID))
     }
