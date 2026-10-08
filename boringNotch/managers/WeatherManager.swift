@@ -22,15 +22,27 @@ import Foundation
 
 // MARK: - Models
 
-/// A place the user can pin. The built-in list avoids Open-Meteo's geocoding
-/// search endpoint, which does not handle Chinese place names reliably
-/// ("湖州" and "北京" both come back empty; the romanized forms work).
+/// A place the user can pin. Built-in entries (and anything picked from the
+/// city search) carry the coordinates; Open-Meteo models resolve to a grid cell
+/// several kilometres wide, so finer precision is noise.
 struct WeatherPlace: Codable, Hashable, Identifiable {
     let name: String
     let latitude: Double
     let longitude: Double
+    /// Region line ("浙江省 · 中国") for search results and the settings list.
+    /// Optional so places saved before this field existed still decode.
+    var detail: String?
 
     var id: String { String(format: "%.4f,%.4f", latitude, longitude) }
+
+    /// What to show under a search result.
+    var subtitle: String { detail ?? "" }
+}
+
+/// One row in the city search: a place plus a stable identity for SwiftUI.
+struct CitySearchResult: Identifiable, Hashable {
+    let id: String
+    let place: WeatherPlace
 }
 
 struct HourPoint: Identifiable {
@@ -204,6 +216,97 @@ final class WeatherManager: ObservableObject {
         set {
             Defaults[.weatherManualPlaceData] = newValue.flatMap { try? JSONEncoder().encode($0) }
         }
+    }
+
+    // MARK: City search
+
+    /// Free-text city search, so the user is not limited to the built-in list.
+    /// Backed by Photon (OpenStreetMap) — the one keyless geocoder that handles
+    /// Chinese queries properly ("湖州" → 湖州市 / 浙江省 / 中国), which is what
+    /// this app's users type. Results are biased towards the current location so
+    /// that a bare "长兴" prefers the nearby county over a same-named village
+    /// provinces away.
+    func searchCities(_ query: String) async throws -> [CitySearchResult] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 1 else { return [] }
+
+        var components = URLComponents(string: "https://photon.komoot.io/api/")!
+        var items: [URLQueryItem] = [
+            .init(name: "q", value: trimmed),
+            .init(name: "limit", value: "10"),
+        ]
+        if let nearby = resolvedPlace {
+            items.append(.init(name: "lat", value: String(nearby.latitude)))
+            items.append(.init(name: "lon", value: String(nearby.longitude)))
+        }
+        components.queryItems = items
+
+        let payload: PhotonPayload = try await get(components.url!)
+
+        var seen = Set<String>()
+        var results: [CitySearchResult] = []
+        for feature in payload.features {
+            guard feature.geometry.coordinates.count == 2 else { continue }
+            let properties = feature.properties
+            guard let name = properties.name, !name.isEmpty else { continue }
+            guard Self.isSettlement(properties) else { continue }
+
+            let longitude = feature.geometry.coordinates[0]
+            let latitude = feature.geometry.coordinates[1]
+            guard (-90...90).contains(latitude), (-180...180).contains(longitude) else { continue }
+
+            let detail = [properties.state, properties.country]
+                .compactMap { $0 }
+                .filter { !$0.isEmpty }
+                .joined(separator: " · ")
+
+            // Photon answers with both the city node and its administrative
+            // boundary; keeping the first of each name/region pair avoids a list
+            // of duplicates.
+            let key = "\(name)|\(detail)"
+            guard seen.insert(key).inserted else { continue }
+
+            results.append(CitySearchResult(
+                id: key,
+                place: WeatherPlace(name: name, latitude: latitude, longitude: longitude, detail: detail)
+            ))
+            if results.count == 6 { break }
+        }
+        return results
+    }
+
+    /// Photon indexes streets, companies and train stations too; only places a
+    /// person would recognise as a location belong in the picker. Anything
+    /// tagged as a place or an administrative boundary passes; for everything
+    /// else the type must name a settlement.
+    private static func isSettlement(_ properties: PhotonPayload.Feature.Properties) -> Bool {
+        if properties.osm_key == "place" || properties.osm_key == "boundary" { return true }
+        let kind = (properties.type ?? properties.osm_value ?? "").lowercased()
+        let allowed: Set<String> = [
+            "city", "town", "village", "hamlet", "locality", "suburb",
+            "administrative", "county", "district", "state", "region",
+            "municipality", "borough", "province",
+        ]
+        return allowed.contains(kind)
+    }
+
+    private struct PhotonPayload: Decodable {
+        struct Feature: Decodable {
+            struct Properties: Decodable {
+                let name: String?
+                let state: String?
+                let country: String?
+                let osm_key: String?
+                let osm_value: String?
+                let type: String?
+            }
+            struct Geometry: Decodable {
+                let coordinates: [Double]
+            }
+            let properties: Properties
+            let geometry: Geometry
+        }
+        let features: [Feature]
     }
 
     // MARK: Refresh

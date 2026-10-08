@@ -1906,15 +1906,11 @@ struct WeatherSettings: View {
     @Default(.weatherAnimatedBackground) private var animated
     @Default(.weatherShowWeek) private var showWeek
 
-    private var placeSelection: Binding<String> {
-        Binding(
-            get: { manager.manualPlace?.id ?? "" },
-            set: { newValue in
-                manager.manualPlace = WeatherManager.builtInPlaces.first { $0.id == newValue }
-                applyChange()
-            }
-        )
-    }
+    @State private var query = ""
+    @State private var results: [CitySearchResult] = []
+    @State private var isSearching = false
+    @State private var searchMessage: String?
+    @State private var searchDebounce: Task<Void, Never>?
 
     var body: some View {
         Form {
@@ -1926,25 +1922,126 @@ struct WeatherSettings: View {
                             manager.manualPlace = nil
                             manager.invalidate()
                         } else if manager.manualPlace == nil {
+                            // Seed with something so the tab is never left
+                            // pointing at an IP guess while showing "pinned".
                             manager.manualPlace = WeatherManager.builtInPlaces.first
                         }
                         applyChange()
                     }
 
                 if !autoLocate {
-                    Picker("城市", selection: placeSelection) {
-                        ForEach(WeatherManager.builtInPlaces) { place in
-                            Text(place.name).tag(place.id)
+                    if let pinned = manager.manualPlace {
+                        LabeledContent("已选城市") {
+                            HStack(spacing: 6) {
+                                Text(pinned.name)
+                                if !pinned.subtitle.isEmpty {
+                                    Text(pinned.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
+
+                    HStack(spacing: 8) {
+                        // Form rows right-align editable text like a value
+                        // column, so the field is drawn by hand: plain style
+                        // plus explicit chrome, which stays leading-aligned.
+                        HStack(spacing: 6) {
+                            TextField("", text: $query)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 12))
+                                .overlay(alignment: .leading) {
+                                    if query.isEmpty {
+                                        Text("如：长兴 / 湖州 / Tokyo")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                            .allowsHitTesting(false)
+                                    }
+                                }
+                                .onChange(of: query) { _, text in
+                                    // Search as the user types, debounced so a
+                                    // burst of keystrokes is one lookup.
+                                    searchDebounce?.cancel()
+                                    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    guard !trimmed.isEmpty else {
+                                        results = []
+                                        searchMessage = nil
+                                        return
+                                    }
+                                    searchDebounce = Task {
+                                        try? await Task.sleep(for: .milliseconds(500))
+                                        guard !Task.isCancelled else { return }
+                                        await runSearch()
+                                    }
+                                }
+                                .onSubmit { Task { await runSearch() } }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(Color.primary.opacity(0.06))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Button("搜索") { Task { await runSearch() } }
+                            .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSearching)
+                    }
+
+                    if isSearching {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text("搜索中…").foregroundStyle(.secondary)
+                        }
+                    } else if let message = searchMessage {
+                        Text(message)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(results) { result in
+                        Button {
+                            select(result.place)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "mappin.and.ellipse")
+                                    .foregroundStyle(.secondary)
+                                Text(result.place.name)
+                                if !result.place.subtitle.isEmpty {
+                                    Text(result.place.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if manager.manualPlace?.id == result.place.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(.tint)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Menu("常用城市") {
+                        ForEach(WeatherManager.builtInPlaces) { place in
+                            Button(place.name) { select(place) }
+                        }
+                    }
+                    .fixedSize()
                 }
             } header: {
                 Text("定位")
             } footer: {
                 Text(
                     autoLocate
-                        ? "按网络出口推断位置，不需要任何权限。若结果偏到邻近城市，可关掉它手动选一个城市。"
-                        : "已固定到所选城市，不再走网络定位。"
+                        ? "按网络出口推断位置，不需要任何权限。走代理或结果偏到邻近城市时，关掉它并搜索你要的城市。"
+                        : "输入城市名后回车或用「搜索」添加，结果来自 OpenStreetMap，中文、拼音、英文都能搜。"
                 )
             }
 
@@ -2010,5 +2107,34 @@ struct WeatherSettings: View {
     /// Nudges an already-open weather tab to reload after a settings change.
     private func applyChange() {
         NotificationCenter.default.post(name: .weatherShouldRefresh, object: nil)
+    }
+
+    /// Runs the free-text city lookup and reports an empty result honestly
+    /// instead of leaving the field looking broken.
+    private func runSearch() async {
+        let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        isSearching = true
+        searchMessage = nil
+        defer { isSearching = false }
+
+        do {
+            let found = try await manager.searchCities(text)
+            results = found
+            if found.isEmpty {
+                searchMessage = "没找到「\(text)」，换个写法试试（如「湖州」或「Huzhou」）。"
+            }
+        } catch {
+            results = []
+            searchMessage = "搜索失败：\(error.localizedDescription)"
+        }
+    }
+
+    /// Pins the picked city and tells the weather tab to reload.
+    private func select(_ place: WeatherPlace) {
+        manager.manualPlace = place
+        manager.invalidate()
+        applyChange()
+        searchMessage = "已固定到 \(place.name)。"
     }
 }
