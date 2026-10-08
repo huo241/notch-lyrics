@@ -477,10 +477,10 @@ struct QuickNoteView: View {
         draft.refreshActiveFormats()
     }
 
-    /// Radians of skew for italic, at the user's explicit request — subtle
-    /// slants kept reading as invisible at body sizes. 1.0 rad ≈ 57°, as loud
-    /// as it gets while still looking like italic rather than shear.
-    private static let obliqueSkew: Double = 1.0
+    /// Radians of skew for italic. 0.2 rad ≈ 12°, the slant of a normal
+    /// italic face. (Earlier rounds used much larger values only because
+    /// TextKit 2 was dropping the attribute entirely — see the editor setup.)
+    private static let obliqueSkew: Double = 0.2
 
     /// The editor formatting must act on: the one actually holding the
     /// keyboard when that can be identified, otherwise the registered one.
@@ -712,6 +712,13 @@ private struct RichTextEditor: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let textView = scroll.documentView as? NSTextView else { return }
         context.coordinator.onFocusChange = onFocusChange
+        // An IME composition (marked text) exists only in the text view, never
+        // in the store — so the two legitimately differ while the user is
+        // typing Chinese. "Reconciling" that difference destroys the
+        // composition mid-keystroke and the typed character vanishes, which
+        // presented as the first letter of every note being swallowed. Never
+        // write into a view that holds marked text.
+        if textView.markedRange().location != NSNotFound { return }
         guard !textView.attributedString().isEqual(to: store.attributedText) else { return }
         QuickNoteSelfTest.log(
             "updateNSView: replacing storage (tv=\(ObjectIdentifier(textView).hashValue)) "
@@ -748,6 +755,7 @@ private struct RichTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
+            QuickNoteSelfTest.log("textDidChange tv=\(ObjectIdentifier(textView).hashValue) text=\(textView.string.prefix(20))")
             store.textView = textView
             store.attributedText = textView.attributedString()
             store.refreshActiveFormats()
@@ -767,6 +775,7 @@ private struct RichTextEditor: NSViewRepresentable {
         // (`textDidBeginEditing`), not the UIKit-style `textViewDidBeginEditing`
         // — misspelling those compiles but is never called.
         func textDidBeginEditing(_ notification: Notification) {
+            QuickNoteSelfTest.log("textDidBeginEditing")
             if let textView = notification.object as? NSTextView {
                 store.textView = textView
             }
@@ -774,6 +783,7 @@ private struct RichTextEditor: NSViewRepresentable {
         }
 
         func textDidEndEditing(_ notification: Notification) {
+            QuickNoteSelfTest.log("textDidEndEditing")
             onFocusChange(false)
         }
     }
@@ -911,9 +921,26 @@ final class QuickNoteDraftStore: ObservableObject {
 enum QuickNoteSelfTest {
     static let enabled = ProcessInfo.processInfo.arguments.contains("-quicknote-selftest")
 
+    /// Always-on lightweight trace. Sandboxed apps cannot write to /tmp, so
+    /// this lands in the app container's tmp directory instead —
+    /// `~/Library/Containers/<bundle-id>/Data/tmp/notch_lyrics_debug.log`.
+    private static let formatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "HH:mm:ss.SSS"
+        return df
+    }()
+
     static func log(_ message: String) {
-        guard enabled else { return }
-        FileHandle.standardError.write(("SELFTEST: " + message + "\n").data(using: .utf8)!)
+        let line = "\(formatter.string(from: Date())) QN \(message)\n"
+        let path = (NSTemporaryDirectory() as NSString)
+            .appendingPathComponent("notch_lyrics_debug.log")
+        if let handle = FileHandle(forWritingAtPath: path) {
+            defer { try? handle.close() }
+            handle.seekToEndOfFile()
+            handle.write(line.data(using: .utf8)!)
+        } else {
+            try? line.write(toFile: path, atomically: true, encoding: .utf8)
+        }
     }
 }
 
