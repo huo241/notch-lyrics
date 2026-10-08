@@ -285,6 +285,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
 
+        if ProcessInfo.processInfo.arguments.contains("-quicknote-selftest") {
+            QuickNoteSelfTest.log("bootstrap: seeding fake folder + will open notch")
+            UserDefaults.standard.set("selftest", forKey: "quickNoteFolderID")
+            UserDefaults.standard.set("SelfTest Folder", forKey: "quickNoteFolderLabel")
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(1))
+                QuickNoteSelfTest.log("bootstrap: opening via self.vm")
+                BoringViewCoordinator.shared.currentView = .quickNote
+                self?.vm.open()
+                QuickNoteSelfTest.log("bootstrap: open() called")
+            }
+        }
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screenConfigurationDidChange),

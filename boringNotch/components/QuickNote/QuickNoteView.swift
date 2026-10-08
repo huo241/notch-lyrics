@@ -114,10 +114,12 @@ struct QuickNoteView: View {
         // actually stolen until the user clicks, because becoming the key window
         // still requires the click.
         .onAppear {
+            QuickNoteSelfTest.log("QuickNoteView body appeared, folderID=\(folderID.isEmpty ? "EMPTY" : "set")")
             coordinator.quickNoteWantsFocus = true
             keyBridge.install()
         }
         .onDisappear {
+            QuickNoteSelfTest.log("QuickNoteView onDisappear")
             releaseKeyboard()
             keyBridge.remove()
         }
@@ -247,6 +249,71 @@ struct QuickNoteView: View {
             requestKeyboard()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 requestKeyboard()
+            }
+            runSelfTest()
+        }
+    }
+
+    // MARK: - Self test sequence
+
+    /// Types into the real editor, applies italic through the real code path,
+    /// dumps the storage attributes, exports the rendered glyphs as PDF, then
+    /// injects a synthetic keyDown into this process to probe first-key loss.
+    private func runSelfTest() {
+        guard QuickNoteSelfTest.enabled else { return }
+        QuickNoteSelfTest.log("composer appeared")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            guard let tv = draft.textView else {
+                QuickNoteSelfTest.log("FAIL: draft.textView is nil")
+                return
+            }
+            QuickNoteSelfTest.log("editor identity=\(ObjectIdentifier(tv).hashValue)")
+            guard let window = tv.window else {
+                QuickNoteSelfTest.log("FAIL: textView.window is nil")
+                return
+            }
+            QuickNoteSelfTest.log(
+                "window=\(window.title ?? "?") isKeyWindow=\(window.isKeyWindow) "
+                + "firstResponderIsTextView=\(window.firstResponder === tv) "
+                + "quickNoteWantsFocus=\(coordinator.quickNoteWantsFocus)"
+            )
+
+            tv.insertText("哇哇哇", replacementRange: NSRange(location: 0, length: 0))
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                tv.setSelectedRange(NSRange(location: 0, length: tv.textStorage?.length ?? 0))
+                applyFormatting(.italic)
+                let storage = tv.textStorage
+                QuickNoteSelfTest.log("storage=\(storage?.string ?? "?")")
+                if let storage {
+                    storage.enumerateAttributes(in: NSRange(location: 0, length: storage.length)) { attrs, range, _ in
+                        QuickNoteSelfTest.log(
+                            "range=\(range) obliqueness=\(String(describing: attrs[.obliqueness])) "
+                            + "font=\(String(describing: attrs[.font]))"
+                        )
+                    }
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    let pdf = tv.dataWithPDF(inside: tv.bounds)
+                    try? pdf.write(to: URL(fileURLWithPath: "/tmp/quicknote_selftest.pdf"))
+                    QuickNoteSelfTest.log("glyph PDF written to /tmp/quicknote_selftest.pdf")
+
+                    // Probe first-keystroke delivery with a synthetic keyDown
+                    // ('x', virtualKey 7) posted straight into this process —
+                    // the same event the bridge should route into the editor.
+                    let pid = ProcessInfo.processInfo.processIdentifier
+                    if let down = CGEvent(keyboardEventSource: nil, virtualKey: 7, keyDown: true) {
+                        down.postToPid(pid)
+                        QuickNoteSelfTest.log("synthetic keyDown posted to pid \(pid)")
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        QuickNoteSelfTest.log("after synthetic key storage=\(tv.textStorage?.string ?? "?")")
+                        QuickNoteSelfTest.log("done")
+                        exit(0)
+                    }
+                }
             }
         }
     }
@@ -455,6 +522,7 @@ struct QuickNoteView: View {
         // Already configured — trust the stored folder and show the editor
         // straight away. Re-listing folders would spend an AppleScript round
         // trip to learn something already known.
+        QuickNoteSelfTest.log("prepare: folderID=\(folderID.isEmpty ? "EMPTY" : "set(\(folderID))")")
         if !folderID.isEmpty {
             phase = .ready
             return
@@ -533,9 +601,26 @@ struct QuickNoteView: View {
     private func requestKeyboard() {
         coordinator.quickNoteWantsFocus = true
         DispatchQueue.main.async {
-            guard let textView = self.draft.textView else { return }
-            guard let window = textView.window ?? NSApp.keyWindow else { return }
-            if !window.isKeyWindow { window.makeKey() }
+            guard let textView = self.draft.textView else {
+                QuickNoteSelfTest.log("requestKeyboard: no textView")
+                return
+            }
+            guard let window = textView.window ?? NSApp.keyWindow else {
+                QuickNoteSelfTest.log("requestKeyboard: no window")
+                return
+            }
+            QuickNoteSelfTest.log(
+                "requestKeyboard: makeKey=\(!window.isKeyWindow) "
+                + "makeFirstResp=\(window.firstResponder !== textView) "
+                + "appActive=\(NSApp.isActive)"
+            )
+            if !window.isKeyWindow {
+                // See the bridge: key status alone is not enough — the app
+                // must be active for the IME to attach to this editor, or the
+                // first keystroke goes missing.
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKey()
+            }
             window.makeFirstResponder(textView)
         }
     }
@@ -583,7 +668,20 @@ private struct RichTextEditor: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let textView = NSTextView()
+        // TextKit 1 is load-bearing here: TextKit 2 silently ignores
+        // `.obliqueness` (verified empirically — the italic renders upright),
+        // and Chinese fonts have no italic face, so the skew attribute is the
+        // only way italic can be visible at all. Building the view around an
+        // explicit NSLayoutManager pins this text view to TextKit 1. (Merely
+        // READING `textView.layoutManager` also triggers the fallback, but an
+        // explicit stack is the documented, non-deprecated way.)
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+        let textContainer = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = NSTextView(frame: .zero, textContainer: textContainer)
         textView.font = .systemFont(ofSize: 12)
         textView.textColor = .white
         textView.drawsBackground = false
@@ -615,6 +713,10 @@ private struct RichTextEditor: NSViewRepresentable {
         guard let textView = scroll.documentView as? NSTextView else { return }
         context.coordinator.onFocusChange = onFocusChange
         guard !textView.attributedString().isEqual(to: store.attributedText) else { return }
+        QuickNoteSelfTest.log(
+            "updateNSView: replacing storage (tv=\(ObjectIdentifier(textView).hashValue)) "
+            + "newContent=\(store.attributedText.string)"
+        )
         textView.textStorage?.setAttributedString(store.attributedText)
         syncTypingAttributes(of: textView)
     }
@@ -799,16 +901,37 @@ final class QuickNoteDraftStore: ObservableObject {
 /// responder. The event then continues its normal route straight into the
 /// editor — nothing is swallowed or re-injected, so IME composition and undo
 /// keep working.
+// MARK: - Self test (launch with -quicknote-selftest)
+
+/// Automated probe for the two long-standing quick-note bugs. Only active
+/// when the app is launched with `-quicknote-selftest`; writes a report to
+/// stderr, a glyph PDF of the editor to /tmp, and exits. The bootstrap that
+/// opens the notch lives in the app delegate (it owns the view models).
+@MainActor
+enum QuickNoteSelfTest {
+    static let enabled = ProcessInfo.processInfo.arguments.contains("-quicknote-selftest")
+
+    static func log(_ message: String) {
+        guard enabled else { return }
+        FileHandle.standardError.write(("SELFTEST: " + message + "\n").data(using: .utf8)!)
+    }
+}
+
 @MainActor
 private final class QuickNoteKeyBridge {
     private var monitor: Any?
 
     func install() {
         guard monitor == nil else { return }
+        QuickNoteSelfTest.log("bridge: installing")
         let store = QuickNoteDraftStore.shared
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            QuickNoteSelfTest.log("bridge: keyDown seen keyCode=\(event.keyCode)")
             guard let textView = store.textView,
-                  let window = textView.window else { return event }
+                  let window = textView.window else {
+                QuickNoteSelfTest.log("bridge: no textView/window, passthrough")
+                return event
+            }
 
             // Printable, unmodified keys only. Esc must stay untouched so it
             // keeps reaching the notch's exit path, and modifier combos such
@@ -822,7 +945,17 @@ private final class QuickNoteKeyBridge {
                 && event.characters!.unicodeScalars.contains { $0.value >= 0x20 }
 
             guard isPrintable else { return event }
+            QuickNoteSelfTest.log(
+                "bridge: printable key, windowKey=\(window.isKeyWindow) "
+                + "firstRespIsTV=\(window.firstResponder === textView) "
+                + "appActive=\(NSApp.isActive)"
+            )
             if !window.isKeyWindow {
+                // Activate the app as well: a non-activating panel can hold
+                // key status while the app is inactive, but then the input
+                // context never attaches cleanly and the FIRST keystroke is
+                // swallowed by the IME handoff.
+                NSApp.activate(ignoringOtherApps: true)
                 BoringViewCoordinator.shared.quickNoteWantsFocus = true
                 window.makeKey()
             }
@@ -834,6 +967,7 @@ private final class QuickNoteKeyBridge {
     }
 
     func remove() {
+        QuickNoteSelfTest.log("bridge: removing")
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
     }
