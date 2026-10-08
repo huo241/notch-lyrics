@@ -178,10 +178,9 @@ struct QuickNoteView: View {
                     .font(.system(size: 11))
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Button("更改") { Task { await fetchFolders() } }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .layoutPriority(1)
+
+                changeFolderChip
 
                 Spacer(minLength: 4)
 
@@ -215,6 +214,24 @@ struct QuickNoteView: View {
             formatButton("strikethrough", "删除线", .strikethrough)
             Spacer()
         }
+    }
+
+    /// A chip with its own background: plain text next to the folder label
+    /// read as part of the label and was effectively invisible.
+    private var changeFolderChip: some View {
+        Button {
+            Task { await fetchFolders() }
+        } label: {
+            Text("更改")
+                .font(.system(size: 10, weight: .medium))
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.white.opacity(0.14)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.white.opacity(0.75))
+        .help("选择其他文件夹")
     }
 
     private func formatButton(_ icon: String, _ name: String, _ kind: FormatKind) -> some View {
@@ -276,60 +293,95 @@ struct QuickNoteView: View {
         if range.length > 0, let storage = textView.textStorage {
             storage.beginEditing()
             switch kind {
-            case .bold, .italic:
-                let trait: NSFontDescriptor.SymbolicTraits = kind == .bold ? .bold : .italic
+            case .bold:
                 storage.enumerateAttribute(.font, in: range) { value, subRange, _ in
                     let font = (value as? NSFont) ?? NSFont.systemFont(ofSize: 12)
                     var traits = font.fontDescriptor.symbolicTraits
-                    traits.formSymmetricDifference(trait)
+                    traits.formSymmetricDifference(.bold)
                     let toggled = NSFont(
                         descriptor: font.fontDescriptor.withSymbolicTraits(traits),
                         size: font.pointSize
                     ) ?? font
                     storage.addAttribute(.font, value: toggled, range: subRange)
                 }
+            case .italic:
+                // Chinese system fonts have no italic face, so the symbolic
+                // trait renders as upright text. A skew always shows.
+                toggleValueAttribute(.obliqueness, value: 0.3, in: storage, range: range)
             case .underline:
-                toggleFlagAttribute(.underlineStyle, in: storage, range: range)
+                toggleValueAttribute(
+                    .underlineStyle,
+                    value: NSUnderlineStyle.single.rawValue,
+                    in: storage,
+                    range: range
+                )
             case .strikethrough:
-                toggleFlagAttribute(.strikethroughStyle, in: storage, range: range)
+                toggleValueAttribute(
+                    .strikethroughStyle,
+                    value: NSUnderlineStyle.single.rawValue,
+                    in: storage,
+                    range: range
+                )
             }
             storage.endEditing()
             draft.attributedText = textView.attributedString()
         } else {
             var attrs = textView.typingAttributes
             switch kind {
-            case .bold, .italic:
-                let trait: NSFontDescriptor.SymbolicTraits = kind == .bold ? .bold : .italic
+            case .bold:
                 let font = (attrs[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 12)
                 var traits = font.fontDescriptor.symbolicTraits
-                traits.formSymmetricDifference(trait)
+                traits.formSymmetricDifference(.bold)
                 attrs[.font] = NSFont(
                     descriptor: font.fontDescriptor.withSymbolicTraits(traits),
                     size: font.pointSize
                 ) ?? font
+            case .italic:
+                if isOn(attrs[.obliqueness]) {
+                    attrs.removeValue(forKey: .obliqueness)
+                } else {
+                    attrs[.obliqueness] = 0.3
+                }
             case .underline:
-                attrs[.underlineStyle] = isOn(attrs[.underlineStyle])
-                    ? 0 : NSUnderlineStyle.single.rawValue
+                if isOn(attrs[.underlineStyle]) {
+                    attrs.removeValue(forKey: .underlineStyle)
+                } else {
+                    attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                }
             case .strikethrough:
-                attrs[.strikethroughStyle] = isOn(attrs[.strikethroughStyle])
-                    ? 0 : NSUnderlineStyle.single.rawValue
+                if isOn(attrs[.strikethroughStyle]) {
+                    attrs.removeValue(forKey: .strikethroughStyle)
+                } else {
+                    attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+                }
             }
             textView.typingAttributes = attrs
         }
     }
 
-    /// Toggles a boolean text attribute over a range, judged by its first
-    /// character — good enough for the four formats this toolbar offers.
-    private func toggleFlagAttribute(_ key: NSAttributedString.Key, in storage: NSTextStorage, range: NSRange) {
+    /// Toggles a valued text attribute over a range, judged by its first
+    /// character — good enough for the formats this toolbar offers.
+    private func toggleValueAttribute(
+        _ key: NSAttributedString.Key,
+        value: Any,
+        in storage: NSTextStorage,
+        range: NSRange
+    ) {
         if isOn(storage.attribute(key, at: range.location, effectiveRange: nil)) {
             storage.removeAttribute(key, range: range)
         } else {
-            storage.addAttribute(key, value: NSUnderlineStyle.single.rawValue, range: range)
+            storage.addAttribute(key, value: value, range: range)
         }
     }
 
+    /// Obliqueness arrives as an `NSNumber` float, underline styles as ints —
+    /// both must read as "on" without the bridge silently dropping floats.
     private func isOn(_ value: Any?) -> Bool {
-        (value as? Int).map { $0 != 0 } ?? false
+        switch value {
+        case let number as NSNumber: return number.doubleValue != 0
+        case let int as Int: return int != 0
+        default: return false
+        }
     }
 
     // MARK: - Data
@@ -565,6 +617,8 @@ private enum NoteHTML {
                 if traits.contains(.bold) { piece = "<b>\(piece)</b>" }
                 if traits.contains(.italic) { piece = "<i>\(piece)</i>" }
             }
+            // Italic applied to Chinese text is a skew, not a font trait.
+            if isOn(attrs[.obliqueness]) { piece = "<i>\(piece)</i>" }
             if isOn(attrs[.underlineStyle]) { piece = "<u>\(piece)</u>" }
             if isOn(attrs[.strikethroughStyle]) { piece = "<s>\(piece)</s>" }
             out += piece
@@ -573,7 +627,11 @@ private enum NoteHTML {
     }
 
     private static func isOn(_ value: Any?) -> Bool {
-        (value as? Int).map { $0 != 0 } ?? false
+        switch value {
+        case let number as NSNumber: return number.doubleValue != 0
+        case let int as Int: return int != 0
+        default: return false
+        }
     }
 }
 
