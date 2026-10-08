@@ -298,6 +298,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        if ProcessInfo.processInfo.arguments.contains("-weather-selftest") {
+            QuickNoteSelfTest.log("weather selftest: scheduled")
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(1.5))
+                QuickNoteSelfTest.log("weather selftest: switching view + open()")
+                BoringViewCoordinator.shared.currentView = .weather
+                self?.vm.open()
+                QuickNoteSelfTest.log("weather selftest: open() done, state=\(self?.vm.notchState == .open ? "open" : "closed")")
+            }
+        }
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screenConfigurationDidChange),

@@ -54,6 +54,9 @@ struct SettingsView: View {
                 NavigationLink(value: "QuickNote") {
                     Label("便签", systemImage: "square.and.pencil")
                 }
+                NavigationLink(value: "Weather") {
+                    Label("天气", systemImage: "cloud.sun.fill")
+                }
                 NavigationLink(value: "Shortcuts") {
                     Label("Shortcuts", systemImage: "keyboard")
                 }
@@ -90,6 +93,8 @@ struct SettingsView: View {
                     Shelf()
                 case "QuickNote":
                     QuickNoteSettings()
+                case "Weather":
+                    WeatherSettings()
                 case "Shortcuts":
                     Shortcuts()
                 case "Extensions":
@@ -1882,4 +1887,122 @@ func warningBadge(_ text: String, _ description: String) -> some View {
 
 #Preview {
     HUD()
+}
+
+// MARK: - Weather
+
+/// 天气设置：定位方式、城市、显示选项。
+///
+/// 定位默认走网络（IP），零权限弹窗、零配置。但运营商出口节点的位置未必是用户
+/// 所在地——本机实测会定位到南京而不是实际所在——所以「手动选城市」是一个必需
+/// 的兜底，不是可选项。
+struct WeatherSettings: View {
+    @ObservedObject private var manager = WeatherManager.shared
+    @Default(.weatherAutoLocate) private var autoLocate
+    @Default(.weatherAnimatedBackground) private var animated
+    @Default(.weatherShowWeek) private var showWeek
+
+    private var placeSelection: Binding<String> {
+        Binding(
+            get: { manager.manualPlace?.id ?? "" },
+            set: { newValue in
+                manager.manualPlace = WeatherManager.builtInPlaces.first { $0.id == newValue }
+                applyChange()
+            }
+        )
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("自动定位", isOn: $autoLocate)
+                    .onChange(of: autoLocate) { _, isOn in
+                        if isOn {
+                            // Back to the network answer; drop the pinned city.
+                            manager.manualPlace = nil
+                            manager.invalidate()
+                        } else if manager.manualPlace == nil {
+                            manager.manualPlace = WeatherManager.builtInPlaces.first
+                        }
+                        applyChange()
+                    }
+
+                if !autoLocate {
+                    Picker("城市", selection: placeSelection) {
+                        ForEach(WeatherManager.builtInPlaces) { place in
+                            Text(place.name).tag(place.id)
+                        }
+                    }
+                }
+            } header: {
+                Text("定位")
+            } footer: {
+                Text(
+                    autoLocate
+                        ? "按网络出口推断位置，不需要任何权限。若结果偏到邻近城市，可关掉它手动选一个城市。"
+                        : "已固定到所选城市，不再走网络定位。"
+                )
+            }
+
+            Section {
+                Toggle("动画天空背景", isOn: $animated)
+                Toggle("显示「一周」视图", isOn: $showWeek)
+            } header: {
+                Text("显示")
+            } footer: {
+                Text("背景颜色随天气和昼夜变化；动画背景约占本功能的主要耗电。")
+            }
+
+            Section {
+                if let snapshot = manager.snapshot {
+                    LabeledContent("当前城市") {
+                        HStack(spacing: 6) {
+                            Text(manager.resolvedPlace?.name ?? snapshot.placeName)
+                            if manager.resolvedFromIP {
+                                Text("网络定位")
+                                    .font(.caption2)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(Color.secondary.opacity(0.15))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    LabeledContent("实况") {
+                        Text("\(Int(snapshot.temperature.rounded()))° · \(WeatherCode.label(snapshot.code))")
+                    }
+                    LabeledContent("更新于") {
+                        Text(snapshot.fetchedAt, style: .time)
+                    }
+                } else if manager.isLoading {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("正在获取…").foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text(manager.errorMessage ?? "暂无数据")
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack {
+                    Button("立即刷新") {
+                        Task { await manager.refresh(force: true) }
+                    }
+                    if let error = manager.errorMessage, manager.snapshot != nil {
+                        Text(error).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("状态")
+            } footer: {
+                Text("天气数据来自 Open-Meteo，免费且无需注册或密钥。")
+            }
+        }
+        .task { await manager.refresh() }
+    }
+
+    /// Nudges an already-open weather tab to reload after a settings change.
+    private func applyChange() {
+        NotificationCenter.default.post(name: .weatherShouldRefresh, object: nil)
+    }
 }
