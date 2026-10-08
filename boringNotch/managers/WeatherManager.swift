@@ -223,14 +223,14 @@ final class WeatherManager: ObservableObject {
         if let place = manualPlace {
             resolvedPlace = place
             resolvedFromIP = false
-            await load(place: place)
+            await load(place: place, resolvedFromIP: false)
             return
         }
 
         if let cached = cachedIPPlace() {
             resolvedPlace = cached
             resolvedFromIP = true
-            await load(place: cached)
+            await load(place: cached, resolvedFromIP: true)
             return
         }
 
@@ -239,7 +239,7 @@ final class WeatherManager: ObservableObject {
             storeIPPlace(place)
             resolvedPlace = place
             resolvedFromIP = true
-            await load(place: place)
+            await load(place: place, resolvedFromIP: true)
         } catch {
             errorMessage = "定位失败：\(error.localizedDescription)"
             isLoading = false
@@ -260,7 +260,7 @@ final class WeatherManager: ObservableObject {
 
     // MARK: Network
 
-    private func load(place: WeatherPlace) async {
+    private func load(place: WeatherPlace, resolvedFromIP: Bool) async {
         isLoading = snapshot == nil
         errorMessage = nil
 
@@ -268,7 +268,10 @@ final class WeatherManager: ObservableObject {
             async let forecast = fetchForecast(place)
             async let aqi = fetchAQI(place)
             let (base, air) = try await (forecast, aqi)
-            let name = await displayName(for: place)
+            // A hand-picked city already carries the name the user chose;
+            // reverse geocoding is only needed to translate an IP guess into
+            // readable local script.
+            let name = resolvedFromIP ? await displayName(for: place) : place.name
             snapshot = base.with(placeName: name, aqi: air)
         } catch {
             // Keep whatever was on screen; a stale reading beats a blank tab.
@@ -341,7 +344,7 @@ final class WeatherManager: ObservableObject {
 
         var days: [DayPoint] = []
         for index in payload.daily.time.indices {
-            guard let date = Self.parse(payload.daily.time[index]) else { continue }
+            guard let date = Self.parseDay(payload.daily.time[index]) else { continue }
             days.append(DayPoint(
                 date: date,
                 code: payload.daily.weather_code[safe: index] ?? 0,
@@ -362,8 +365,12 @@ final class WeatherManager: ObservableObject {
             windSpeed: payload.current.wind_speed_10m,
             code: payload.current.weather_code,
             isDay: payload.current.is_day == 1,
-            high: days.first?.high ?? payload.current.temperature_2m,
-            low: days.first?.low ?? payload.current.temperature_2m,
+            // High/low come from the daily array; if that model ever fails to
+            // parse, fall back to the extremes of the hours ahead rather than
+            // pinning both to the current temperature (which once rendered as
+            // the nonsensical "H:26° L:26°").
+            high: days.first?.high ?? hours.map(\.temperature).max() ?? payload.current.temperature_2m,
+            low: days.first?.low ?? hours.map(\.temperature).min() ?? payload.current.temperature_2m,
             aqi: nil,
             hourly: hours,
             daily: days,
@@ -505,9 +512,25 @@ final class WeatherManager: ObservableObject {
         return formatter
     }()
 
+    /// The daily array carries bare dates ("2026-10-08"), not timestamps —
+    /// parsing them with the wall-clock format silently fails, empties the
+    /// whole week model, and the today card falls back to showing the current
+    /// temperature as both the high and the low.
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
     private static func parse(_ value: String?) -> Date? {
         guard let value else { return nil }
         return wallClockFormatter.date(from: value)
+    }
+
+    private static func parseDay(_ value: String?) -> Date? {
+        guard let value else { return nil }
+        return dayFormatter.date(from: value)
     }
 }
 
