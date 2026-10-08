@@ -51,6 +51,9 @@ struct SettingsView: View {
                 NavigationLink(value: "Shelf") {
                     Label("Shelf", systemImage: "books.vertical")
                 }
+                NavigationLink(value: "QuickNote") {
+                    Label("便签", systemImage: "square.and.pencil")
+                }
                 NavigationLink(value: "Shortcuts") {
                     Label("Shortcuts", systemImage: "keyboard")
                 }
@@ -85,6 +88,8 @@ struct SettingsView: View {
                     Charge()
                 case "Shelf":
                     Shelf()
+                case "QuickNote":
+                    QuickNoteSettings()
                 case "Shortcuts":
                     Shortcuts()
                 case "Extensions":
@@ -713,6 +718,78 @@ struct Media: View {
         } else {
             return MediaControllerType.allCases
         }
+    }
+}
+
+/// 便签设置：选一个默认备忘录文件夹。
+///
+/// 刘海里的速记界面也有一个「更改」入口；这里给的是一个不展开刘海也能改的
+/// 固定位置。文件夹列表来自 NotesService，需要「自动化 → 备忘录」权限。
+struct QuickNoteSettings: View {
+    @Default(.quickNoteFolderID) private var folderID
+    @Default(.quickNoteFolderLabel) private var folderLabel
+
+    @State private var folders: [NoteFolder] = []
+    @State private var isLoading = false
+    @State private var statusMessage: String?
+
+    private var folderSelection: Binding<String> {
+        Binding(
+            get: { folderID },
+            set: { newValue in
+                folderID = newValue
+                folderLabel = folders.first { $0.id == newValue }?.displayName ?? ""
+            }
+        )
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("默认保存文件夹", selection: folderSelection) {
+                    Text("未选择").tag("")
+                    ForEach(folders) { folder in
+                        Text(folder.displayName).tag(folder.id)
+                    }
+                    // The stored folder may have gone missing (deleted, or the
+                    // list simply failed to load) — keep it visible rather than
+                    // letting the Picker render a blank row.
+                    if !folderID.isEmpty, !folders.contains(where: { $0.id == folderID }) {
+                        Text(folderLabel.isEmpty ? folderID : folderLabel).tag(folderID)
+                    }
+                }
+
+                HStack {
+                    Button("刷新文件夹列表") { Task { await loadFolders() } }
+                    if isLoading {
+                        ProgressView().controlSize(.small)
+                    }
+                    if let statusMessage {
+                        Text(statusMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+            } header: {
+                Text("便签")
+            } footer: {
+                Text("速记每次保存都会在所选文件夹新建一条备忘录，不会改动已有内容。")
+            }
+        }
+        .task { await loadFolders() }
+    }
+
+    private func loadFolders() async {
+        isLoading = true
+        statusMessage = nil
+        do {
+            folders = try await NotesService.shared.listFolders()
+        } catch {
+            statusMessage = (error as? LocalizedError)?.errorDescription
+                ?? error.localizedDescription
+        }
+        isLoading = false
     }
 }
 
