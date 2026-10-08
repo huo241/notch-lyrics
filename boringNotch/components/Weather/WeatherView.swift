@@ -2,20 +2,19 @@
 //  WeatherView.swift
 //  Notch Lyrics
 //
-//  The weather tab: a live sky backdrop, current conditions, the hours ahead,
-//  a temperature curve and the week.
+//  The weather tab: current conditions on the left, the hours ahead with the
+//  temperature curve on the right, the week one tap away.
 //
-//  Layout notes: the open notch is a wide, short strip (640×190), so the
-//  Apple-Weather card stack — which relies on vertical scrolling on a phone —
-//  becomes three columns here: conditions on the left, then the hours and the
-//  curve stacked on the right, with the week one tap away. The visual language
-//  (sky gradient that follows the weather and the hour, frosted cards,
-//  multicolour SF Symbols, a spline temperature curve with a "now" marker)
-//  follows Apple Weather.
+//  Layout contract: the open notch is a fixed 640×190 strip shared by every
+//  tab, and this view must live inside the same box as the music, shelf and
+//  quick-note tabs — never taller, never wider. An oversized slab loses its
+//  rounded bottom corners to the window clip and reads as a plain rectangle,
+//  so the sky gradient lives INSIDE the conditions card rather than bleeding
+//  across the whole slab, and the right column keeps no fixed heights above
+//  the shared budget (header ≈32 + padding leaves ≈134pt of content height).
 //
-//  The animated MeshGradient backdrop, the frosted-card treatment and the
-//  spline curve are adapted from lruiz5/weather-app (MIT licensed) — see
-//  ACKNOWLEDGEMENTS in the README for the full attribution.
+//  The animated MeshGradient sky inside the conditions card is adapted from
+//  lruiz5/weather-app (MIT) — see ACKNOWLEDGEMENTS in the README.
 //
 
 import Defaults
@@ -37,52 +36,42 @@ struct WeatherView: View {
     }
 
     var body: some View {
-        ZStack {
-            WeatherBackdrop(code: manager.snapshot?.code, isDay: manager.snapshot?.isDay ?? true, animated: animated)
-
-            content
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .task {
-            await manager.refresh()
-        }
-        .onChange(of: showWeek) { _, isOn in
-            // Turning the week view off while it is the active mode would leave
-            // the toolbar with no selected segment.
-            if !isOn, mode == .week { mode = .today }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .weatherShouldRefresh)) { _ in
-            Task { await manager.refresh() }
-        }
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 6)
+            .padding(.top, 4)
+            .task {
+                await manager.refresh()
+            }
+            .onChange(of: showWeek) { _, isOn in
+                // Turning the week view off while it is the active mode would
+                // leave the toolbar with no selected segment.
+                if !isOn, mode == .week { mode = .today }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .weatherShouldRefresh)) { _ in
+                Task { await manager.refresh() }
+            }
     }
 
     @ViewBuilder
     private var content: some View {
         if let snapshot = manager.snapshot {
-            HStack(spacing: 12) {
-                WeatherNowPane(snapshot: snapshot)
-                    .frame(width: 208)
+            HStack(spacing: 10) {
+                WeatherNowPane(snapshot: snapshot, animated: animated)
+                    .frame(width: 190)
 
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     toolbar(snapshot: snapshot)
 
                     Group {
                         switch mode {
                         case .today:
-                            VStack(spacing: 8) {
-                                WeatherHourlyStrip(hours: snapshot.upcomingHours(10))
-                                    .frame(maxHeight: .infinity)
-                                WeatherCurvePane(hours: Array(snapshot.upcomingHours(10)))
-                                    .frame(height: 60)
-                            }
+                            WeatherHourlyCard(hours: snapshot.upcomingHours(10))
                         case .week:
                             WeatherWeekPane(days: snapshot.daily)
                         }
                     }
-                    .frame(maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -157,12 +146,14 @@ extension Notification.Name {
     static let weatherShouldRefresh = Notification.Name("weatherShouldRefresh")
 }
 
-// MARK: - Backdrop
+// MARK: - Sky (inside the conditions card)
 
-/// The sky behind the tab. Two implementations: an animated `MeshGradient` on
-/// macOS 15+, and a layered `LinearGradient` below that (the project still
-/// supports Sonoma, where `MeshGradient` does not exist).
-struct WeatherBackdrop: View {
+/// The sky behind the current-conditions card. Two implementations: an
+/// animated `MeshGradient` on macOS 15+, and a layered `LinearGradient` below
+/// that (the project still supports Sonoma, where `MeshGradient` does not
+/// exist). Scoped to the card so the notch slab itself stays black like the
+/// other tabs.
+struct SkyBackdrop: View {
     let code: Int?
     let isDay: Bool
     let animated: Bool
@@ -265,6 +256,7 @@ enum Palette {
 
 struct WeatherNowPane: View {
     let snapshot: WeatherSnapshot
+    let animated: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -284,12 +276,12 @@ struct WeatherNowPane: View {
 
             HStack(alignment: .center, spacing: 8) {
                 Image(systemName: WeatherCode.symbol(snapshot.code, isDay: snapshot.isDay))
-                    .font(.system(size: 34))
+                    .font(.system(size: 30))
                     .symbolRenderingMode(.multicolor)
                     .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
 
                 Text("\(Int(snapshot.temperature.rounded()))°")
-                    .font(.system(size: 40, weight: .thin))
+                    .font(.system(size: 36, weight: .thin))
                     .foregroundStyle(.white)
                     .monospacedDigit()
             }
@@ -308,7 +300,7 @@ struct WeatherNowPane: View {
 
             Spacer(minLength: 4)
 
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 WeatherStatChip(icon: "thermometer.medium", text: "\(Int(snapshot.apparentTemperature.rounded()))°")
                 WeatherStatChip(icon: "humidity.fill", text: "\(snapshot.humidity)%")
                 WeatherStatChip(icon: "wind", text: String(format: "%.0f", snapshot.windSpeed))
@@ -319,8 +311,10 @@ struct WeatherNowPane: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .frame(maxHeight: .infinity, alignment: .topLeading)
-        .background(.white.opacity(0.13))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background {
+            SkyBackdrop(code: snapshot.code, isDay: snapshot.isDay, animated: animated)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -336,31 +330,33 @@ struct WeatherStatChip: View {
     let text: String
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 2) {
             Image(systemName: icon)
                 .font(.system(size: 8, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
             Text(text)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.88))
                 .monospacedDigit()
+                .fixedSize()
         }
-        .padding(.horizontal, 5)
+        .padding(.horizontal, 4)
         .padding(.vertical, 3)
         .background(.white.opacity(0.12))
         .clipShape(Capsule())
     }
 }
 
-// MARK: - Hourly strip
+// MARK: - Hourly card (hours + curve, one card)
 
-struct WeatherHourlyStrip: View {
+/// The hours ahead and the temperature curve share one card: the hour labels,
+/// glyphs and temperatures sit in equal columns, and the spline curve below
+/// runs through those same column centres — so one axis reads both.
+struct WeatherHourlyCard: View {
     let hours: [HourPoint]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            WeatherSectionHeader(title: "逐小时", icon: "clock")
-
+        VStack(spacing: 2) {
             HStack(spacing: 0) {
                 ForEach(Array(hours.enumerated()), id: \.element.id) { index, hour in
                     VStack(spacing: 3) {
@@ -369,14 +365,9 @@ struct WeatherHourlyStrip: View {
                             .foregroundStyle(.white.opacity(index == 0 ? 0.95 : 0.7))
 
                         Image(systemName: WeatherCode.symbol(hour.code, isDay: hour.isDay))
-                            .font(.system(size: 15))
+                            .font(.system(size: 14))
                             .symbolRenderingMode(.multicolor)
-                            .frame(height: 18)
-
-                        Text(hour.precipitationProbability > 0 ? "\(hour.precipitationProbability)%" : " ")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(Color(red: 0.45, green: 0.82, blue: 1.0))
-                            .monospacedDigit()
+                            .frame(height: 17)
 
                         Text("\(Int(hour.temperature.rounded()))°")
                             .font(.system(size: 12, weight: .semibold))
@@ -386,78 +377,16 @@ struct WeatherHourlyStrip: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .frame(maxHeight: .infinity)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(.white.opacity(0.13))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-        )
-    }
 
-    static func hourLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "H时"
-        return formatter.string(from: date)
-    }
-}
-
-// MARK: - Temperature curve
-
-/// The spline temperature curve: gradient fill under the line, dots at each
-/// hour, a dashed "now" marker, and precipitation bars along the bottom.
-struct WeatherCurvePane: View {
-    let hours: [HourPoint]
-
-    private let sideInset: CGFloat = 14
-    private let topInset: CGFloat = 12
-    private let bottomInset: CGFloat = 14
-
-    var body: some View {
-        GeometryReader { geometry in
-            let points = chartPoints(in: geometry.size)
-
-            ZStack(alignment: .topLeading) {
-                // Filled area under the curve.
-                splinePath(points: points, closedTo: geometry.size.height - bottomInset)
-                    .fill(
-                        LinearGradient(
-                            colors: [.white.opacity(0.22), .white.opacity(0.04)],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
-
-                // The curve itself.
-                splinePath(points: points, closedTo: nil)
-                    .stroke(.white.opacity(0.85), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-
-                // Hour dots, plus a label on the first and last point so the
-                // range is readable without crowding every value in.
-                ForEach(Array(points.enumerated()), id: \.offset) { index, point in
-                    Circle()
-                        .fill(.white)
-                        .frame(width: 4, height: 4)
-                        .position(point)
-
-                    if index == 0 || index == points.count - 1 {
-                        Text("\(Int(hours[index].temperature.rounded()))°")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .position(x: point.x, y: max(point.y - 12, 8))
-                            .monospacedDigit()
-                    }
-                }
-
-                // Precipitation bars, pinned to the baseline.
-                precipitationBars(in: geometry.size, points: points)
+            // The curve stretches over whatever height is left, so the card
+            // can never push the slab past the notch's shared box.
+            GeometryReader { geometry in
+                curve(in: geometry.size)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(.white.opacity(0.13))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
@@ -466,26 +395,56 @@ struct WeatherCurvePane: View {
         )
     }
 
-    private func chartPoints(in size: CGSize) -> [CGPoint] {
-        guard hours.count > 1 else { return [] }
+    private func curve(in size: CGSize) -> some View {
+        let columnWidth = size.width / CGFloat(max(hours.count, 1))
+        let points = hours.enumerated().map { index, hour in
+            // Column centres, so the curve lines up with the glyphs above.
+            CGPoint(x: columnWidth * (CGFloat(index) + 0.5),
+                    y: y(for: hour.temperature, in: size))
+        }
+
+        return ZStack(alignment: .topLeading) {
+            splinePath(points: points, closedTo: size.height - 3)
+                .fill(
+                    LinearGradient(
+                        colors: [.white.opacity(0.22), .white.opacity(0.04)],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                )
+
+            splinePath(points: points, closedTo: nil)
+                .stroke(.white.opacity(0.85), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+
+            ForEach(Array(points.enumerated()), id: \.offset) { index, point in
+                Circle()
+                    .fill(.white)
+                    .frame(width: 3.5, height: 3.5)
+                    .position(point)
+
+                if index == 0 || index == points.count - 1 {
+                    Text("\(Int(hours[index].temperature.rounded()))°")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .position(x: point.x, y: max(point.y - 11, 7))
+                        .monospacedDigit()
+                }
+            }
+
+            precipitationBars(size: size, points: points)
+        }
+    }
+
+    /// Vertical placement with a padded range so the curve never touches the
+    /// card edges even when the next ten hours are nearly flat.
+    private func y(for temperature: Double, in size: CGSize) -> CGFloat {
         let temperatures = hours.map(\.temperature)
         let minimum = temperatures.min() ?? 0
         let maximum = temperatures.max() ?? 1
-        // Pad the range so the curve never touches the frame edges.
         let padding = max((maximum - minimum) * 0.2, 1.5)
         let low = minimum - padding
-        let high = maximum + padding
-        let span = max(high - low, 0.001)
-
-        let usableWidth = max(size.width - sideInset * 2, 1)
-        let usableHeight = max(size.height - topInset - bottomInset, 1)
-
-        return hours.enumerated().map { index, hour in
-            let x = sideInset + usableWidth * CGFloat(index) / CGFloat(hours.count - 1)
-            let normalized = (hour.temperature - low) / span
-            let y = topInset + usableHeight * CGFloat(1 - normalized)
-            return CGPoint(x: x, y: y)
-        }
+        let span = max(maximum + padding - low, 0.001)
+        let usable = max(size.height - 14, 1)
+        return 8 + usable * CGFloat(1 - (temperature - low) / span)
     }
 
     /// Catmull-Rom style smoothing expressed as cubic segments. `closedTo`
@@ -525,18 +484,24 @@ struct WeatherCurvePane: View {
         return path
     }
 
-    private func precipitationBars(in size: CGSize, points: [CGPoint]) -> some View {
-        let baseline = size.height - 4
-        let maxHeight: CGFloat = 12
+    private func precipitationBars(size: CGSize, points: [CGPoint]) -> some View {
+        let baseline = size.height - 2
+        let maxHeight: CGFloat = 10
         return ForEach(Array(points.enumerated()), id: \.offset) { index, point in
             let probability = hours[index].precipitationProbability
             if probability > 0 {
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(Color(red: 0.45, green: 0.82, blue: 1.0).opacity(0.65))
                     .frame(width: 3, height: max(2, maxHeight * CGFloat(probability) / 100))
-                    .position(x: point.x, y: baseline - maxHeight / 2 + (maxHeight - max(2, maxHeight * CGFloat(probability) / 100)) / 2)
+                    .position(x: point.x, y: baseline - max(2, maxHeight * CGFloat(probability) / 100) / 2)
             }
         }
+    }
+
+    static func hourLabel(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "H时"
+        return formatter.string(from: date)
     }
 }
 
@@ -546,18 +511,18 @@ struct WeatherWeekPane: View {
     let days: [DayPoint]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 1) {
             WeatherSectionHeader(title: "未来一周", icon: "calendar")
 
             ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                 HStack(spacing: 8) {
                     Text(index == 0 ? "今天" : Self.weekdayLabel(day.date))
-                        .font(.system(size: 11, weight: index == 0 ? .semibold : .regular))
+                        .font(.system(size: 10, weight: index == 0 ? .semibold : .regular))
                         .foregroundStyle(.white.opacity(index == 0 ? 0.95 : 0.8))
-                        .frame(width: 40, alignment: .leading)
+                        .frame(width: 36, alignment: .leading)
 
                     Image(systemName: WeatherCode.symbol(day.code, isDay: true))
-                        .font(.system(size: 12))
+                        .font(.system(size: 11))
                         .symbolRenderingMode(.multicolor)
                         .frame(width: 18)
 
@@ -586,12 +551,12 @@ struct WeatherWeekPane: View {
                         }
 
                     Text("\(Int(day.low.rounded()))°")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                         .foregroundStyle(.white.opacity(0.55))
                         .frame(width: 24, alignment: .trailing)
                         .monospacedDigit()
                     Text("\(Int(day.high.rounded()))°")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 24, alignment: .trailing)
                         .monospacedDigit()
@@ -599,8 +564,8 @@ struct WeatherWeekPane: View {
                 .frame(maxHeight: .infinity)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.white.opacity(0.13))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
