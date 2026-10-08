@@ -81,9 +81,13 @@ struct ContentView: View {
     }
 
     var body: some View {
-        // Calculate scale based on gesture progress only
+        // Scale is feedback only, and optional. The gesture monitor is installed
+        // window-wide and does not care which control sits under the pointer, so
+        // an ordinary scroll inside the notch (folder list, note editor) also
+        // drives `gestureProgress`. With scaling off the notch keeps its normal
+        // size in that case, while the swipe threshold still applies.
         let gestureScale: CGFloat = {
-            guard gestureProgress != 0 else { return 1.0 }
+            guard Defaults[.swipeScalesNotch], gestureProgress != 0 else { return 1.0 }
             let scaleFactor = 1.0 + gestureProgress * 0.01
             return max(0.6, scaleFactor)
         }()

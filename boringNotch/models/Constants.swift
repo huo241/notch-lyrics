@@ -120,6 +120,11 @@ extension Defaults.Keys {
     // MARK: Gestures
     static let enableGestures = Key<Bool>("enableGestures", default: true)
     static let closeGestureEnabled = Key<Bool>("closeGestureEnabled", default: true)
+    /// Whether swiping scales the notch as progress feedback. Off leaves the
+    /// notch at its normal size while swiping — the swipe still accumulates
+    /// progress and still closes the notch at the sensitivity threshold, so
+    /// scrolling inside the notch (a note, a folder list) no longer resizes it.
+    static let swipeScalesNotch = Key<Bool>("swipeScalesNotch", default: true)
     static let gestureSensitivity = Key<CGFloat>("gestureSensitivity", default: 200.0)
     
     // MARK: Media playback
