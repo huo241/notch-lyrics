@@ -275,7 +275,7 @@ struct QuickNoteView: View {
                 return
             }
             QuickNoteSelfTest.log(
-                "window=\(window.title ?? "?") isKeyWindow=\(window.isKeyWindow) "
+                "window=\(window.title) isKeyWindow=\(window.isKeyWindow) "
                 + "firstResponderIsTextView=\(window.firstResponder === tv) "
                 + "quickNoteWantsFocus=\(coordinator.quickNoteWantsFocus)"
             )
