@@ -10,6 +10,26 @@ import Combine
 import Defaults
 import SwiftUI
 
+/// True for any "on" attribute value — obliqueness arrives as an `NSNumber`
+/// float, underline styles as plain ints; both must read as on.
+func attributeIsOn(_ value: Any?) -> Bool {
+    switch value {
+    case let number as NSNumber: return number.doubleValue != 0
+    case let int as Int: return int != 0
+    default: return false
+    }
+}
+
+/// The formats the toolbar can toggle, as a set so the active-state highlight
+/// can travel in a single published value.
+struct QuickNoteFormats: OptionSet {
+    let rawValue: Int
+    static let bold = QuickNoteFormats(rawValue: 1 << 0)
+    static let italic = QuickNoteFormats(rawValue: 1 << 1)
+    static let underline = QuickNoteFormats(rawValue: 1 << 2)
+    static let strikethrough = QuickNoteFormats(rawValue: 1 << 3)
+}
+
 /// Type a note straight into the notch; it lands in Apple Notes as a new note.
 ///
 /// The notch is a **non-activating panel** — it deliberately never takes the
@@ -43,6 +63,15 @@ struct QuickNoteView: View {
 
     private enum FormatKind {
         case bold, italic, underline, strikethrough
+
+        var formats: QuickNoteFormats {
+            switch self {
+            case .bold: return .bold
+            case .italic: return .italic
+            case .underline: return .underline
+            case .strikethrough: return .strikethrough
+            }
+        }
     }
 
     @ObservedObject private var coordinator = BoringViewCoordinator.shared
@@ -204,6 +233,17 @@ struct QuickNoteView: View {
 
             editor
         }
+        // Auto-focus shortly after the composer appears. The notch window
+        // swallows the click that first makes it key, and when focus was left
+        // to that click the first keystroke could land nowhere — the user had
+        // to delete and retype. Typing right after opening the tab is the
+        // whole point of a quick note, so the editor asks for the keyboard
+        // itself instead of waiting to be clicked.
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                requestKeyboard()
+            }
+        }
     }
 
     private var formatBar: some View {
@@ -235,7 +275,8 @@ struct QuickNoteView: View {
     }
 
     private func formatButton(_ icon: String, _ name: String, _ kind: FormatKind) -> some View {
-        Button {
+        let active = draft.activeFormats.contains(kind.formats)
+        return Button {
             applyFormatting(kind)
         } label: {
             Image(systemName: icon)
@@ -244,11 +285,11 @@ struct QuickNoteView: View {
                 .padding(.vertical, 3)
                 .background(
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(active ? Color.accentColor : Color.white.opacity(0.08))
                 )
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(0.75))
+        .foregroundStyle(active ? Color.white : Color.white.opacity(0.75))
         .help(name)
     }
 
@@ -308,7 +349,7 @@ struct QuickNoteView: View {
             case .italic:
                 // Chinese system fonts have no italic face, so the symbolic
                 // trait renders as upright text. A skew always shows.
-                toggleValueAttribute(.obliqueness, value: 0.3, in: storage, range: range)
+                toggleValueAttribute(.obliqueness, value: Self.obliqueSkew, in: storage, range: range)
             case .underline:
                 toggleValueAttribute(
                     .underlineStyle,
@@ -338,19 +379,19 @@ struct QuickNoteView: View {
                     size: font.pointSize
                 ) ?? font
             case .italic:
-                if isOn(attrs[.obliqueness]) {
+                if attributeIsOn(attrs[.obliqueness]) {
                     attrs.removeValue(forKey: .obliqueness)
                 } else {
-                    attrs[.obliqueness] = 0.3
+                    attrs[.obliqueness] = Self.obliqueSkew
                 }
             case .underline:
-                if isOn(attrs[.underlineStyle]) {
+                if attributeIsOn(attrs[.underlineStyle]) {
                     attrs.removeValue(forKey: .underlineStyle)
                 } else {
                     attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
                 }
             case .strikethrough:
-                if isOn(attrs[.strikethroughStyle]) {
+                if attributeIsOn(attrs[.strikethroughStyle]) {
                     attrs.removeValue(forKey: .strikethroughStyle)
                 } else {
                     attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
@@ -358,7 +399,15 @@ struct QuickNoteView: View {
             }
             textView.typingAttributes = attrs
         }
+
+        // Programmatic edits don't move the selection, so nothing else would
+        // refresh the toolbar's active-state highlight.
+        draft.refreshActiveFormats()
     }
+
+    /// Radians of skew for italic. Kept high on purpose: at body sizes a
+    /// subtle slant reads as a rendering artifact rather than emphasis.
+    private static let obliqueSkew: Double = 0.45
 
     /// Toggles a valued text attribute over a range, judged by its first
     /// character — good enough for the formats this toolbar offers.
@@ -368,20 +417,10 @@ struct QuickNoteView: View {
         in storage: NSTextStorage,
         range: NSRange
     ) {
-        if isOn(storage.attribute(key, at: range.location, effectiveRange: nil)) {
+        if attributeIsOn(storage.attribute(key, at: range.location, effectiveRange: nil)) {
             storage.removeAttribute(key, range: range)
         } else {
             storage.addAttribute(key, value: value, range: range)
-        }
-    }
-
-    /// Obliqueness arrives as an `NSNumber` float, underline styles as ints —
-    /// both must read as "on" without the bridge silently dropping floats.
-    private func isOn(_ value: Any?) -> Bool {
-        switch value {
-        case let number as NSNumber: return number.doubleValue != 0
-        case let int as Int: return int != 0
-        default: return false
         }
     }
 
@@ -584,6 +623,12 @@ private struct RichTextEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             store.attributedText = textView.attributedString()
+            store.refreshActiveFormats()
+        }
+
+        // Selection moves flip the toolbar's active-state highlight.
+        func textViewDidChangeSelection(_ notification: Notification) {
+            store.refreshActiveFormats()
         }
 
         // AppKit's NSTextView reports editing begin/end through NSTextDelegate
@@ -622,20 +667,12 @@ private enum NoteHTML {
                 if traits.contains(.italic) { piece = "<i>\(piece)</i>" }
             }
             // Italic applied to Chinese text is a skew, not a font trait.
-            if isOn(attrs[.obliqueness]) { piece = "<i>\(piece)</i>" }
-            if isOn(attrs[.underlineStyle]) { piece = "<u>\(piece)</u>" }
-            if isOn(attrs[.strikethroughStyle]) { piece = "<s>\(piece)</s>" }
+            if attributeIsOn(attrs[.obliqueness]) { piece = "<i>\(piece)</i>" }
+            if attributeIsOn(attrs[.underlineStyle]) { piece = "<u>\(piece)</u>" }
+            if attributeIsOn(attrs[.strikethroughStyle]) { piece = "<s>\(piece)</s>" }
             out += piece
         }
         return out
-    }
-
-    private static func isOn(_ value: Any?) -> Bool {
-        switch value {
-        case let number as NSNumber: return number.doubleValue != 0
-        case let int as Int: return int != 0
-        default: return false
-        }
     }
 }
 
@@ -661,10 +698,48 @@ final class QuickNoteDraftStore: ObservableObject {
 
     @Published var attributedText: NSAttributedString = NSAttributedString(string: "")
 
+    /// Which toolbar formats are currently "on", for the button highlight.
+    /// Derived from the selection (or the typing attributes when the selection
+    /// is empty); recomputed via `refreshActiveFormats` after every edit,
+    /// selection move, and programmatic format toggle.
+    @Published var activeFormats: QuickNoteFormats = []
+
     /// The live editor while the quick-note tab exists. The notch tears its
     /// content down constantly, so this is a weak back-reference rather than
     /// something the store owns; formatting actions go through it.
     weak var textView: NSTextView?
+
+    /// Recomputes the active formats from the editor's current state.
+    ///
+    /// Judged by the first character of the selection — or the typing
+    /// attributes for an empty selection — matching how `applyFormatting`
+    /// decides what to toggle.
+    func refreshActiveFormats() {
+        guard let textView, let storage = textView.textStorage, storage.length > 0 else {
+            activeFormats = []
+            return
+        }
+
+        let range = textView.selectedRange()
+        let attrs: [NSAttributedString.Key: Any]
+        if range.length > 0, range.location < storage.length {
+            attrs = storage.attributes(at: range.location, effectiveRange: nil)
+        } else {
+            attrs = textView.typingAttributes
+        }
+
+        var result: QuickNoteFormats = []
+        if let font = attrs[.font] as? NSFont {
+            let traits = font.fontDescriptor.symbolicTraits
+            if traits.contains(.bold) { result.insert(.bold) }
+            if traits.contains(.italic) { result.insert(.italic) }
+        }
+        // Italic on Chinese text is a skew, not a font trait.
+        if attributeIsOn(attrs[.obliqueness]) { result.insert(.italic) }
+        if attributeIsOn(attrs[.underlineStyle]) { result.insert(.underline) }
+        if attributeIsOn(attrs[.strikethroughStyle]) { result.insert(.strikethrough) }
+        activeFormats = result
+    }
 
     private init() {}
 }
