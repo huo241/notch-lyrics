@@ -233,14 +233,12 @@ struct QuickNoteView: View {
 
             editor
         }
-        // Auto-focus shortly after the composer appears. The notch window
-        // swallows the click that first makes it key, and when focus was left
-        // to that click the first keystroke could land nowhere — the user had
-        // to delete and retype. Typing right after opening the tab is the
-        // whole point of a quick note, so the editor asks for the keyboard
-        // itself instead of waiting to be clicked.
+        // Focus immediately, then once more shortly after as a belt-and-braces
+        // pass: the first keystroke must not race the focus request. Re-focus
+        // is idempotent when the editor already holds the keyboard.
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            requestKeyboard()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 requestKeyboard()
             }
         }
@@ -504,15 +502,19 @@ struct QuickNoteView: View {
 
     /// Asks for the keyboard. Raising the flag first is required: `makeKey()`
     /// only works on a window that reports it can become key.
+    ///
+    /// The window is taken from the editor itself rather than searched for:
+    /// there is one notch window per attached display, and grabbing "the first
+    /// one" can pick a window this editor does not live in — then
+    /// `makeFirstResponder` silently does nothing and the first keystroke
+    /// falls on the floor.
     private func requestKeyboard() {
         coordinator.quickNoteWantsFocus = true
         DispatchQueue.main.async {
-            let notch = NSApp.windows.first { $0 is BoringNotchSkyLightWindow }
-            let window = notch ?? NSApp.keyWindow
-            window?.makeKey()
-            if let textView = draft.textView {
-                window?.makeFirstResponder(textView)
-            }
+            guard let textView = self.draft.textView else { return }
+            guard let window = textView.window ?? NSApp.keyWindow else { return }
+            if !window.isKeyWindow { window.makeKey() }
+            window.makeFirstResponder(textView)
         }
     }
 
@@ -622,12 +624,18 @@ private struct RichTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
+            store.textView = textView
             store.attributedText = textView.attributedString()
             store.refreshActiveFormats()
         }
 
-        // Selection moves flip the toolbar's active-state highlight.
+        // Selection moves flip the toolbar's active-state highlight, and also
+        // mark this instance as the one the user is working in — a click into
+        // the editor always moves the selection, so this fires on every entry.
         func textViewDidChangeSelection(_ notification: Notification) {
+            if let textView = notification.object as? NSTextView {
+                store.textView = textView
+            }
             store.refreshActiveFormats()
         }
 
@@ -635,6 +643,9 @@ private struct RichTextEditor: NSViewRepresentable {
         // (`textDidBeginEditing`), not the UIKit-style `textViewDidBeginEditing`
         // — misspelling those compiles but is never called.
         func textDidBeginEditing(_ notification: Notification) {
+            if let textView = notification.object as? NSTextView {
+                store.textView = textView
+            }
             onFocusChange(true)
         }
 
@@ -704,9 +715,12 @@ final class QuickNoteDraftStore: ObservableObject {
     /// selection move, and programmatic format toggle.
     @Published var activeFormats: QuickNoteFormats = []
 
-    /// The live editor while the quick-note tab exists. The notch tears its
-    /// content down constantly, so this is a weak back-reference rather than
-    /// something the store owns; formatting actions go through it.
+    /// The live editor. `ContentView` renders the notch content **twice** —
+    /// once as the visual layer and once as the gesture layer — so two editor
+    /// instances exist at any time. Whoever the user is actually typing in
+    /// re-registers itself here (see the coordinator's delegate callbacks), so
+    /// formatting and focus always land on the visible one rather than on
+    /// whichever happened to be created last.
     weak var textView: NSTextView?
 
     /// Recomputes the active formats from the editor's current state.
