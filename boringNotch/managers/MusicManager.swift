@@ -587,7 +587,7 @@ class MusicManager: ObservableObject {
     /// LRCLIB requires clients to identify themselves.
     private static let lyricsUserAgent: String = {
         let version = Bundle.main.releaseVersionNumber ?? "unknown"
-        return "boringNotch/\(version) (https://github.com/TheBoredTeam/boring.notch)"
+        return "NotchLyrics/\(version) (https://github.com/huo241/notch-lyrics)"
     }()
 
     @MainActor
