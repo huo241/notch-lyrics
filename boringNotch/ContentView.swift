@@ -104,6 +104,14 @@ struct ContentView: View {
                         : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], vm.notchState == .open ? 12 : 0)
+                    // When open the black slab spans the full window width.
+                    // Without this it hugs the content, leaving two see-through
+                    // gutters at its sides — and through them the dark menu
+                    // bar shows as ugly black bars flanking the notch.
+                    .frame(
+                        maxWidth: vm.notchState == .open ? .infinity : nil,
+                        alignment: .top
+                    )
                     .background(.black)
                     .clipShape(currentNotchShape)
                     .overlay(alignment: .top) {
@@ -160,6 +168,11 @@ struct ContentView: View {
                             withAnimation {
                                 isHovering = false
                             }
+                        }
+                        // An open notch dismisses on any click outside its
+                        // window; while closed the monitors stay uninstalled.
+                        ClickOutsideCloser.shared.setActive(newState == .open) {
+                            self.vm.close()
                         }
                     }
                     .onChange(of: vm.isBatteryPopoverActive) {
