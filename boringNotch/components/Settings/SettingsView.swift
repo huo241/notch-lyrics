@@ -291,6 +291,9 @@ struct GeneralSettings: View {
                 Defaults.Toggle(key: .closeGestureEnabled) {
                     Text("Close gesture")
                 }
+                Defaults.Toggle(key: .swipeScalesNotch) {
+                    Text("Scale the notch while swiping")
+                }
                 Slider(value: $gestureSensitivity, in: 100...300, step: 100) {
                     HStack {
                         Text("Gesture sensitivity")
@@ -311,6 +314,12 @@ struct GeneralSettings: View {
         } footer: {
             Text(
                 "Two-finger swipe up on notch to close, two-finger swipe down on notch to open when **Open notch on hover** option is disabled"
+            )
+            .multilineTextAlignment(.trailing)
+            .foregroundStyle(.secondary)
+            .font(.caption)
+            Text(
+                "Scaling is feedback only. With it off, a swipe still closes the notch once it passes the sensitivity threshold, and scrolling inside the notch no longer resizes it."
             )
             .multilineTextAlignment(.trailing)
             .foregroundStyle(.secondary)

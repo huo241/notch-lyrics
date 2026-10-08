@@ -21,6 +21,10 @@ import SwiftUI
 /// every exit path (tab switch, notch collapse, Esc, save, app deactivation).
 /// `onDisappear` is load-bearing, not tidiness: miss it and the user's keyboard
 /// stays trapped in the notch.
+///
+/// Text lives in `QuickNoteDraftStore` rather than `@State` for the same
+/// reason the focus handling is explicit: the notch is torn down constantly,
+/// and a draft must outlive that.
 struct QuickNoteView: View {
     private enum Phase {
         case checking
@@ -36,12 +40,12 @@ struct QuickNoteView: View {
     }
 
     @ObservedObject private var coordinator = BoringViewCoordinator.shared
+    @ObservedObject private var draft = QuickNoteDraftStore.shared
 
     @Default(.quickNoteFolderID) private var folderID
     @Default(.quickNoteFolderLabel) private var folderLabel
 
     @State private var phase: Phase = .checking
-    @State private var text = ""
     @State private var isSaving = false
     @State private var flash: Flash?
     @State private var flashTask: Task<Void, Never>?
@@ -201,7 +205,7 @@ struct QuickNoteView: View {
     }
 
     private var editor: some View {
-        TextEditor(text: $text)
+        TextEditor(text: $draft.text)
             .focused($editorFocused)
             .font(.system(size: 12))
             .foregroundStyle(.white)
@@ -213,7 +217,7 @@ struct QuickNoteView: View {
                     .fill(Color.white.opacity(0.08))
             )
             .overlay(alignment: .topLeading) {
-                if text.isEmpty {
+                if draft.text.isEmpty {
                     Text("随手记点什么…")
                         .font(.system(size: 12))
                         .foregroundStyle(.white.opacity(0.3))
@@ -230,7 +234,7 @@ struct QuickNoteView: View {
     // MARK: - Data
 
     private var canSave: Bool {
-        !isSaving && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !isSaving && !draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func prepare() async {
@@ -263,7 +267,7 @@ struct QuickNoteView: View {
     }
 
     private func save() {
-        let body = text
+        let body = draft.text
         let target = folderID
         guard canSave, !target.isEmpty else { return }
 
@@ -277,11 +281,11 @@ struct QuickNoteView: View {
                     body: body,
                     in: target
                 )
-                text = ""
+                draft.text = ""
                 releaseKeyboard()
                 showFlash("已保存", isError: false)
             } catch {
-                // The editor is deliberately left untouched: the user may have
+                // The draft is deliberately left untouched: the user may have
                 // written a long note and a failed write must not destroy it.
                 let message = (error as? NotesError)?.errorDescription
                     ?? error.localizedDescription
@@ -333,4 +337,25 @@ struct QuickNoteView: View {
             if let url = URL(string: candidate), NSWorkspace.shared.open(url) { return }
         }
     }
+}
+
+/// Holds the unsaved draft for as long as the app runs.
+///
+/// It lives outside the view on purpose. `ContentView` only instantiates
+/// `QuickNoteView` while the notch is expanded — it renders the tab content
+/// inside `if vm.notchState == .open` — and the notch collapses on hover-out
+/// (roughly 100 ms after the pointer leaves), on Esc, and on a swipe gesture.
+/// A draft kept in `@State` is therefore destroyed the first time the pointer
+/// wanders off mid-sentence.
+///
+/// Deliberately in-memory rather than written to `Defaults`: a draft that
+/// silently reappears days later is more surprising than an empty editor.
+/// Restarting the app still clears it.
+@MainActor
+final class QuickNoteDraftStore: ObservableObject {
+    static let shared = QuickNoteDraftStore()
+
+    @Published var text: String = ""
+
+    private init() {}
 }
