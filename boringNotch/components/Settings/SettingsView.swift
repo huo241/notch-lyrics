@@ -782,6 +782,10 @@ struct QuickNoteSettings: View {
                 Text("速记每次保存都会在所选文件夹新建一条备忘录，不会改动已有内容。")
             }
         }
+        .accentColor(.effectiveAccent)
+        // Without a title of its own the window keeps showing the *previous*
+        // pane's title — SwiftUI only rewrites it when a navigationTitle exists.
+        .navigationTitle("便签")
         .task { await loadFolders() }
     }
 
@@ -1998,6 +2002,8 @@ struct WeatherSettings: View {
                 Text("天气数据来自 Open-Meteo，免费且无需注册或密钥。")
             }
         }
+        .accentColor(.effectiveAccent)
+        .navigationTitle("天气")
         .task { await manager.refresh() }
     }
 

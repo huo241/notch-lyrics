@@ -287,6 +287,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if ProcessInfo.processInfo.arguments.contains("-quicknote-selftest") {
             QuickNoteSelfTest.log("bootstrap: seeding fake folder + will open notch")
+            // Stash the real choice first; the test restores it before exiting.
+            QuickNoteSelfTest.stashedFolderID = UserDefaults.standard.string(forKey: "quickNoteFolderID")
+            QuickNoteSelfTest.stashedFolderLabel = UserDefaults.standard.string(forKey: "quickNoteFolderLabel")
             UserDefaults.standard.set("selftest", forKey: "quickNoteFolderID")
             UserDefaults.standard.set("SelfTest Folder", forKey: "quickNoteFolderLabel")
             Task { @MainActor [weak self] in
