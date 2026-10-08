@@ -198,5 +198,14 @@ extension Defaults.Keys {
         }
     }
 
+    // MARK: Quick note
+    /// Target Notes folder for quick notes, stored by **ID** rather than name.
+    /// Several accounts can each hold a folder called "Notes"; the name alone
+    /// does not say which one the user picked.
+    static let quickNoteFolderID = Key<String>("quickNoteFolderID", default: "")
+    /// The same folder as "Name · Account", kept alongside the ID purely so the
+    /// UI can show where notes are going without re-querying Notes.
+    static let quickNoteFolderLabel = Key<String>("quickNoteFolderLabel", default: "")
+
     static let didClearLegacyURLCacheV1 = Key<Bool>("didClearLegacyURLCache_v1", default: false)
 }
