@@ -213,4 +213,17 @@ extension Defaults.Keys {
     static let quickNoteFolderLabel = Key<String>("quickNoteFolderLabel", default: "")
 
     static let didClearLegacyURLCacheV1 = Key<Bool>("didClearLegacyURLCache_v1", default: false)
+
+    // MARK: Weather
+    /// Resolve the location from the public IP when no city is pinned manually.
+    static let weatherAutoLocate = Key<Bool>("weatherAutoLocate", default: true)
+    /// A pinned city, JSON-encoded `WeatherPlace`. Wins over IP when present.
+    static let weatherManualPlaceData = Key<Data?>("weatherManualPlaceData", default: nil)
+    /// Last IP-derived place, kept for a day so the tab renders instantly.
+    static let weatherIPPlaceData = Key<Data?>("weatherIPPlaceData", default: nil)
+    /// Animated sky gradient. Off is cheaper on battery, and the only setting
+    /// here with a visible cost.
+    static let weatherAnimatedBackground = Key<Bool>("weatherAnimatedBackground", default: true)
+    /// Show the seven-day list under the hourly strip.
+    static let weatherShowWeek = Key<Bool>("weatherShowWeek", default: true)
 }

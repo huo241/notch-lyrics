@@ -358,6 +358,8 @@ struct ContentView: View {
                         ShelfView()
                     case .quickNote:
                         QuickNoteView()
+                    case .weather:
+                        WeatherView()
                     }
                 }
                 .transition(
