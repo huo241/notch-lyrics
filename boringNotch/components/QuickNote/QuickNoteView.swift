@@ -84,6 +84,7 @@ struct QuickNoteView: View {
     @State private var isSaving = false
     @State private var flash: Flash?
     @State private var flashTask: Task<Void, Never>?
+    @State private var keyBridge = QuickNoteKeyBridge()
 
     var body: some View {
         Group {
@@ -112,8 +113,14 @@ struct QuickNoteView: View {
         // would ask for focus, so waiting for that click deadlocks. Nothing is
         // actually stolen until the user clicks, because becoming the key window
         // still requires the click.
-        .onAppear { coordinator.quickNoteWantsFocus = true }
-        .onDisappear { releaseKeyboard() }
+        .onAppear {
+            coordinator.quickNoteWantsFocus = true
+            keyBridge.install()
+        }
+        .onDisappear {
+            releaseKeyboard()
+            keyBridge.remove()
+        }
         .onExitCommand { releaseKeyboard() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
             // Path 5: another app came forward — it gets the keyboard.
@@ -327,7 +334,7 @@ struct QuickNoteView: View {
     /// updated explicitly: programmatic `NSTextStorage` edits do not fire the
     /// delegate's `textDidChange`.
     private func applyFormatting(_ kind: FormatKind) {
-        guard let textView = draft.textView else { return }
+        guard let textView = activeEditor else { return }
         let range = textView.selectedRange()
 
         if range.length > 0, let storage = textView.textStorage {
@@ -403,9 +410,24 @@ struct QuickNoteView: View {
         draft.refreshActiveFormats()
     }
 
-    /// Radians of skew for italic. Kept high on purpose: at body sizes a
-    /// subtle slant reads as a rendering artifact rather than emphasis.
-    private static let obliqueSkew: Double = 0.45
+    /// Radians of skew for italic, at the user's explicit request — subtle
+    /// slants kept reading as invisible at body sizes. 1.0 rad ≈ 57°, as loud
+    /// as it gets while still looking like italic rather than shear.
+    private static let obliqueSkew: Double = 1.0
+
+    /// The editor formatting must act on: the one actually holding the
+    /// keyboard when that can be identified, otherwise the registered one.
+    /// Two editor instances are alive while the notch is open (visual +
+    /// gesture layer); setting typing attributes on the one that is *not*
+    /// receiving keystrokes makes the format silently invisible — exactly
+    /// the "clicked italic, typed, nothing happened" report.
+    private var activeEditor: NSTextView? {
+        if let textView = draft.textView,
+           textView.window?.firstResponder === textView {
+            return textView
+        }
+        return draft.textView
+    }
 
     /// Toggles a valued text attribute over a range, judged by its first
     /// character — good enough for the formats this toolbar offers.
@@ -729,16 +751,22 @@ final class QuickNoteDraftStore: ObservableObject {
     /// attributes for an empty selection — matching how `applyFormatting`
     /// decides what to toggle.
     func refreshActiveFormats() {
-        guard let textView, let storage = textView.textStorage, storage.length > 0 else {
+        guard let textView else {
             activeFormats = []
             return
         }
 
         let range = textView.selectedRange()
         let attrs: [NSAttributedString.Key: Any]
-        if range.length > 0, range.location < storage.length {
+        if range.length > 0,
+           let storage = textView.textStorage,
+           storage.length > 0,
+           range.location < storage.length {
             attrs = storage.attributes(at: range.location, effectiveRange: nil)
         } else {
+            // Empty selection or empty editor — the typing attributes carry
+            // the pending format, and must not read as "nothing is on" or
+            // the toolbar's highlight would drop the moment it's toggled.
             attrs = textView.typingAttributes
         }
 
@@ -756,4 +784,57 @@ final class QuickNoteDraftStore: ObservableObject {
     }
 
     private init() {}
+}
+
+// MARK: - Keystroke bridge
+
+/// Delivers the first keystroke, deterministically.
+///
+/// The notch window only accepts keys while `quickNoteWantsFocus` is raised,
+/// and every focus request before this bridge was asynchronous — a key that
+/// landed inside that gap was dropped on the floor. Local event monitors run
+/// **before** the app routes the event into the responder chain, so this
+/// bridge closes the gap synchronously: before a printable key is dispatched,
+/// the editor's window is made key and the registered editor becomes first
+/// responder. The event then continues its normal route straight into the
+/// editor — nothing is swallowed or re-injected, so IME composition and undo
+/// keep working.
+@MainActor
+private final class QuickNoteKeyBridge {
+    private var monitor: Any?
+
+    func install() {
+        guard monitor == nil else { return }
+        let store = QuickNoteDraftStore.shared
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard let textView = store.textView,
+                  let window = textView.window else { return event }
+
+            // Printable, unmodified keys only. Esc must stay untouched so it
+            // keeps reaching the notch's exit path, and modifier combos such
+            // as Cmd+Return (save) keep their normal dispatch route.
+            let modifiers = event.modifierFlags
+                .intersection(.deviceIndependentFlagsMask)
+                .subtracting([.shift, .capsLock])
+            let isPrintable = modifiers.isEmpty
+                && event.keyCode != 53 // kVK_Escape
+                && !(event.characters?.isEmpty ?? true)
+                && event.characters!.unicodeScalars.contains { $0.value >= 0x20 }
+
+            guard isPrintable else { return event }
+            if !window.isKeyWindow {
+                BoringViewCoordinator.shared.quickNoteWantsFocus = true
+                window.makeKey()
+            }
+            if window.firstResponder !== textView {
+                window.makeFirstResponder(textView)
+            }
+            return event
+        }
+    }
+
+    func remove() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+    }
 }
