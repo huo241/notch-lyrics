@@ -421,7 +421,6 @@ struct QuickNoteView: View {
     }
 
     private func save() {
-        let plain = draft.attributedText.string
         let html = NoteHTML.make(from: draft.attributedText)
         let target = folderID
         guard canSave, !target.isEmpty else { return }
@@ -431,8 +430,11 @@ struct QuickNoteView: View {
 
         Task { @MainActor in
             do {
+                // No `name` is sent: Notes derives the list title from the
+                // first body line. Passing one as well rendered the first
+                // line twice — once as the title row, once as the body.
                 try await NotesService.shared.createNote(
-                    title: NotesService.title(from: plain),
+                    title: "",
                     html: html,
                     in: target
                 )
