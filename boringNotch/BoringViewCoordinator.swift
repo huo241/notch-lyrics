@@ -51,6 +51,15 @@ class BoringViewCoordinator: ObservableObject {
     static let shared = BoringViewCoordinator()
 
     @Published var currentView: NotchViews = .home
+
+    /// Whether the quick-note editor may take the keyboard.
+    ///
+    /// The notch window is a non-activating panel — it must never steal focus on
+    /// its own, which is why `canBecomeKey` is driven by this flag instead of
+    /// being unconditionally true. It goes up only while the quick-note tab is
+    /// on screen, and back down the moment that tab is left.
+    @Published var quickNoteWantsFocus: Bool = false
+
     @Published var helloAnimationRunning: Bool = false
     private var sneakPeekDispatch: DispatchWorkItem?
     private var expandingViewDispatch: DispatchWorkItem?

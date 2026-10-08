@@ -109,6 +109,10 @@ class BoringNotchSkyLightWindow: NSPanel {
     
     private var observers: Set<AnyCancellable> = []
     
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
+    // Focus is opt-in. The notch must not become the key window on its own —
+    // that would pull the keyboard out from under whatever the user is typing
+    // in. It is allowed only while the quick-note tab says it wants focus.
+    // Read as a computed property because AppKit consults it repeatedly.
+    override var canBecomeKey: Bool { BoringViewCoordinator.shared.quickNoteWantsFocus }
+    override var canBecomeMain: Bool { BoringViewCoordinator.shared.quickNoteWantsFocus }
 }
