@@ -152,16 +152,7 @@ struct ContentView: View {
                     }
                     .onReceive(NotificationCenter.default.publisher(for: .sharingDidFinish)) { _ in
                         if vm.notchState == .open && !isHovering && !vm.isBatteryPopoverActive {
-                            hoverTask?.cancel()
-                            hoverTask = Task {
-                                try? await Task.sleep(for: .milliseconds(100))
-                                guard !Task.isCancelled else { return }
-                                await MainActor.run {
-                                    if self.vm.notchState == .open && !self.isHovering && !self.vm.isBatteryPopoverActive && !SharingStateManager.shared.preventNotchClose {
-                                        self.vm.close()
-                                    }
-                                }
-                            }
+                            scheduleAutoClose()
                         }
                     }
                     .onChange(of: vm.notchState) { _, newState in
@@ -172,17 +163,16 @@ struct ContentView: View {
                         }
                     }
                     .onChange(of: vm.isBatteryPopoverActive) {
-                        if !vm.isBatteryPopoverActive && !isHovering && vm.notchState == .open && !SharingStateManager.shared.preventNotchClose {
-                            hoverTask?.cancel()
-                            hoverTask = Task {
-                                try? await Task.sleep(for: .milliseconds(100))
-                                guard !Task.isCancelled else { return }
-                                await MainActor.run {
-                                    if !self.vm.isBatteryPopoverActive && !self.isHovering && self.vm.notchState == .open && !SharingStateManager.shared.preventNotchClose {
-                                        self.vm.close()
-                                    }
-                                }
-                            }
+                        if !vm.isBatteryPopoverActive && !isHovering && vm.notchState == .open {
+                            scheduleAutoClose()
+                        }
+                    }
+                    .onChange(of: coordinator.quickNoteIsEditing) { _, editing in
+                        // Typing holds the notch open; once the caret leaves,
+                        // decide again — the pointer has usually wandered off
+                        // by then and nothing else would re-trigger a close.
+                        if !editing && vm.notchState == .open {
+                            scheduleAutoClose()
                         }
                     }
                     .sensoryFeedback(.alignment, trigger: haptics)
@@ -516,6 +506,57 @@ struct ContentView: View {
 
     // MARK: - Hover Management
 
+    /// Schedules the notch to close, but only if nothing still wants it open.
+    ///
+    /// The hover flag alone is not trustworthy here: SwiftUI reinstates its
+    /// tracking area whenever the content changes, so an `NSTextView` taking
+    /// keystrokes makes the pill believe the pointer left while it is in fact
+    /// still parked on it. Closing on that collapses the panel mid-sentence.
+    /// The pointer's real position is therefore re-read before closing, and the
+    /// quick-note editor gets a veto while it holds the keyboard.
+    private func scheduleAutoClose() {
+        hoverTask?.cancel()
+        hoverTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            guard autoCloseAllowed else {
+                // Nothing left and no editor to protect: the hover flag must
+                // have gone stale, so put it back in step with the pointer
+                // instead of leaving the pill thinking it was abandoned.
+                if isPointerOverNotch {
+                    self.isHovering = true
+                }
+                return
+            }
+
+            withAnimation(animationSpring) {
+                self.isHovering = false
+            }
+
+            if self.vm.notchState == .open && !self.vm.isBatteryPopoverActive
+                && !SharingStateManager.shared.preventNotchClose
+            {
+                self.vm.close()
+            }
+        }
+    }
+
+    /// Whether the notch is genuinely unattended.
+    private var autoCloseAllowed: Bool {
+        if coordinator.firstLaunch { return false }
+        if coordinator.quickNoteIsEditing { return false }
+        return !isPointerOverNotch
+    }
+
+    /// The window frame spans the notch plus its shadow strip, so a pointer
+    /// inside it means the notch is still under the cursor.
+    private var isPointerOverNotch: Bool {
+        guard let window = NSApp.windows.first(where: { $0 is BoringNotchSkyLightWindow }) else {
+            return false
+        }
+        return window.frame.contains(NSEvent.mouseLocation)
+    }
+
     private func handleHover(_ hovering: Bool) {
         if coordinator.firstLaunch { return }
         hoverTask?.cancel()
@@ -546,20 +587,7 @@ struct ContentView: View {
                 }
             }
         } else {
-            hoverTask = Task {
-                try? await Task.sleep(for: .milliseconds(100))
-                guard !Task.isCancelled else { return }
-                
-                await MainActor.run {
-                    withAnimation(animationSpring) {
-                        self.isHovering = false
-                    }
-                    
-                    if self.vm.notchState == .open && !self.vm.isBatteryPopoverActive && !SharingStateManager.shared.preventNotchClose {
-                        self.vm.close()
-                    }
-                }
-            }
+            scheduleAutoClose()
         }
     }
 

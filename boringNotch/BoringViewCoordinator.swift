@@ -60,6 +60,15 @@ class BoringViewCoordinator: ObservableObject {
     /// on screen, and back down the moment that tab is left.
     @Published var quickNoteWantsFocus: Bool = false
 
+    /// Whether the quick-note editor currently holds the keyboard.
+    ///
+    /// Distinct from `quickNoteWantsFocus`, which is raised merely by sitting on
+    /// the tab. This one means the caret is live and the user is typing, which
+    /// is the moment the notch must not auto-close: the pointer is usually
+    /// parked away from the notch by then, so a hover-out would collapse the
+    /// panel and take the sentence with it.
+    @Published var quickNoteIsEditing: Bool = false
+
     @Published var helloAnimationRunning: Bool = false
     private var sneakPeekDispatch: DispatchWorkItem?
     private var expandingViewDispatch: DispatchWorkItem?

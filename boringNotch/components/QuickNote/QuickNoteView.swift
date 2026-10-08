@@ -256,6 +256,7 @@ struct QuickNoteView: View {
         RichTextEditor(store: draft) { focused in
             // Path 4: the editor losing focus is itself a hand-back.
             coordinator.quickNoteWantsFocus = focused
+            coordinator.quickNoteIsEditing = focused
         }
         .background(
             RoundedRectangle(cornerRadius: 8)
@@ -458,6 +459,7 @@ struct QuickNoteView: View {
     /// paths; any one missed leaves the user unable to type elsewhere.
     private func releaseKeyboard() {
         coordinator.quickNoteWantsFocus = false
+        coordinator.quickNoteIsEditing = false
         draft.textView?.window?.makeFirstResponder(nil)
     }
 
