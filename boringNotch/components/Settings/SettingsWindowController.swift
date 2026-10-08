@@ -13,6 +13,7 @@ import Sparkle
 class SettingsWindowController: NSWindowController {
     static let shared = SettingsWindowController()
     private var updaterController: SPUStandardUpdaterController?
+    private var outsideClickMonitor: Any?
     
     private init() {
         let window = NSWindow(
@@ -61,9 +62,36 @@ class SettingsWindowController: NSWindowController {
         let settingsView = SettingsView(updaterController: updaterController)
         let hostingView = NSHostingView(rootView: settingsView)
         window.contentView = hostingView
-        
+
         // Handle window closing
         window.delegate = self
+    }
+
+    /// Clicking anywhere outside the settings window — the desktop, another
+    /// app's window — should put it away, the same muscle memory as the notch
+    /// itself. A *global* event monitor is the right tool: it only ever sees
+    /// events delivered to other applications, so clicks inside this window
+    /// (pickers, menus, text fields) and the activation dance of showWindow
+    /// itself can never trip it. Cmd-Tab intentionally does not dismiss.
+    private func setOutsideClickDismissal(_ active: Bool) {
+        if active {
+            guard outsideClickMonitor == nil else { return }
+            outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
+                matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+            ) { [weak self] _ in
+                DispatchQueue.main.async { self?.dismissIfVisible() }
+            }
+        } else {
+            if let monitor = outsideClickMonitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            outsideClickMonitor = nil
+        }
+    }
+
+    private func dismissIfVisible() {
+        guard let window, window.isVisible, window.attachedSheet == nil else { return }
+        close()
     }
     
     func showWindow() {
@@ -89,10 +117,12 @@ class SettingsWindowController: NSWindowController {
         // Force window to front after activation
         DispatchQueue.main.async { [weak self] in
             self?.window?.makeKeyAndOrderFront(nil)
+            self?.setOutsideClickDismissal(true)
         }
     }
-    
+
     override func close() {
+        setOutsideClickDismissal(false)
         super.close()
         relinquishFocus()
     }

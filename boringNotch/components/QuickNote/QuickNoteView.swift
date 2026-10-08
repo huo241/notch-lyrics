@@ -106,7 +106,10 @@ struct QuickNoteView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 2)
+        // The other tabs (weather, shelf) keep their content off the slab
+        // edge; 2 pt read as glued to the border.
+        .padding(.horizontal, 10)
+        .padding(.top, 2)
         .task { await prepare() }
         // Raising the capability here rather than on first click is deliberate:
         // a window whose `canBecomeKey` is false never delivers the click that
@@ -147,11 +150,8 @@ struct QuickNoteView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
-                Button("打开系统设置") { openAutomationSettings() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                Button("重试") { Task { await fetchFolders() } }
-                    .controlSize(.small)
+                chipButton("打开系统设置", prominent: true) { openAutomationSettings() }
+                chipButton("重试") { Task { await fetchFolders() } }
             }
         }
     }
@@ -166,8 +166,7 @@ struct QuickNoteView: View {
             }
             .foregroundStyle(.white.opacity(0.85))
 
-            Button("重试") { Task { await fetchFolders() } }
-                .controlSize(.small)
+            chipButton("重试") { Task { await fetchFolders() } }
         }
     }
 
@@ -231,8 +230,10 @@ struct QuickNoteView: View {
                 if isSaving {
                     ProgressView().controlSize(.mini)
                 }
-                Button("保存") { save() }
-                    .controlSize(.small)
+                // A plain chip rather than a bordered system button: the
+                // default style renders a light bezel that clashes with the
+                // notch's dark, self-drawn controls.
+                chipButton("保存", prominent: canSave) { save() }
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!canSave)
             }
@@ -311,6 +312,7 @@ struct QuickNoteView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                         QuickNoteSelfTest.log("after synthetic key storage=\(tv.textStorage?.string ?? "?")")
                         QuickNoteSelfTest.log("done")
+                        QuickNoteSelfTest.restoreStashedFolder()
                         exit(0)
                     }
                 }
@@ -331,19 +333,37 @@ struct QuickNoteView: View {
     /// A chip with its own background: plain text next to the folder label
     /// read as part of the label and was effectively invisible.
     private var changeFolderChip: some View {
-        Button {
+        chipButton("更改", small: true) {
             Task { await fetchFolders() }
+        }
+        .help("选择其他文件夹")
+    }
+
+    /// The one button style used across the quick-note UI. Every action in
+    /// this tab draws as a dark capsule so nothing pops out of the notch the
+    /// way a bordered system button does.
+    private func chipButton(
+        _ title: String,
+        small: Bool = false,
+        prominent: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            action()
         } label: {
-            Text("更改")
-                .font(.system(size: 10, weight: .medium))
-                .padding(.horizontal, 7)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(Color.white.opacity(0.14)))
+            Text(title)
+                .font(.system(size: small ? 10 : 11, weight: .medium))
+                .padding(.horizontal, small ? 7 : 9)
+                .padding(.vertical, small ? 2 : 4)
+                .background(
+                    Capsule().fill(
+                        prominent ? Color.accentColor.opacity(0.8) : Color.white.opacity(0.14)
+                    )
+                )
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(0.75))
-        .help("选择其他文件夹")
+        .foregroundStyle(.white.opacity(prominent ? 1 : 0.8))
     }
 
     private func formatButton(_ icon: String, _ name: String, _ kind: FormatKind) -> some View {
@@ -380,8 +400,11 @@ struct QuickNoteView: View {
                 Text("随手记点什么…")
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.3))
-                    .padding(.top, 9)
-                    .padding(.leading, 12)
+                    // Matches the editor's textContainerInset (6, 5) so the
+                    // placeholder sits exactly where the first typed glyph
+                    // will land instead of floating off grid.
+                    .padding(.top, 5)
+                    .padding(.leading, 6)
                     .allowsHitTesting(false)
             }
         }
@@ -514,7 +537,9 @@ struct QuickNoteView: View {
     // MARK: - Data
 
     private var canSave: Bool {
-        !isSaving && !draft.attributedText.string
+        // An empty folder means save() would silently no-op, so the button
+        // must be off in that case rather than clickable-and-dead.
+        !folderID.isEmpty && !isSaving && !draft.attributedText.string
             .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -920,6 +945,26 @@ final class QuickNoteDraftStore: ObservableObject {
 @MainActor
 enum QuickNoteSelfTest {
     static let enabled = ProcessInfo.processInfo.arguments.contains("-quicknote-selftest")
+
+    /// The real folder choice, stashed by the app bootstrap before the test
+    /// seeds its fake one and restored right before the process exits — the
+    /// test used to overwrite the user's actual setting permanently.
+    static var stashedFolderID: String?
+    static var stashedFolderLabel: String?
+
+    static func restoreStashedFolder() {
+        let defaults = UserDefaults.standard
+        if let id = stashedFolderID {
+            defaults.set(id, forKey: "quickNoteFolderID")
+        } else {
+            defaults.removeObject(forKey: "quickNoteFolderID")
+        }
+        if let label = stashedFolderLabel {
+            defaults.set(label, forKey: "quickNoteFolderLabel")
+        } else {
+            defaults.removeObject(forKey: "quickNoteFolderLabel")
+        }
+    }
 
     /// Always-on lightweight trace. Sandboxed apps cannot write to /tmp, so
     /// this lands in the app container's tmp directory instead —
