@@ -99,8 +99,11 @@ class AppleMusicController: MediaControllerProtocol {
     }
 
     func togglePlay() async {
+        AppleScriptHelper.logDebug("chain: controller.togglePlay begin")
         await executeCommand("playpause")
+        AppleScriptHelper.logDebug("chain: command sent, refreshing")
         await refreshAfterCommand()
+        AppleScriptHelper.logDebug("chain: refresh done")
     }
 
     func nextTrack() async {
@@ -167,7 +170,10 @@ class AppleMusicController: MediaControllerProtocol {
     }
     
     func updatePlaybackInfo() async {
-        guard let descriptor = try? await fetchPlaybackInfoAsync() else { return }
+        guard let descriptor = try? await fetchPlaybackInfoAsync() else {
+            AppleScriptHelper.logDebug("updatePlaybackInfo: fetch failed (script threw)")
+            return
+        }
         guard descriptor.numberOfItems >= 11 else { return }
         var updatedState = self.playbackState
         
@@ -186,6 +192,7 @@ class AppleMusicController: MediaControllerProtocol {
         let lovedState = descriptor.atIndex(11).map(AppleScriptBoolean.isTrue) ?? false
         updatedState.isFavorite = lovedState
         updatedState.lastUpdated = Date()
+        AppleScriptHelper.logDebug("chain: fetched playing=\(updatedState.isPlaying) title=\(updatedState.title)")
         self.playbackState = updatedState
     }
     

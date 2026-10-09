@@ -229,6 +229,7 @@ class MusicManager: ObservableObject {
     // MARK: - Update Methods
     @MainActor
     private func updateFromPlaybackState(_ state: PlaybackState) {
+        AppleScriptHelper.logDebug("chain: manager received playing=\(state.isPlaying) title=\(state.title)")
         // Playback state is taken at face value here. Deriving "is it really
         // producing sound" from `playbackRate` seemed sensible but froze the UI:
         // MediaRemote pushes updates only every ~20s, so a rate of 0 observed
@@ -793,6 +794,7 @@ class MusicManager: ObservableObject {
 
     // MARK: - Public Methods for controlling playback
     func playPause() {
+        AppleScriptHelper.logDebug("chain: UI playPause tapped, activeController=\(activeController != nil ? "set" : "NIL")")
         Task {
             await activeController?.togglePlay()
         }
