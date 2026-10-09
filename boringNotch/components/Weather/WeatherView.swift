@@ -159,41 +159,48 @@ struct SkyBackdrop: View {
     let animated: Bool
 
     @State private var phase: Float = 0
+    /// The notch's open spring is still running when this card first renders.
+    /// A `MeshGradient` is the most expensive thing on screen — its very first
+    /// render pays a one-off Metal shader compilation, and the animated variant
+    /// then keeps re-rendering at 24fps — and both make the spring visibly
+    /// stutter, which reads as the whole screen juddering while the weather
+    /// tab opens. Open with a plain gradient (trivial to render), crossfade to
+    /// the mesh once the spring has settled.
+    @State private var skyAnimationStarted = false
 
     var body: some View {
         let sky = code.map { WeatherCode.sky($0, isDay: isDay) } ?? .partly
         let (top, mid, bottom) = Palette.colors(for: sky)
+        let colors: [Color] = [top, top.opacity(0.95), top,
+                               mid, mid.opacity(0.92), mid,
+                               bottom, bottom.opacity(0.95), bottom]
 
         Group {
             if #available(macOS 15.0, *) {
-                if animated {
-                    TimelineView(.animation(minimumInterval: 1.0 / 24)) { timeline in
-                        MeshGradient(
-                            width: 3,
-                            height: 3,
-                            points: meshPoints,
-                            colors: [top, top.opacity(0.95), top,
-                                     mid, mid.opacity(0.92), mid,
-                                     bottom, bottom.opacity(0.95), bottom]
-                        )
-                        .onChange(of: timeline.date) { _, _ in
-                            phase += 0.006
-                            if phase > .pi * 2 { phase -= .pi * 2 }
+                if skyAnimationStarted {
+                    if animated {
+                        TimelineView(.animation(minimumInterval: 1.0 / 24)) { timeline in
+                            MeshGradient(width: 3, height: 3,
+                                         points: meshPoints, colors: colors)
+                            .onChange(of: timeline.date) { _, _ in
+                                phase += 0.006
+                                if phase > .pi * 2 { phase -= .pi * 2 }
+                            }
                         }
+                    } else {
+                        MeshGradient(width: 3, height: 3,
+                                     points: meshPoints, colors: colors)
                     }
                 } else {
-                    MeshGradient(
-                        width: 3,
-                        height: 3,
-                        points: [
-                            SIMD2(0, 0), SIMD2(0.5, 0), SIMD2(1, 0),
-                            SIMD2(0, 0.5), SIMD2(0.5, 0.5), SIMD2(1, 0.5),
-                            SIMD2(0, 1), SIMD2(0.5, 1), SIMD2(1, 1),
-                        ],
-                        colors: [top, top.opacity(0.95), top,
-                                 mid, mid.opacity(0.92), mid,
-                                 bottom, bottom.opacity(0.95), bottom]
-                    )
+                    LinearGradient(colors: [top, mid, bottom],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                        .task {
+                            guard !skyAnimationStarted else { return }
+                            try? await Task.sleep(for: .seconds(0.9))
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                skyAnimationStarted = true
+                            }
+                        }
                 }
             } else {
                 LinearGradient(colors: [top, mid, bottom],
@@ -208,7 +215,8 @@ struct SkyBackdrop: View {
     }
 
     /// Three interior control points drift gently; the edges stay pinned so the
-    /// gradient never reveals a seam at the clip bounds.
+    /// gradient never reveals a seam at the clip bounds. At phase 0 the drift
+    /// matches the still sky above, so the hand-off is seamless.
     private var meshPoints: [SIMD2<Float>] {
         let t = phase
         let drift: Float = 0.035

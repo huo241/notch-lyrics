@@ -12,9 +12,18 @@ import SwiftUI
 let downloadSneakSize: CGSize = .init(width: 65, height: 1)
 let batterySneakSize: CGSize = .init(width: 160, height: 1)
 
-let shadowPadding: CGFloat = 20
+// Transparent margins around the open slab so its shadow has somewhere to
+// land. The window is only a clip box: anything drawn outside it is cut off,
+// so without this headroom an all-around shadow degrades into a thin dark
+// band that shows just under the slab (the window is flush with the screen
+// top, so the top needs none).
+let shadowPadding: CGFloat = 26
+let shadowSidePadding: CGFloat = 26
 let openNotchSize: CGSize = .init(width: 640, height: 190)
-let windowSize: CGSize = .init(width: openNotchSize.width, height: openNotchSize.height + shadowPadding)
+let windowSize: CGSize = .init(
+    width: openNotchSize.width + shadowSidePadding * 2,
+    height: openNotchSize.height + shadowPadding
+)
 
 /// Width split of the open notch between the music player (left) and the
 /// secondary pane holding lyrics / calendar / camera (right).

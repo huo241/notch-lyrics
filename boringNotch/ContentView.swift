@@ -91,6 +91,10 @@ struct ContentView: View {
             let scaleFactor = 1.0 + gestureProgress * 0.01
             return max(0.6, scaleFactor)
         }()
+
+        /// The slab casts a shadow while open, and while hovered in the closed
+        /// state; the settings toggle kills it entirely.
+        let shadowEnabled = (vm.notchState == .open || isHovering) && Defaults[.enableShadow]
         
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
@@ -104,13 +108,19 @@ struct ContentView: View {
                         : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], vm.notchState == .open ? 12 : 0)
-                    // When open the black slab spans the full window width.
+                    // When open the black slab spans the full window width
+                    // minus the shadow margins, so it keeps its 640pt footprint
+                    // while the window around it carries the shadow.
                     // Without this it hugs the content, leaving two see-through
                     // gutters at its sides — and through them the dark menu
                     // bar shows as ugly black bars flanking the notch.
                     .frame(
                         maxWidth: vm.notchState == .open ? .infinity : nil,
                         alignment: .top
+                    )
+                    .padding(
+                        .horizontal,
+                        vm.notchState == .open ? shadowSidePadding : 0
                     )
                     .background(.black)
                     .clipShape(currentNotchShape)
@@ -120,9 +130,22 @@ struct ContentView: View {
                             .frame(height: 1)
                             .padding(.horizontal, topCornerRadius)
                     }
+                    // Either a real shadow or none. Two layers: a tight contact
+                    // shadow right under the slab plus a wide soft ambient one
+                    // that fills the margins around it. The old single small
+                    // radius only reached a few points past the slab and was
+                    // clipped by the window everywhere but the bottom strip —
+                    // which read as a random smudge under an otherwise
+                    // sharp-edged panel.
                     .shadow(
-                        color: ((vm.notchState == .open || isHovering) && Defaults[.enableShadow])
-                            ? .black.opacity(0.7) : .clear, radius: Defaults[.cornerRadiusScaling] ? 6 : 4
+                        color: shadowEnabled ? .black.opacity(0.30) : .clear,
+                        radius: vm.notchState == .open ? 7 : 5,
+                        y: vm.notchState == .open ? 4 : 3
+                    )
+                    .shadow(
+                        color: shadowEnabled ? .black.opacity(0.20) : .clear,
+                        radius: vm.notchState == .open ? 16 : 12,
+                        y: vm.notchState == .open ? 8 : 6
                     )
                     .padding(
                         .bottom,
