@@ -12,16 +12,15 @@ import SwiftUI
 let downloadSneakSize: CGSize = .init(width: 65, height: 1)
 let batterySneakSize: CGSize = .init(width: 160, height: 1)
 
-// Transparent margins around the open slab so its shadow has somewhere to
-// land. The window is only a clip box: anything drawn outside it is cut off,
-// so without this headroom an all-around shadow degrades into a thin dark
-// band that shows just under the slab (the window is flush with the screen
-// top, so the top needs none).
-let shadowPadding: CGFloat = 26
-let shadowSidePadding: CGFloat = 26
+// Transparent strip kept under the open slab. The notch deliberately casts no
+// shadow: the window is a hard clip box flush with the screen top, so a
+// SwiftUI shadow could never wrap the slab — all it produced was a dark band
+// under the notch, and re-rasterising it every animated frame made that band
+// flicker. The strip is only headroom for the closed-state chin.
+let shadowPadding: CGFloat = 20
 let openNotchSize: CGSize = .init(width: 640, height: 190)
 let windowSize: CGSize = .init(
-    width: openNotchSize.width + shadowSidePadding * 2,
+    width: openNotchSize.width,
     height: openNotchSize.height + shadowPadding
 )
 

@@ -92,10 +92,11 @@ struct ContentView: View {
             return max(0.6, scaleFactor)
         }()
 
-        /// The slab casts a shadow while open, and while hovered in the closed
-        /// state; the settings toggle kills it entirely.
-        let shadowEnabled = (vm.notchState == .open || isHovering) && Defaults[.enableShadow]
-        
+        // No shadow anywhere. The slab is clipped to its own window, so a
+        // SwiftUI shadow could never wrap it — it only reached the bottom strip
+        // and read as a black smudge under the notch. Worse, `compositingGroup`
+        // had to re-rasterise that offscreen layer on every animated frame
+        // (e.g. the weather sky ticking at 24 fps), which made the strip flicker.
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 let mainLayout = NotchLayout()
@@ -108,19 +109,13 @@ struct ContentView: View {
                         : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], vm.notchState == .open ? 12 : 0)
-                    // When open the black slab spans the full window width
-                    // minus the shadow margins, so it keeps its 640pt footprint
-                    // while the window around it carries the shadow.
-                    // Without this it hugs the content, leaving two see-through
-                    // gutters at its sides — and through them the dark menu
-                    // bar shows as ugly black bars flanking the notch.
+                    // The black slab always spans the full window width when
+                    // open; without this it hugs its content and leaves two
+                    // see-through gutters at its sides, through which the dark
+                    // menu bar shows as ugly black bars flanking the notch.
                     .frame(
                         maxWidth: vm.notchState == .open ? .infinity : nil,
                         alignment: .top
-                    )
-                    .padding(
-                        .horizontal,
-                        vm.notchState == .open ? shadowSidePadding : 0
                     )
                     .background(.black)
                     .clipShape(currentNotchShape)
@@ -130,23 +125,6 @@ struct ContentView: View {
                             .frame(height: 1)
                             .padding(.horizontal, topCornerRadius)
                     }
-                    // Either a real shadow or none. Two layers: a tight contact
-                    // shadow right under the slab plus a wide soft ambient one
-                    // that fills the margins around it. The old single small
-                    // radius only reached a few points past the slab and was
-                    // clipped by the window everywhere but the bottom strip —
-                    // which read as a random smudge under an otherwise
-                    // sharp-edged panel.
-                    .shadow(
-                        color: shadowEnabled ? .black.opacity(0.30) : .clear,
-                        radius: vm.notchState == .open ? 7 : 5,
-                        y: vm.notchState == .open ? 4 : 3
-                    )
-                    .shadow(
-                        color: shadowEnabled ? .black.opacity(0.20) : .clear,
-                        radius: vm.notchState == .open ? 16 : 12,
-                        y: vm.notchState == .open ? 8 : 6
-                    )
                     .padding(
                         .bottom,
                         vm.effectiveClosedNotchHeight == 0 ? 10 : 0
