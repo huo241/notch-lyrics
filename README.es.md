@@ -8,6 +8,10 @@ Un fork de [Boring Notch](https://github.com/TheBoredTeam/boring.notch) que aña
 panel de letras de verdad, una pestaña del tiempo y una nota rápida que se guarda
 directamente en Notas de Apple.
 
+> **Esta es una versión modificada de Boring Notch.** Un fork independiente,
+> modificado desde el **6 de octubre de 2026**. Sin afiliación ni respaldo de
+> The Bored Team. Publicado bajo GPL-3.0; los cambios se detallan en [NOTICE](NOTICE).
+
 [English](README.md) | [简体中文](README.zh-CN.md) | Español
 
 <!-- Insignias -->

@@ -6,6 +6,9 @@
 
 基于 [Boring Notch](https://github.com/TheBoredTeam/boring.notch) 的分支：补上了真正的歌词面板，加了天气页，还有一块能直接存进备忘录的速记板。
 
+> **本软件是 Boring Notch 的修改版。** 独立分支，自 **2026 年 10 月 6 日**起修改。
+> 与 The Bored Team 无隶属关系，亦未获其背书。以 GPL-3.0 发布，具体改动见 [NOTICE](NOTICE)。
+
 [English](README.md) | 简体中文 | [Español](README.es.md)
 
 <!-- 徽章 -->
