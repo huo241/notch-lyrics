@@ -2,12 +2,11 @@
 
 # Notch Lyrics
 
-**Letras sincronizadas y con desplazamiento, en el notch de tu MacBook.**
+**Letras sincronizadas, el tiempo y un bloc de notas — todo en el notch de tu MacBook.**
 
 Un fork de [Boring Notch](https://github.com/TheBoredTeam/boring.notch) que añade un
-panel de letras de verdad y divide el notch abierto en controles de reproducción y
-letras — además de una pestaña del tiempo y un bloc que guarda directamente en Notas
-de Apple.
+panel de letras de verdad, una pestaña del tiempo y una nota rápida que se guarda
+directamente en Notas de Apple.
 
 [English](README.md) | [简体中文](README.zh-CN.md) | Español
 
@@ -30,7 +29,31 @@ de Apple.
 
 ---
 
-## Por qué existe este fork
+## Novedades de la 2.8.0
+
+Es el salto más grande del fork hasta ahora: el notch dejó de ser un widget de
+música y pasó a ser tres pestañas que comparten una misma caja.
+
+| | |
+|---|---|
+| 🌤️ **Pestaña del tiempo** | Condiciones actuales, curva de temperatura por horas con precipitación y previsión a 7 días. Datos de [Open-Meteo](https://open-meteo.com), **sin clave de API**; busca cualquier ciudad en cualquier idioma o deja que la ubicación por IP lo haga. |
+| ✍️ **Nota rápida** | Un bloc dentro del notch con barra de formato. Pulsa Intro y la nota cae en la carpeta de Notas de Apple que elijas. |
+| 🎵 **El estado de reproducción se cura solo** | Tras dormir o un rato largo sin tocar nada, el panel se quedaba congelado en la pista anterior: la música sonaba, pero el icono y las letras no se movían. Ahora vuelve a leer el estado por su cuenta. |
+| ⏱️ **AppleScript tiene límite de tiempo** | Un solo Apple Event que nunca respondía bloqueaba para siempre la cola serial de scripts, y con ella todo el panel. Ahora los scripts se rinden a los 5 segundos. |
+| 🪟 **Se acabó la sombra del notch** | Eliminada por completo, junto con su ajuste. La sombra se componía fuera de pantalla en cada fotograma, y eso la hacía parpadear contra el cielo animado. |
+
+## Tres pestañas, un notch
+
+La misma caja, el mismo tamaño, sin sorpresas de diseño: el notch es una superficie
+compartida y cada pestaña es una cara distinta.
+
+| Pestaña | Qué es |
+|---|---|
+| 🎵 **Letras** | Reproductor a la izquierda, ventana de 5 líneas desplazándose a la derecha |
+| 🌤️ **Tiempo** | El cielo, dibujado en el notch, con curva horaria y franja semanal |
+| ✍️ **Nota rápida** | Un bloc que escribe en Notas de Apple |
+
+### 🎵 Letras que de verdad se desplazan
 
 Boring Notch ya tenía un interruptor de letras, pero **solo mostraba una línea
 de texto**: los datos de sincronización se descartaban antes de llegar a la
@@ -49,42 +72,55 @@ Este fork arregla tanto el flujo de datos como la presentación:
 | Peticiones repetidas | Se volvían a pedir siempre | **En caché por canción** |
 | Cambio de canción | Una respuesta tardía podía sobrescribir la canción nueva | **Protegido** |
 
-También corrige varios fallos que ya existían en el proyecto original; consulta
-[Correcciones incluidas](#correcciones-incluidas).
+Bajo el capó:
+
+- 🎯 **Sincronía precisa** — guiada por marcas de tiempo LRC y refrescada cada
+  100 ms, de modo que un cambio de línea cae a unos 100 ms del golpe. Se admiten
+  `[offset:]`, varias etiquetas en una línea y etiquetas por palabra.
+- 🧭 **Degradación honesta** — si solo hay texto sin sincronía verás un bloque
+  estático desplazable, sin falsa sincronización, mientras se sigue intentando
+  mejorar en segundo plano.
+- 🔁 **Caché por canción** — la misma canción no genera peticiones repetidas.
+- 🛡️ **A prueba de carreras** — la respuesta tardía de una canción anterior no
+  puede sobrescribir la actual.
 
 <div align="center">
   <img src="docs/assets/lyrics-demo.gif" alt="Demostración de Notch Lyrics" width="720" />
 </div>
 
-## Funciones
+### 🌤️ El tiempo, sin clave de API
 
-Todo lo que hace Boring Notch, y además:
+- **Condiciones actuales**, desde [Open-Meteo](https://open-meteo.com): gratis y
+  sin clave.
+- **Curva horaria** — spline de temperatura con barras de probabilidad de
+  precipitación debajo.
+- **Franja de 7 días** — máxima y mínima por día, con una barra de luz que muestra
+  cuánto dura el día.
+- **Un cielo vivo** — los colores del fondo siguen el código meteorológico y el
+  día o la noche, así que una pestaña lluviosa no se parece a una soleada. El
+  fondo animado se puede desactivar.
+- **Busca donde sea** — la geocodificación usa [Photon](https://photon.komoot.io)
+  (OpenStreetMap), así que `苏州市`, `Suzhou`, `淳安县` y `Tokyo` se resuelven;
+  también condados y distritos, no solo capitales. Una ciudad elegida a mano
+  siempre gana sobre la estimación automática.
+- **Ubicación sin preguntas** — consulta por IP por defecto (`ipwho.is`, con
+  `ipinfo.io` como respaldo) y el resultado se guarda en caché, así que no vuelve
+  a geolocalizar en cada arranque.
 
-- 📜 **Letras con desplazamiento** — la línea actual se resalta y las vecinas se atenúan
-- 🎯 **Sincronía precisa** — guiada por marcas de tiempo LRC, con soporte para
-  `[offset:]`, varias etiquetas en una línea y etiquetas por palabra
-- 🧭 **Degradación honesta** — si solo hay texto sin sincronía verás un bloque
-  estático desplazable, sin falsa sincronización, mientras se sigue intentando
-  mejorar en segundo plano
-- 🪟 **Diseño dividido** — detalles del reproductor a la izquierda, letras a la derecha
-- 🔁 **Caché por canción** — la misma canción no genera peticiones repetidas
-- 🛡️ **A prueba de carreras** — la respuesta tardía de una canción anterior no
-  puede sobrescribir la actual
+### ✍️ Una nota rápida que acaba en Notas
 
-### Más allá de las letras
-
-Dos pestañas más, con las mismas reglas: una única caja de notch, sin sorpresas de diseño.
-
-- 🌤️ **Pestaña del tiempo** — condiciones actuales, curva de temperatura por horas y
-  previsión a 7 días, con datos de [Open-Meteo](https://open-meteo.com) y **sin
-  necesidad de clave de API**. Busca cualquier ciudad por su nombre —`苏州市`, `Suzhou`
-  o `Tokyo` funcionan— o déjalo en manos de la ubicación automática por IP. La
-  geocodificación usa Photon (OSM), así que también resuelve condados y distritos,
-  no solo las grandes ciudades.
-- ✍️ **Nota rápida** — un bloc dentro del notch. Escribe, pulsa Intro y el texto cae en
-  la carpeta de Notas que elijas. Admite negrita / cursiva / subrayado / tachado; el
-  borrador sobrevive al cierre del notch y, si falla la escritura, no se pierde nada:
-  tienes un reintento.
+- **Escribe y pulsa Intro** — el texto se guarda en la carpeta de Notas de Apple
+  que elijas. La primera vez eliges la carpeta desde el propio notch; puedes
+  cambiarla cuando quieras desde el chip de la barra.
+- **Formato que se conserva** — negrita / cursiva / subrayado / tachado, con el
+  estado de cada uno visible en su botón.
+- **El borrador no depende de la vista** — vive fuera de la pestaña, así que
+  cerrar el notch (salir con el cursor, Esc, deslizar, clic fuera) no borra lo que
+  estabas escribiendo.
+- **Si falla la escritura, no se pierde nada** — verás un error y un botón de
+  reintento, no un silencio.
+- **Compatible con el IME** — la composición de texto CJK no se corta a medias, así
+  que el primer carácter de una palabra china ya no desaparece.
 
 <div align="center">
   <img src="docs/assets/weather-quicknote-demo.gif" alt="Pestaña del tiempo y nota rápida" width="720" />
@@ -94,7 +130,7 @@ Dos pestañas más, con las mismas reglas: una única caja de notch, sin sorpres
 
 - **macOS 14 Sonoma** o posterior
 - Mac con Apple Silicon o Intel
-- Conexión a internet para buscar las letras (LRCLIB)
+- Conexión a internet para las letras (LRCLIB) y el tiempo (Open-Meteo)
 
 ## Instalación
 
@@ -126,6 +162,7 @@ Después ábrela con normalidad.
 | Permiso | Para qué sirve |
 |---|---|
 | **Automatización** (`Music`) | Marcar como favorito, volumen, estado de reproducción |
+| **Automatización** (`Notes`) | Nota rápida — escribir la nota en tu carpeta |
 | **Accesibilidad** | Sustituir el HUD del sistema |
 | **Calendario / Recordatorios** | Pestaña de calendario (opcional) |
 | **Cámara** | Espejo (opcional) |
@@ -134,8 +171,9 @@ Después ábrela con normalidad.
 
 1. Abre la aplicación: el notch se convierte en tu panel de control.
 2. Pasa el cursor por encima para expandirlo.
-3. Reproduce algo en Apple Music o Spotify.
-4. **El panel derecho muestra las letras**, desplazándose y resaltando mientras suena.
+3. Cambia de pestaña en la cabecera: **letras**, **tiempo**, **nota rápida**.
+4. Reproduce algo en Apple Music o Spotify: **el panel derecho muestra las
+   letras**, desplazándose y resaltando mientras suena.
 
 ### Sobre las fuentes de letras
 
@@ -210,6 +248,9 @@ ya corregidos aquí:
   compilaciones sin estos cambios, así que actualizar desde ahí los eliminaría
   sin avisar. Para reactivarla, apunta `SUFeedURL` en `boringNotch/Info.plist` a
   tu propio canal.
+- El experimento de la sombra de ventana queda descartado para siempre: la
+  ventana vuelve a su ancho original y ya no hay ningún ajuste de sombra con el
+  que lidiar.
 
 ## Hoja de ruta
 
@@ -243,6 +284,8 @@ Este es un fork: la mayor parte del código es trabajo de otras personas.
   fuente de Now Playing en macOS 15.4+
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — base de la función Shelf
 - **[LRCLIB](https://lrclib.net)** — la base de datos de letras de la que depende este fork
+- **[Open-Meteo](https://open-meteo.com)** — datos meteorológicos, sin clave
+- **[Photon](https://photon.komoot.io)** (OpenStreetMap) — geocodificación de ciudades
 - Iconos: [@maxtron95](https://github.com/maxtron95)
 - Web: [@himanshhhhuv](https://github.com/himanshhhhuv)
 

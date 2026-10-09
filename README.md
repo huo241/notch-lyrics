@@ -2,11 +2,10 @@
 
 # Notch Lyrics
 
-**Time-synced, line-scrolling lyrics in your MacBook's notch.**
+**Time-synced lyrics, the weather, and a scratchpad — all in your MacBook's notch.**
 
 A fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch) that adds a
-real lyrics pane and splits the open notch into player controls and lyrics — plus a
-weather tab and a scratchpad that saves straight to Apple Notes.
+real lyrics pane, a weather tab, and a quick note that files itself into Apple Notes.
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md)
 
@@ -29,7 +28,31 @@ weather tab and a scratchpad that saves straight to Apple Notes.
 
 ---
 
-## Why this fork exists
+## What's new in 2.8.0
+
+This release is the fork's biggest step yet — the notch stopped being a music
+widget and became three tabs sharing one box.
+
+| | |
+|---|---|
+| 🌤️ **Weather tab** | Current conditions, an hourly temperature curve with precipitation, and a 7-day strip. [Open-Meteo](https://open-meteo.com) data, **no API key**, search any city in any language, or let IP location do it. |
+| ✍️ **Quick note** | A scratchpad in the notch with a formatting toolbar. Press Enter and the note lands in an Apple Notes folder you pick. |
+| 🎵 **Playback state heals itself** | After sleep or a long idle stretch the panel used to freeze on the old track: play started music, but the icon and lyrics never moved. It now re-reads state on its own. |
+| ⏱️ **AppleScript has a timeout** | One Apple Event that never answered used to block the serial script queue permanently — the whole panel froze with it. Scripts now give up after 5 seconds. |
+| 🪟 **No more notch shadow** | Removed entirely, along with its setting. The shadow was composited offscreen on every animation frame, which made it flicker against the animated sky. |
+
+## Three tabs, one notch
+
+Same box, same size, no layout surprises — the notch is one shared surface and
+each tab is a different face of it.
+
+| Tab | What it is |
+|---|---|
+| 🎵 **Lyrics** | Player on the left, a 5-line scrolling lyrics window on the right |
+| 🌤️ **Weather** | The sky, drawn in the notch, with an hourly curve and a week strip |
+| ✍️ **Quick note** | A scratchpad that writes to Apple Notes |
+
+### 🎵 Lyrics that actually scroll
 
 Boring Notch has a lyrics toggle, but it only ever renders **a single line of
 text** — the timing data was being thrown away before it reached the screen.
@@ -47,41 +70,54 @@ This fork fixes the pipeline and the presentation:
 | Repeat requests | Re-fetched every time | **Cached per track** |
 | Skipping tracks | Late response could overwrite the new song | **Guarded against** |
 
-It also fixes a handful of upstream bugs found along the way — see
-[Fixes carried here](#fixes-carried-here).
+Under the hood:
+
+- 🎯 **Accurate sync** — driven by LRC timestamps, refreshed every 100 ms so a
+  line change lands within ~100 ms of the beat. `[offset:]`, multi-tag lines and
+  word-level tags are all handled.
+- 🧭 **Honest fallback** — when only unsynced lyrics exist you get a static,
+  scrollable block instead of fake synchronisation, and it keeps trying to
+  upgrade in the background.
+- 🔁 **Per-track caching** — same song, no repeated network calls.
+- 🛡️ **Race-proof** — a previous track's late response can't overwrite the
+  current one.
 
 <div align="center">
   <img src="docs/assets/lyrics-demo.gif" alt="Notch Lyrics demo" width="720" />
 </div>
 
-## Features
+### 🌤️ Weather, without an API key
 
-Everything Boring Notch does, plus:
+- **Current conditions**, pulled from [Open-Meteo](https://open-meteo.com) —
+  free and keyless.
+- **Hourly curve** — temperature spline with precipitation-probability bars under it.
+- **7-day strip** — per-day high/low with a daylight bar showing how much of the
+  day the sun is up.
+- **A live sky** — the backdrop's colours follow the weather code and whether
+  it's day or night, so a rainy tab doesn't look like a sunny one. The animated
+  backdrop can be switched off.
+- **Search anywhere** — geocoding runs on [Photon](https://photon.komoot.io)
+  (OpenStreetMap), so `苏州市`, `Suzhou`, `淳安县` and `Tokyo` all resolve;
+  counties and districts work, not just capitals. A hand-picked city always wins
+  over the automatic guess.
+- **Location without prompts** — IP lookup by default (`ipwho.is`, with
+  `ipinfo.io` as fallback) and the result is cached, so it doesn't re-geolocate
+  on every launch.
 
-- 📜 **Scrolling lyrics** — the current line is highlighted, neighbours fade out
-- 🎯 **Accurate sync** — driven by LRC timestamps, with `[offset:]`, multi-tag
-  lines and word-level tags all handled
-- 🧭 **Honest fallback** — when only unsynced lyrics exist you get a static,
-  scrollable block instead of fake synchronisation, and it keeps trying to
-  upgrade in the background
-- 🪟 **Split layout** — player details on the left, lyrics on the right
-- 🔁 **Per-track caching** — same song, no repeated network calls
-- 🛡️ **Race-proof** — a previous track's late response can't overwrite the
-  current one
+### ✍️ A quick note that lands in Notes
 
-### Beyond lyrics
-
-Two more tabs, built to the same rules: one shared notch box, no layout surprises.
-
-- 🌤️ **Weather tab** — current conditions, an hourly temperature curve and a 7-day
-  strip, from [Open-Meteo](https://open-meteo.com) with **no API key required**.
-  Search any city by name — `苏州市`, `Suzhou`, `Tokyo` all work — or leave it to
-  automatic IP location. Geocoding runs on Photon (OSM), so counties and districts
-  resolve as readily as big cities.
-- ✍️ **Quick note** — a scratchpad inside the notch. Type, press Enter, and the text
-  lands in an Apple Notes folder of your choice. Bold / italic / underline /
-  strikethrough are supported, the draft survives the notch collapsing, and a failed
-  write never eats your text — you get a retry instead.
+- **Type and press Enter** — the text is written into an Apple Notes folder of
+  your choosing. Pick the folder from inside the notch the first time; change it
+  any time from the chip in the toolbar.
+- **Formatting that survives** — bold / italic / underline / strikethrough, with
+  the state of each shown on its button.
+- **Your draft is never the view's problem** — the draft lives outside the tab,
+  so collapsing the notch (hover-out, Esc, swipe, outside click) doesn't wipe
+  what you were typing.
+- **A failed write doesn't eat your text** — you get an error and a retry button,
+  not silence.
+- **Composition-safe** — CJK IME composition isn't flushed mid-word, so the first
+  character of a Chinese word no longer disappears.
 
 <div align="center">
   <img src="docs/assets/weather-quicknote-demo.gif" alt="Weather tab and quick note" width="720" />
@@ -91,7 +127,7 @@ Two more tabs, built to the same rules: one shared notch box, no layout surprise
 
 - **macOS 14 Sonoma** or later
 - Apple Silicon or Intel Mac
-- An internet connection for lyrics lookup (LRCLIB)
+- An internet connection for lyrics lookup (LRCLIB) and weather (Open-Meteo)
 
 ## Installation
 
@@ -121,6 +157,7 @@ Then open it normally.
 | Permission | What needs it |
 |---|---|
 | **Automation** (`Music`) | Favourite toggle, volume, play state |
+| **Automation** (`Notes`) | Quick note — writing the note into your folder |
 | **Accessibility** | System HUD replacement |
 | **Calendar / Reminders** | Calendar tab (optional) |
 | **Camera** | Mirror (optional) |
@@ -129,9 +166,9 @@ Then open it normally.
 
 1. Launch the app — your notch becomes the control surface.
 2. Hover the notch to expand it.
-3. Play something in Apple Music or Spotify.
-4. **The right-hand pane shows the lyrics**, scrolling and highlighting as the
-   song plays.
+3. Switch tabs in the header: **lyrics**, **weather**, **quick note**.
+4. Play something in Apple Music or Spotify — **the right-hand pane shows the
+   lyrics**, scrolling and highlighting as the song plays.
 
 ### A note on lyrics sources
 
@@ -205,6 +242,8 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
 - **Auto-update is disabled.** The upstream appcast ships builds without these
   changes, so updating against it would silently remove them. Re-enable it by
   setting `SUFeedURL` in `boringNotch/Info.plist` to your own feed.
+- The window-shadow experiment is gone for good — the window is back to its
+  original width, and there is no shadow setting to fight with.
 
 ## Roadmap
 
@@ -238,6 +277,8 @@ This project is a fork; the vast majority of the code is other people's work.
   Now Playing source on macOS 15.4+
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — basis of the Shelf feature
 - **[LRCLIB](https://lrclib.net)** — the lyrics database this fork depends on
+- **[Open-Meteo](https://open-meteo.com)** — weather data, no key required
+- **[Photon](https://photon.komoot.io)** (OpenStreetMap) — city geocoding
 - Icon credits: [@maxtron95](https://github.com/maxtron95)
 - Website credits: [@himanshhhhuv](https://github.com/himanshhhhuv)
 
