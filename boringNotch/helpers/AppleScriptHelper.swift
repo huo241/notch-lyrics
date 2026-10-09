@@ -18,15 +18,40 @@ class AppleScriptHelper {
     /// value, so the UI flipped back and the next tap inverted the wrong way.
     private static let queue = DispatchQueue(label: "app.boringnotch.applescript", qos: .userInitiated)
 
+    /// Diagnostics: unified log is not reachable from this dev setup, so script
+    /// failures also land in a file for direct inspection. The sandbox only
+    /// allows writes inside the container, hence NSTemporaryDirectory().
+    static func logDebug(_ text: String) {
+        NSLog(text)
+        let line = "\(Date()) \(text)\n"
+        let path = NSTemporaryDirectory() + "notch_applescript.log"
+        if let fh = FileHandle(forWritingAtPath: path) {
+            defer { try? fh.close() }
+            fh.seekToEndOfFile()
+            fh.write(line.data(using: .utf8)!)
+        } else {
+            try? line.write(toFile: path, atomically: true, encoding: .utf8)
+        }
+    }
+
     @discardableResult
     class func execute(_ scriptText: String) async throws -> NSAppleEventDescriptor? {
         try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                let script = NSAppleScript(source: scriptText)
+                // Without an explicit timeout an Apple Event that never gets a
+                // reply (e.g. a pending automation-permission prompt nobody
+                // can see) blocks this serial queue forever and every later
+                // script hangs with it — the whole panel then freezes.
+                let script = NSAppleScript(source: """
+                    with timeout of 5 seconds
+                    \(scriptText)
+                    end timeout
+                    """)
                 var error: NSDictionary?
                 if let descriptor = script?.executeAndReturnError(&error) {
                     continuation.resume(returning: descriptor)
                 } else if let error = error {
+                    logDebug("AppleScript error: \(error)")
                     continuation.resume(throwing: NSError(domain: "AppleScriptError", code: 1, userInfo: error as? [String: Any]))
                 } else {
                     continuation.resume(throwing: NSError(domain: "AppleScriptError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unknown error"]))
