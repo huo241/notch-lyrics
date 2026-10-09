@@ -5,7 +5,9 @@
 **Letras sincronizadas y con desplazamiento, en el notch de tu MacBook.**
 
 Un fork de [Boring Notch](https://github.com/TheBoredTeam/boring.notch) que añade un
-panel de letras de verdad y divide el notch abierto en controles de reproducción y letras.
+panel de letras de verdad y divide el notch abierto en controles de reproducción y
+letras — además de una pestaña del tiempo y un bloc que guarda directamente en Notas
+de Apple.
 
 [English](README.md) | [简体中文](README.zh-CN.md) | Español
 
@@ -68,6 +70,25 @@ Todo lo que hace Boring Notch, y además:
 - 🔁 **Caché por canción** — la misma canción no genera peticiones repetidas
 - 🛡️ **A prueba de carreras** — la respuesta tardía de una canción anterior no
   puede sobrescribir la actual
+
+### Más allá de las letras
+
+Dos pestañas más, con las mismas reglas: una única caja de notch, sin sorpresas de diseño.
+
+- 🌤️ **Pestaña del tiempo** — condiciones actuales, curva de temperatura por horas y
+  previsión a 7 días, con datos de [Open-Meteo](https://open-meteo.com) y **sin
+  necesidad de clave de API**. Busca cualquier ciudad por su nombre —`苏州市`, `Suzhou`
+  o `Tokyo` funcionan— o déjalo en manos de la ubicación automática por IP. La
+  geocodificación usa Photon (OSM), así que también resuelve condados y distritos,
+  no solo las grandes ciudades.
+- ✍️ **Nota rápida** — un bloc dentro del notch. Escribe, pulsa Intro y el texto cae en
+  la carpeta de Notas que elijas. Admite negrita / cursiva / subrayado / tachado; el
+  borrador sobrevive al cierre del notch y, si falla la escritura, no se pierde nada:
+  tienes un reintento.
+
+<div align="center">
+  <img src="docs/assets/weather-quicknote-demo.gif" alt="Pestaña del tiempo y nota rápida" width="720" />
+</div>
 
 ## Requisitos
 
@@ -178,6 +199,8 @@ ya corregidos aquí:
 | Booleanos leídos con `AppleScriptBoolean` | `favorited` devuelve `'true'`/`'fals'`, para los que `booleanValue` siempre es `false` — el corazón nunca se encendía |
 | Guarda de generación al marcar favorito | Un solo toque lanzaba escrituras solapadas que se pisaban entre sí |
 | Guarda de intención en el corazón | Una lectura obsoleta deshacía el toque, así que el siguiente toque invertía lo contrario |
+| Los scripts de AppleScript se ejecutan con un límite de 5 segundos | Un solo Apple Event que nunca recibía respuesta bloqueaba para siempre la cola serial de scripts: los siguientes se encolaban detrás y el panel entero se congelaba |
+| El estado de reproducción se refresca solo | Tras dormir, o al cambiar el día, `com.apple.Music.playerInfo` deja de llegar en silencio y nada volvía a leer el estado: pulsar reproducir sí arrancaba la música, pero el icono y las letras se quedaban congelados en la pista anterior |
 
 ## Diferencias con el proyecto original
 
@@ -193,6 +216,8 @@ ya corregidos aquí:
 - [x] Letras con desplazamiento sincronizado
 - [x] Diseño dividido reproductor / letras
 - [x] Caché de letras por canción
+- [x] Pestaña del tiempo con búsqueda libre de ciudades
+- [x] Nota rápida que se archiva en Notas de Apple
 - [ ] Resaltado palabra por palabra (karaoke)
 - [ ] Tamaño de fuente y número de líneas configurables
 - [ ] Caché de letras sin conexión

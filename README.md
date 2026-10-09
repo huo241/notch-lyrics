@@ -5,7 +5,8 @@
 **Time-synced, line-scrolling lyrics in your MacBook's notch.**
 
 A fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch) that adds a
-real lyrics pane and splits the open notch into player controls and lyrics.
+real lyrics pane and splits the open notch into player controls and lyrics — plus a
+weather tab and a scratchpad that saves straight to Apple Notes.
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md)
 
@@ -67,6 +68,24 @@ Everything Boring Notch does, plus:
 - 🔁 **Per-track caching** — same song, no repeated network calls
 - 🛡️ **Race-proof** — a previous track's late response can't overwrite the
   current one
+
+### Beyond lyrics
+
+Two more tabs, built to the same rules: one shared notch box, no layout surprises.
+
+- 🌤️ **Weather tab** — current conditions, an hourly temperature curve and a 7-day
+  strip, from [Open-Meteo](https://open-meteo.com) with **no API key required**.
+  Search any city by name — `苏州市`, `Suzhou`, `Tokyo` all work — or leave it to
+  automatic IP location. Geocoding runs on Photon (OSM), so counties and districts
+  resolve as readily as big cities.
+- ✍️ **Quick note** — a scratchpad inside the notch. Type, press Enter, and the text
+  lands in an Apple Notes folder of your choice. Bold / italic / underline /
+  strikethrough are supported, the draft survives the notch collapsing, and a failed
+  write never eats your text — you get a retry instead.
+
+<div align="center">
+  <img src="docs/assets/weather-quicknote-demo.gif" alt="Weather tab and quick note" width="720" />
+</div>
 
 ## Requirements
 
@@ -176,6 +195,8 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
 | Booleans read via `AppleScriptBoolean` | `favorited` returns `'true'`/`'fals'`, for which `booleanValue` is always `false` — the heart never lit up |
 | Generation guard on favourite writes | A single tap started overlapping writes that fought each other |
 | Intent guard on the heart | A stale read-back undid the tap, so the next tap inverted the wrong way |
+| AppleScript runs with a 5-second timeout | One Apple Event that never got a reply blocked the serial script queue for good — every later script queued behind it and the panel froze |
+| Playback state refreshes itself | After sleep/midnight, `com.apple.Music.playerInfo` silently stops delivering and nothing ever re-read state: tapping play did start the music, but the icon and lyrics stayed frozen on the old track |
 
 ## Differences from upstream
 
@@ -190,6 +211,8 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
 - [x] Time-synced scrolling lyrics
 - [x] Split player / lyrics layout
 - [x] Per-track lyrics cache
+- [x] Weather tab with free-text city search
+- [x] Quick note that files itself into Apple Notes
 - [ ] Word-by-word (karaoke) highlighting
 - [ ] User-adjustable lyric font and line count
 - [ ] Offline lyrics cache
