@@ -4,7 +4,7 @@
 
 **把跟随时间滚动的歌词，放进 MacBook 的刘海。**
 
-基于 [Boring Notch](https://github.com/TheBoredTeam/boring.notch) 的分支，补上了真正的歌词面板，并把展开后的刘海分成「播放控制」和「歌词」两栏。
+基于 [Boring Notch](https://github.com/TheBoredTeam/boring.notch) 的分支，补上了真正的歌词面板，并把展开后的刘海分成「播放控制」和「歌词」两栏——之外还加了天气页，和一块能直接存进备忘录的速记板。
 
 [English](README.md) | 简体中文 | [Español](README.es.md)
 
@@ -59,6 +59,17 @@ Boring Notch 的全部功能，外加：
 - 🪟 **分栏布局**——左边播放详情，右边歌词
 - 🔁 **按曲目缓存**——同一首歌不重复请求
 - 🛡️ **防竞态**——前一首歌的迟到响应不会覆盖当前歌曲
+
+### 不只是歌词
+
+另外两个标签页，遵循同一套规则：共用同一个刘海盒子，不会有布局意外。
+
+- 🌤️ **天气页**——实况、逐小时温度曲线、7 天预报，数据来自 [Open-Meteo](https://open-meteo.com)，**不需要 API Key**。城市名直接搜——`苏州市`、`Suzhou`、`Tokyo` 都行——也可以交给 IP 自动定位。地理编码走 Photon（OSM），县、区一级也能搜到，不只是大城市。
+- ✍️ **速记**——刘海里的便签板。打字、回车，内容就落进你指定的备忘录文件夹。支持加粗 / 斜体 / 下划线 / 删除线；收起刘海不会丢草稿，写入失败也不会吞掉你的文字，而是给你一次重试。
+
+<div align="center">
+  <img src="docs/assets/weather-quicknote-demo.gif" alt="天气页与速记" width="720" />
+</div>
 
 ## 环境要求
 
@@ -151,6 +162,8 @@ swiftc -O boringNotch/helpers/LyricsParser.swift your_test.swift -o t && ./t
 | 用 `AppleScriptBoolean` 读布尔值 | `favorited` 返回 `'true'`/`'fals'` 类型，而 `booleanValue` 对它恒为 `false`——爱心永远不亮 |
 | 收藏写入加代次守卫 | 一次点击会触发多个并发写入，互相覆盖 |
 | 爱心加意图守卫 | 陈旧的读回会撤销你的点击，导致下次点击方向相反 |
+| AppleScript 脚本加 5 秒超时 | 一条等不到回复的 Apple Event 会把脚本串行队列永久占死，之后所有脚本都在后面排队——整个面板冻结 |
+| 播放状态自动恢复 | 隔夜或睡眠之后 `com.apple.Music.playerInfo` 静默断流，而代码从不主动重读状态：点播放音乐确实响了，图标和歌词却永远停在旧曲目 |
 
 ## 与原版的差异
 
@@ -162,6 +175,8 @@ swiftc -O boringNotch/helpers/LyricsParser.swift your_test.swift -o t && ./t
 - [x] 带时间轴的滚动歌词
 - [x] 播放控件 / 歌词分栏
 - [x] 按曲目缓存歌词
+- [x] 天气页（支持自由搜索城市）
+- [x] 速记（直接存入备忘录）
 - [ ] 逐字（卡拉OK）高亮
 - [ ] 歌词字号与行数可调
 - [ ] 歌词离线缓存
