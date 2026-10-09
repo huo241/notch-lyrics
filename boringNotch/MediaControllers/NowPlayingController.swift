@@ -118,6 +118,10 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     private var process: Process?
     private var pipeHandler: JSONLinesPipeHandler?
     private var streamTask: Task<Void, Never>?
+    /// Guards stream restarts: a superseded generation must not spawn a
+    /// second adapter process, and teardown must not spawn one at all.
+    private var streamGeneration = 0
+    private var isTearingDown = false
 
     // MARK: - Initialization
     init?() {
@@ -152,6 +156,7 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     }
 
     deinit {
+        isTearingDown = true
         streamTask?.cancel()
         
         if let pipeHandler = self.pipeHandler {
@@ -240,6 +245,24 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     
     // MARK: - Setup Methods
     private func setupNowPlayingObserver() async {
+        await startStream()
+    }
+
+    /// Launches the adapter stream. Called again on unexpected stream death —
+    /// MediaRemote stops feeding the pipe across sleep/wake and the perl
+    /// process eventually exits, which used to freeze the UI forever.
+    private func startStream() async {
+        streamGeneration &+= 1
+        let generation = streamGeneration
+
+        // Clean up any previous stream before spawning a new one.
+        streamTask?.cancel()
+        streamTask = nil
+        if let old = self.process {
+            if old.isRunning { old.terminate() }
+            self.process = nil
+        }
+
         let process = Process()
         guard
             let scriptURL = Bundle.main.url(forResource: "mediaremote-adapter", withExtension: "pl"),
@@ -248,13 +271,13 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
             assertionFailure("Could not find mediaremote-adapter.pl script or framework path")
             return
         }
-        
+
         process.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
         process.arguments = [scriptURL.path, frameworkPath, "stream"]
-        
+
         let pipeHandler = JSONLinesPipeHandler()
         process.standardOutput = await pipeHandler.getPipe()
-        
+
         self.process = process
         self.pipeHandler = pipeHandler
 
@@ -265,16 +288,42 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
             }
         } catch {
             assertionFailure("Failed to launch mediaremote-adapter.pl: \(error)")
+            // Retry later instead of giving up for the rest of the app's life.
+            scheduleStreamRestart(generation: generation, delay: 5)
+        }
+    }
+
+    /// Ends the current stream so the restart path kicks in. `terminate()` on
+    /// an already-exited process is a no-op.
+    private func scheduleStreamRestart(generation: Int, delay: TimeInterval) {
+        guard !isTearingDown, generation == streamGeneration else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, !self.isTearingDown, generation == self.streamGeneration else { return }
+            NSLog("NowPlayingController: restarting media stream")
+            await self.startStream()
         }
     }
 
     // MARK: - Async Stream Processing
     private func processJSONStream() async {
         guard let pipeHandler = self.pipeHandler else { return }
-        
+        let generation = streamGeneration
+
         await pipeHandler.readJSONLines(as: NowPlayingUpdate.self) { [weak self] update in
             await self?.handleAdapterUpdate(update)
         }
+
+        // The reader returned: EOF (the perl process died) or a broken pipe.
+        // Tear the process down and start a fresh stream, or the UI would be
+        // frozen at the last pre-sleep state until the app restarts.
+        streamTask = nil
+        guard !isTearingDown, generation == streamGeneration else { return }
+        if let process = self.process, process.isRunning {
+            process.terminate()
+        }
+        NSLog("NowPlayingController: media stream ended, restarting")
+        scheduleStreamRestart(generation: generation, delay: 2)
     }
 
     // MARK: - Update Methods

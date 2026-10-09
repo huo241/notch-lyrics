@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import AppKit
 
 class AppleMusicController: MediaControllerProtocol {
     // MARK: - Properties
@@ -29,52 +30,87 @@ class AppleMusicController: MediaControllerProtocol {
     }
 
     private var notificationTask: Task<Void, Never>?
-    
+    private var watchdogTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
+
     // MARK: - Initialization
     init() {
         setupPlaybackStateChangeObserver()
+
+        // Safety net for the notification stream above: if Music is running
+        // but nothing has arrived for a while, poll once so the UI recovers
+        // by itself instead of freezing until the app restarts.
+        watchdogTask = Task { @Sendable [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                await self?.refreshIfStale()
+            }
+        }
+
+        // Sleep/wake is the moment the stream above most often dies; pull a
+        // fresh snapshot the second the Mac is awake again.
+        NotificationCenter.default.publisher(for: NSWorkspace.didWakeNotification)
+            .sink { [weak self] _ in
+                Task { await self?.updatePlaybackInfo() }
+            }
+            .store(in: &cancellables)
+
         Task {
             if isActive() {
                 await updatePlaybackInfo()
             }
         }
     }
-    
+
     private func setupPlaybackStateChangeObserver() {
         notificationTask = Task { @Sendable [weak self] in
-            let notifications = DistributedNotificationCenter.default().notifications(
-                named: NSNotification.Name("com.apple.Music.playerInfo")
-            )
-            
-            for await _ in notifications {
-                await self?.updatePlaybackInfo()
+            while !Task.isCancelled {
+                let notifications = DistributedNotificationCenter.default().notifications(
+                    named: NSNotification.Name("com.apple.Music.playerInfo")
+                )
+
+                for await _ in notifications {
+                    await self?.updatePlaybackInfo()
+                }
+
+                // The async sequence ended — sleep/wake can terminate the
+                // distributed stream while Music keeps running. Resubscribe
+                // instead of losing every future state update.
+                NSLog("AppleMusicController: playerInfo stream ended, resubscribing")
+                try? await Task.sleep(for: .seconds(2))
             }
         }
     }
-    
+
     deinit {
         notificationTask?.cancel()
+        watchdogTask?.cancel()
     }
     
     // MARK: - Protocol Implementation
     func play() async {
         await executeCommand("play")
+        await refreshAfterCommand()
     }
-    
+
     func pause() async {
         await executeCommand("pause")
+        await refreshAfterCommand()
     }
-    
+
     func togglePlay() async {
         await executeCommand("playpause")
+        await refreshAfterCommand()
     }
-    
+
     func nextTrack() async {
         await executeCommand("next track")
+        await refreshAfterCommand()
     }
-    
+
     func previousTrack() async {
         await executeCommand("previous track")
+        await refreshAfterCommand()
     }
     
     func seek(to time: Double) async {
@@ -154,7 +190,26 @@ class AppleMusicController: MediaControllerProtocol {
     }
     
     // MARK: - Private Methods
-    
+
+    /// Music needs a beat to reflect a command, and the playerInfo
+    /// notification that would normally refresh us can be dead (see the
+    /// watchdog). Refresh twice so a slow commit is still picked up.
+    private func refreshAfterCommand() async {
+        try? await Task.sleep(for: .milliseconds(350))
+        await updatePlaybackInfo()
+        try? await Task.sleep(for: .milliseconds(650))
+        await updatePlaybackInfo()
+    }
+
+    /// Poll exactly once when the notification stream has gone quiet while
+    /// Music keeps running — this is what un-freezes the UI after sleep.
+    private func refreshIfStale() async {
+        guard isActive() else { return }
+        if Date().timeIntervalSince(playbackState.lastUpdated) > 25 {
+            await updatePlaybackInfo()
+        }
+    }
+
     private func executeCommand(_ command: String) async {
         let script = "tell application \"Music\" to \(command)"
         try? await AppleScriptHelper.executeVoid(script)
