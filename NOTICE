@@ -1,0 +1,50 @@
+# NOTICE
+
+## Notch Lyrics is a modified version of Boring Notch
+
+Notch Lyrics is an **independent fork and modified version** of
+[Boring Notch](https://github.com/TheBoredTeam/boring.notch).
+
+| | |
+|---|---|
+| **Modification start date** | 6 October 2026 |
+| **Upstream base** | `TheBoredTeam/boring.notch`, commit `e2654ee` (3 October 2026) |
+| **License** | GNU General Public License v3.0 — see [LICENSE](LICENSE) |
+
+This modified version is released under the **GNU General Public License v3.0**.
+The full text is in [LICENSE](LICENSE). It is distributed **without any warranty**,
+as stated in sections 15 and 16 of that license.
+
+## What was modified
+
+Notch Lyrics adds the following, and modified the upstream source where required:
+
+- a time-synced lyrics pane with a scrolling highlight
+- a weather tab
+- a quick-note scratchpad that files itself into Apple Notes
+- Chinese localisation of the settings entries for these features
+
+The remainder of the application — the notch window, media controls, calendar,
+HUDs, shelf, battery indicator and shortcuts — is Boring Notch's original work,
+carried over unmodified except where the features above required changes.
+
+## Attribution
+
+The vast majority of this codebase is the work of others. Upstream copyright is
+held by **The Bored Team** and the Boring Notch contributors. Third-party
+components and their respective licenses are listed in
+[THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES).
+
+## Not affiliated
+
+Notch Lyrics is **not affiliated with, endorsed by, or supported by** The Bored
+Team. The name "Boring Notch" appears in this repository **solely to describe the
+origin of this work** — that is, to identify what this software derives from — as
+required by the GNU General Public License. It is not used to name or brand this
+fork.
+
+## Third-party data services
+
+This fork depends on external services, each under its own terms:
+[LRCLIB](https://lrclib.net) for lyrics and [Open-Meteo](https://open-meteo.com)
+for weather data.

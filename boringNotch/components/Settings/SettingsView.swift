@@ -984,12 +984,16 @@ struct About: View {
             }
             VStack(spacing: 0) {
                 Divider()
-                Text("Notch Lyrics · 基于 boring.notch（GPL-3.0）修改")
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 5)
-                    .padding(.bottom, 7)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 10)
+                VStack(spacing: 1) {
+                    Text("Notch Lyrics · 基于 boring.notch 修改（GPL-3.0）")
+                    Text("自 2026 年 10 月起 · 与 The Bored Team 无隶属关系")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.top, 5)
+                .padding(.bottom, 7)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 10)
             }
             .frame(maxWidth: .infinity, alignment: .center)
         }

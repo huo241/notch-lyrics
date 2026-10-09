@@ -7,6 +7,10 @@
 A fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch) that adds a
 real lyrics pane, a weather tab, and a quick note that files itself into Apple Notes.
 
+> **This is a modified version of Boring Notch.** An independent fork, modified
+> since **6 October 2026**. Not affiliated with or endorsed by The Bored Team.
+> Released under GPL-3.0; what changed is listed in [NOTICE](NOTICE).
+
 [English](README.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md)
 
 <!-- Badges -->
