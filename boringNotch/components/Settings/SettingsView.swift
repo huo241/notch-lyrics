@@ -1950,7 +1950,7 @@ struct WeatherSettings: View {
                                 .font(.system(size: 12))
                                 .overlay(alignment: .leading) {
                                     if query.isEmpty {
-                                        Text("如：长兴 / 湖州 / Tokyo")
+                                        Text("如：淳安县 / 苏州市 / Tokyo")
                                             .font(.system(size: 12))
                                             .foregroundStyle(.secondary)
                                             .allowsHitTesting(false)
@@ -2119,7 +2119,7 @@ struct WeatherSettings: View {
             let found = try await manager.searchCities(text)
             results = found
             if found.isEmpty {
-                searchMessage = "没找到「\(text)」，换个写法试试（如「湖州」或「Huzhou」）。"
+                searchMessage = "没找到「\(text)」，换个写法试试（如「苏州」或「Suzhou」）。"
             }
         } catch {
             results = []
