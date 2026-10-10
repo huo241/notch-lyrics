@@ -2,19 +2,23 @@
 <!--
     Sparkle appcast for Notch Lyrics.
 
-    Intentionally empty. Automatic updates are disabled in this fork: SUFeedURL in
-    NotchLyrics/Info.plist is left blank and SUPublicEDKey is still the upstream key,
-    so nothing here is read at runtime. The previous contents described upstream
-    releases and their download links.
+    This file is the live update feed. It is served from
 
-    When this fork publishes its own releases, replace this file with a feed generated
-    by Sparkle's `generate_appcast`, signed with this project's own EdDSA key, and point
-    SUFeedURL at wherever it is hosted.
+        https://raw.githubusercontent.com/huo241/notch-lyrics/main/updater/appcast.xml
+
+    which is exactly what SUFeedURL in NotchLyrics/Info.plist points at, so no
+    GitHub Pages setup is involved.
+
+    It starts out with no <item> entries because this fork has not published a
+    release yet. Run scripts/release.sh to build a version and append an entry
+    here; that script also signs each archive with this project's EdDSA key.
+    The matching public key lives in NotchLyrics/Info.plist under SUPublicEDKey,
+    and Sparkle verifies every download against it.
 -->
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Notch Lyrics</title>
-        <description>Notch Lyrics release feed — not published yet.</description>
+        <description>Notch Lyrics release feed.</description>
         <language>en</language>
     </channel>
 </rss>

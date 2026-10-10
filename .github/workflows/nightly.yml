@@ -1,9 +1,11 @@
 name: Nightly Branch Builds
 
 on:
-  # Scheduled runs only start once this workflow exists on the default branch.
-  schedule:
-    - cron: "0 3 * * *"
+  # The scheduled run is disabled in this fork: the pipeline needs an Apple
+  # signing certificate that the fork does not have yet. Manual runs through
+  # workflow_dispatch stay available.
+  # schedule:
+  #   - cron: "0 3 * * *"
   workflow_dispatch:
 
 concurrency:

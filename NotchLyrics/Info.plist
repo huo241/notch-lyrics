@@ -12,15 +12,15 @@
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<!--
-	  Auto-update intentionally disabled for this fork.
-	  The upstream feed (TheBoredTeam.github.io/boring.notch) ships releases
-	  without this fork's lyrics changes, so checking against it would silently
-	  replace them. Set SUFeedURL to your own appcast to re-enable updates.
+	  Auto-update feed for this fork. The appcast lives in this repository and is
+	  served straight from raw.githubusercontent.com, so no GitHub Pages setup is
+	  needed. Sparkle verifies every update against the EdDSA public key below;
+	  Apple code signing is not required for updates to be accepted.
 	-->
 	<key>SUFeedURL</key>
-	<string></string>
+	<string>https://raw.githubusercontent.com/huo241/notch-lyrics/main/updater/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>B1Y47t8C/v8ImurYA+9arEsuCrpxwJSviekiflMElbI=</string>
+	<string>h+Rvg7JIEhxgWooBXufc3GLZQTLlGex/hW6fGPB3C10=</string>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict/>
