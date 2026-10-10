@@ -28,7 +28,7 @@
             <sparkle:version>281</sparkle:version>
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.0.0/NotchLyrics-1.0.0.zip" length="11290975" type="application/octet-stream" sparkle:edSignature="8UMHvnWanMOFISCyNooe7lSSoS7W+1rJdUyINBeM65CIF8eLO1SzUrSHOMM5MPnjcOf8kMMUguG3cKX4ls0OBg=="/>
+            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.0.0/NotchLyrics-1.0.0.zip" length="11280105" type="application/octet-stream" sparkle:edSignature="fzPD7Hl/DOkCJtvtrfGTaXkd3Ajh8j0WL9Lma3GhAmEEcLEwZIb0xoH3u7OonIkGjKJi86NXlWeDrSg8Im7QBw=="/>
         </item>
     </channel>
 </rss>
