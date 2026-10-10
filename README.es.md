@@ -6,7 +6,7 @@
 
 **Letras sincronizadas, el tiempo y un bloc de notas — todo en el notch de tu MacBook.**
 
-> **Notch Lyrics es una versión modificada de Boring Notch**, un proyecto anterior
+> **Notch Lyrics está desarrollado sobre Boring Notch**, un proyecto anterior
 > con licencia GPL-3.0. Trabajo independiente desde el **6 de octubre de 2026**,
 > sin afiliación ni respaldo de los autores originales. El origen y la lista
 > completa de cambios están en [NOTICE](NOTICE).
