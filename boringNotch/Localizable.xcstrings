@@ -1001,6 +1001,19 @@
         }
       }
     },
+    "%lld°" : {
+
+    },
+    "%lld° · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld° · %2$@"
+          }
+        }
+      }
+    },
     "• Bug fixes" : {
       "localizations" : {
         "ar" : {
@@ -3603,6 +3616,7 @@
       }
     },
     "Boost your productivity with Clipboard Manager" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -3698,206 +3712,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "使用剪贴板管理器提升你的效率"
-          }
-        }
-      }
-    },
-    "Boring Notch" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boring Notch"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boring Notch"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch"
-          }
-        }
-      }
-    },
-    "boring.notch" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "boring.notch"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "boring.notch"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "boring.notch"
           }
         }
       }
@@ -7906,106 +7720,6 @@
         }
       }
     },
-    "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Snadno kopírujte, ukládejte a spravujte svůj nejpoužívanejší obsah. Upgradujte nyní pro pokročilé funkce, jako je vícenásobné úložiště a rychlý přístup!"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Kopieren, speichern und verwalten Sie ganz einfach Ihre am häufigsten verwendeten Inhalte. Aktualisieren Sie jetzt, um erweiterte Funktionen wie die Speicherung mehrerer Elemente und schnellen Zugriff zu erhalten!"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Copie, almacene y gestione fácilmente su contenido más usado. ¡Actualice ahora para obtener características avanzadas como almacenamiento de múltiples elementos y acceso rápido!"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Copiez, stockez et gérez facilement votre contenu le plus utilisé. Mettez à niveau maintenant pour des fonctionnalités avancées telles que le stockage de multiples items et un accès rapide !"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Copia facilmente, memorizza e gestisci i tuoi contenuti più usati. Aggiorna ora per funzioni avanzate come storage multi-item e accesso rapido!"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "자주 사용하는 파일들을 쉽게 복사, 저장, 관리하세요. 업그레이드 해서 다중 저장 기능과 빠른 접근 기능을 활성화하세요!"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Łatwo kopiuj, przechowuj i zarządzaj najczęściej używaną treścią. Uaktualnij teraz, aby uzyskać zaawansowane funkcje, takie jak przechowywanie wielu produktów i szybki dostęp!"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "En sık kullandığınız içerikleri kolayca kopyalayın, saklayın ve yönetin. Çoklu öğe depolama ve hızlı erişim gibi gelişmiş özellikler için şimdi yükseltin!"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Easily copy, store, and manage your most-used content. Upgrade now for advanced features like multi-item storage and quick access!"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "轻松复制、存储和管理您最常用的内容。升级后可解锁高级功能，如多项目存储和快速访问！"
-          }
-        }
-      }
-    },
     "Edit layout" : {
       "localizations" : {
         "ar" : {
@@ -8202,106 +7916,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "启用专辑封面的模糊效果"
-          }
-        }
-      }
-    },
-    "Enable boring mirror" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Enable boring mirror"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Povolit boring zrcadlo"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Spiegelfunktion aktivieren"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enable boring mirror"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enable boring mirror"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Habilitar espejo boring"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Activer le miroir ennuyeux"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Enable boring mirror"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Abilita specchio"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring 거울 켜기"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Włącz boring mirror"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Enable boring mirror"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Enable boring mirror"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sıkıcı aynayı aktifleştir"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Enable boring mirror"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "启用虚拟镜像"
           }
         }
       }
@@ -8707,6 +8321,40 @@
         }
       }
     },
+    "Enable mirror" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Spiegelfunktion aktivieren"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Activer le miroir ennuyeux"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Abilita specchio"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sıkıcı aynayı aktifleştir"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "启用虚拟镜像"
+          }
+        }
+      }
+    },
     "Enable shelf" : {
       "localizations" : {
         "ar" : {
@@ -8808,6 +8456,7 @@
       }
     },
     "Enable window shadow" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -8908,6 +8557,7 @@
       }
     },
     "Enhance your experience with HUDs" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -10407,6 +10057,9 @@
           }
         }
       }
+    },
+    "H:%lld°" : {
+
     },
     "Hide all-day events" : {
       "localizations" : {
@@ -11909,6 +11562,9 @@
         }
       }
     },
+    "L:%lld°" : {
+
+    },
     "Layout Preview" : {
       "localizations" : {
         "ar" : {
@@ -12305,106 +11961,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "低电量模式"
-          }
-        }
-      }
-    },
-    "Made with 🫶🏻 by not so boring not.people" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Made with 🫶🏻 by not so boring not.people"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Vyrobeno s 🫶🏻 ne tak nudnými ne lidmi"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Gemacht mit 🫶🏻 durch nicht so boring not.people"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Made with 🫶🏻 by not so boring not.people"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Made with 🫶🏻 by not so boring not.people"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Hecho con 🫶🏻 por gente no tan aburrida"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Fait avec 🫶🏻 par des personnes pas si ennuyeuses - boring not.people"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Made with 🫶🏻 by not so boring not.people"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Realizzato col 🫶🏻 da not so boring not.people"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "지루하지 않은 비사람들이 🫶🏻 마음을 담아 만들었습니다"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Zrobione z 🫶🏻 przez niezbyt nudnych ludzi"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Made with 🫶🏻 by not so boring not.people"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Made with 🫶🏻 by not so boring not.people"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "O kadar da sıkıcı olmayan insanlar tarafından 🫶🏻 ile yapılmıştır"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Made with 🫶🏻 by not so boring not.people"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "不那么无趣的 not.people 团队 用🫶🏻出品"
           }
         }
       }
@@ -13910,6 +13466,7 @@
       }
     },
     "More" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -15409,6 +14966,12 @@
           }
         }
       }
+    },
+    "Notch Lyrics" : {
+
+    },
+    "Notch Lyrics · 基于 boring.notch 修改（GPL-3.0）" : {
+
     },
     "Notch sizing" : {
       "localizations" : {
@@ -16910,106 +16473,6 @@
         }
       }
     },
-    "Release name" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Release name"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Název vydání"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Veröffentlichungsname"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Release name"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Release name"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nombre de la versión"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nom de la version"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Release name"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nome del rilascio"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "릴리즈 이름"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nazwa wydania"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Release name"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Release name"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Yayın İsmi"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Release name"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "版本名称"
-          }
-        }
-      }
-    },
     "Remember last tab" : {
       "localizations" : {
         "ar" : {
@@ -17911,105 +17374,8 @@
         }
       }
     },
-    "Restart Boring Notch" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Restart Boring Notch"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Restartovat Boring Notch"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch neu starten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restart Boring Notch"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restart Boring Notch"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Reiniciar Boring Notch"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Redémarrer Boring Notch"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Restart Boring Notch"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Riavvia Boring Notch"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch 재시작"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Uruchom ponownie Boring Notch"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Restart Boring Notch"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Restart Boring Notch"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boring Notch'u yeniden başlat"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Restart Boring Notch"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "重启 Boring Notch"
-          }
-        }
-      }
+    "Restart Notch Lyrics" : {
+
     },
     "Running" : {
       "extractionState" : "stale",
@@ -18111,6 +17477,12 @@
           }
         }
       }
+    },
+    "Scale the notch while swiping" : {
+
+    },
+    "Scaling is feedback only. With it off, a swipe still closes the notch once it passes the sensitivity threshold, and scrolling inside the notch no longer resizes it." : {
+
     },
     "Select the music source you want to use. You can change this later in the app settings." : {
       "localizations" : {
@@ -21815,106 +21187,6 @@
         }
       }
     },
-    "Unlock advanced features and improve your experience. Upgrade now for more customizations!" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unlock advanced features and improve your experience. Upgrade now for more customizations!"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Odemkněte pokročilé funkce a vylepšete si svůj zážitek. Upgradujte nyní pro více přizpůsobení!"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Schalte erweiterte Funktionen frei und verbessere deine Erfahrung. Upgrade jetzt für weitere Anpassungsmöglichkeiten!"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unlock advanced features and improve your experience. Upgrade now for more customizations!"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unlock advanced features and improve your experience. Upgrade now for more customizations!"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Desbloquee funciones avanzadas y mejore su experiencia. ¡Actualice ahora para más personalizaciones!"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Déverrouillez des fonctionnalités avancées et améliorez votre expérience. Mettez à niveau maintenant pour plus de personnalisations !"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unlock advanced features and improve your experience. Upgrade now for more customizations!"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sblocca le funzionalità avanzate e migliora la tua esperienza. Aggiorna ora per ulteriori personalizzazioni!"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "고급 설정을 해제해 경험을 향상하세요. 더 많은 맞춤화 설정을 지금 바로 업그레이드해서 즐기세요!"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Odblokuj dodatkowe funkcje i ciesz się lepszymi możliwościami. Ulepsz teraz, aby móc bardziej dostosować ustawienia!"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unlock advanced features and improve your experience. Upgrade now for more customizations!"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unlock advanced features and improve your experience. Upgrade now for more customizations!"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Gelişmiş özelliklerin kilidini açın ve deneyiminizi iyileştirin. Daha fazla özelleştirme için şimdi yükseltin!"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unlock advanced features and improve your experience. Upgrade now for more customizations!"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "解锁高级功能并提升您的体验。现在升级以获取更多自定义功能！"
-          }
-        }
-      }
-    },
     "unmuted" : {
       "localizations" : {
         "ar" : {
@@ -22111,106 +21383,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Unmuted"
-          }
-        }
-      }
-    },
-    "Upgrade to Pro" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Upgrade to Pro"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Upgradovat na verzi Pro"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Auf Pro upgraden"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Upgrade to Pro"
-          }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Upgrade to Pro"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Actualice a Pro"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Passer à la version Pro"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Upgrade to Pro"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Passa a Pro"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "프로로 업그레이드"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Ulepsz do wersji Pro"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Upgrade to Pro"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Upgrade to Pro"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Pro sürümüne Yükselt"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Upgrade to Pro"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "升级至 Pro"
           }
         }
       }
@@ -23614,6 +22786,126 @@
           }
         }
       }
+    },
+    "便签" : {
+
+    },
+    "刷新文件夹列表" : {
+
+    },
+    "动画天空背景" : {
+
+    },
+    "在「系统设置 › 隐私与安全性 › 自动化」里允许 Notch Lyrics 控制备忘录，然后回到这里。" : {
+
+    },
+    "天气" : {
+
+    },
+    "天气数据来自 Open-Meteo，免费且无需注册或密钥。" : {
+
+    },
+    "如：淳安县 / 苏州市 / Tokyo" : {
+
+    },
+    "定位" : {
+
+    },
+    "实况" : {
+
+    },
+    "已选城市" : {
+
+    },
+    "常用城市" : {
+
+    },
+    "当前城市" : {
+
+    },
+    "按网络出口推断位置，不需要任何权限。走代理或结果偏到邻近城市时，关掉它并搜索你要的城市。" : {
+
+    },
+    "搜索" : {
+
+    },
+    "搜索中…" : {
+
+    },
+    "无时间轴" : {
+
+    },
+    "显示" : {
+
+    },
+    "显示「一周」视图" : {
+
+    },
+    "更新于" : {
+
+    },
+    "未选择" : {
+
+    },
+    "正在获取…" : {
+
+    },
+    "正在获取天气…" : {
+
+    },
+    "状态" : {
+
+    },
+    "由网络定位推断" : {
+
+    },
+    "立即刷新" : {
+
+    },
+    "网络定位" : {
+
+    },
+    "背景颜色随天气和昼夜变化；动画背景约占本功能的主要耗电。" : {
+
+    },
+    "自 2026 年 10 月起 · 与 The Bored Team 无隶属关系" : {
+
+    },
+    "自动定位" : {
+
+    },
+    "输入城市名后回车或用「搜索」添加，结果来自 OpenStreetMap，中文、拼音、英文都能搜。" : {
+
+    },
+    "选择 Obsidian 文件夹" : {
+
+    },
+    "选择其他备忘录文件夹" : {
+
+    },
+    "选择其他文件夹" : {
+
+    },
+    "选择备忘录文件夹" : {
+
+    },
+    "速记会存成 .md 文件写进你选的文件夹。vault 根目录或其中任意文件夹都可以，需要新建文件夹也可以在这里建。" : {
+
+    },
+    "速记每次保存都会在所选文件夹新建一条备忘录，不会改动已有内容。" : {
+
+    },
+    "重试" : {
+
+    },
+    "随手记点什么…" : {
+
+    },
+    "需要访问「备忘录」的权限" : {
+
+    },
+    "默认保存文件夹" : {
+
     }
   },
   "version" : "1.0"

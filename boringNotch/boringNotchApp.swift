@@ -471,7 +471,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func playWelcomeSound() {
         let audioPlayer = AudioPlayer()
-        audioPlayer.play(fileName: "boring", fileExtension: "m4a")
+        audioPlayer.play(fileName: "welcome", fileExtension: "m4a")
     }
 
     func deviceHasNotch() -> Bool {
