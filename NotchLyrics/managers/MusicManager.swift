@@ -456,9 +456,11 @@ class MusicManager: ObservableObject {
         let key = lyricsTrackKey(artist: artist, title: title)
         guard key != loadedLyricsTrackKey else { return }
         loadedLyricsTrackKey = key
+        LyricsDebug.log("track: \"\(title)\" | \"\(artist)\" | dur=\(songDuration) | bundle=\(bundleIdentifier ?? "nil")")
 
         // Reuse a previous lookup for this track instead of hitting the network.
         if let cached = lyricsCache[key] {
+            LyricsDebug.log("cache hit (\(cached.kind))")
             apply(cached)
             // A plain-only result may have gained a synced version upstream.
             if cached.kind == .plain {
@@ -511,6 +513,7 @@ class MusicManager: ObservableObject {
                     """
                     if let result = try await AppleScriptHelper.execute(script), let lyricsString = result.stringValue {
                         let native = lyricsString.trimmingCharacters(in: .whitespacesAndNewlines)
+                        LyricsDebug.log("native lyrics: \(native.isEmpty ? "empty" : "\(native.count) chars")")
                         if !native.isEmpty {
                             let parsed = Self.parseLRC(native)
                             if parsed.count >= 2 {
@@ -525,6 +528,7 @@ class MusicManager: ObservableObject {
                         }
                     }
                 } catch {
+                    LyricsDebug.log("apple script error: \(error.localizedDescription)")
                     // fall through to web lookup
                 }
                 await self.fetchLyricsFromWeb(title: title, artist: artist, trackKey: key)
@@ -554,7 +558,11 @@ class MusicManager: ObservableObject {
     /// Without this check a slow response for a previous track would overwrite
     /// the lyrics of whatever is playing now.
     private func apply(_ payload: LyricsPayload, trackKey: String) {
-        guard trackKey == loadedLyricsTrackKey else { return }
+        guard trackKey == loadedLyricsTrackKey else {
+            LyricsDebug.log("apply skipped: response for an old track")
+            return
+        }
+        LyricsDebug.log("apply \(payload.kind)")
         lyricsCache[trackKey] = payload
         if lyricsCache.count > lyricsCacheLimit {
             lyricsCache.removeAll(keepingCapacity: true)
@@ -624,13 +632,15 @@ class MusicManager: ObservableObject {
     /// that does not look like this track is dropped instead of displayed.
     @MainActor
     private func fetchLyricsFromWeb(title: String, artist: String, trackKey: String) async {
+        LyricsDebug.log("web lookup: \"\(title)\" | \"\(artist)\" | dur=\(songDuration)")
         var best: (record: [String: Any], score: Double)?
 
         /// Keeps the highest-scoring record seen so far, and reports whether it
         /// is good enough to stop looking.
-        func consider(_ record: [String: Any]) -> Bool {
+        func consider(_ record: [String: Any], via: String) -> Bool {
             let score = LyricsQuery.score(
                 record: record, title: title, artist: artist, duration: songDuration)
+            LyricsDebug.log("score \(score) via \(via) ← \"\(record["trackName"] ?? "")\" | \"\(record["artistName"] ?? "")\" | dur=\(record["duration"] ?? "?")")
             if best == nil || score > best!.score { best = (record, score) }
             return score >= LyricsQuery.minimumScore
         }
@@ -655,7 +665,7 @@ class MusicManager: ObservableObject {
                 guard budget > 0 else { break lookup }
                 budget -= 1
                 guard let record = await fetchLyricsRecord(path: "api/get", query: probe) else { continue }
-                if consider(record) { break lookup }
+                if consider(record, via: "get") { break lookup }
             }
         }
 
@@ -664,7 +674,7 @@ class MusicManager: ObservableObject {
             let seed = LyricsQuery.cleaned(title: title, artist: artist)
             if let base = lyricsQueryString(title: seed.title, artist: seed.artist) {
                 for record in await fetchLyricsRecords(path: "api/search", query: base) {
-                    _ = consider(record)
+                    _ = consider(record, via: "search")
                 }
             }
         }
@@ -709,17 +719,25 @@ class MusicManager: ObservableObject {
         request.timeoutInterval = 10
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse else { return nil }
+            guard let http = response as? HTTPURLResponse else {
+                LyricsDebug.log("HTTP: not an HTTP response for \(url.query ?? "")")
+                return nil
+            }
             if (http.statusCode == 429 || http.statusCode == 503), attempt < 2 {
+                LyricsDebug.log("HTTP \(http.statusCode), retrying \(attempt + 1)/2 for \(url.query ?? "")")
                 // The rate limiter sits at the network edge and does not
                 // guarantee a JSON body, so only the header is consulted.
                 let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? 1
                 try? await Task.sleep(for: .seconds(min(max(retryAfter, 0.5), 10)))
                 return await lyricsRequest(url: url, attempt: attempt + 1)
             }
-            guard http.statusCode == 200 else { return nil }
+            guard http.statusCode == 200 else {
+                LyricsDebug.log("HTTP \(http.statusCode) for \(url.path)?\(url.query ?? "")")
+                return nil
+            }
             return data
         } catch {
+            LyricsDebug.log("network error: \(error.localizedDescription) for \(url.query ?? "")")
             return nil
         }
     }
