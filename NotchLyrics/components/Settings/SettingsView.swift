@@ -700,7 +700,7 @@ struct Media: View {
                 MusicSlotConfigurationView()
                 Defaults.Toggle(key: .enableLyrics) {
                     HStack {
-                        Text("Show lyrics below artist name")
+                        Text("Show lyrics in the notch")
                         customBadge(text: "Beta")
                     }
                 }
