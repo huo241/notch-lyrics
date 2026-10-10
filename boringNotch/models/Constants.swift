@@ -73,7 +73,7 @@ extension Defaults.Keys {
     static let menubarIcon = Key<Bool>("menubarIcon", default: true)
     static let showOnAllDisplays = Key<Bool>("showOnAllDisplays", default: false)
     static let automaticallySwitchDisplay = Key<Bool>("automaticallySwitchDisplay", default: true)
-    static let releaseName = Key<String>("releaseName", default: "Flying Rabbit 🐇🪽")
+    static let releaseName = Key<String>("releaseName", default: "Notch Lyrics")
     
     // MARK: Behavior
     static let minimumHoverDuration = Key<TimeInterval>("minimumHoverDuration", default: 0.3)
@@ -210,6 +210,21 @@ extension Defaults.Keys {
     /// The same folder as "Name · Account", kept alongside the ID purely so the
     /// UI can show where notes are going without re-querying Notes.
     static let quickNoteFolderLabel = Key<String>("quickNoteFolderLabel", default: "")
+    /// Where a saved note lands, as `QuickNoteTarget`'s raw value.
+    ///
+    /// Stored as a string rather than as the enum so `Defaults` never has to
+    /// know the type, and so renaming a Swift case cannot orphan the setting.
+    static let quickNoteTarget = Key<String>(
+        "quickNoteTarget", default: QuickNoteTarget.notes.rawValue
+    )
+    /// App-scoped bookmark to the chosen Obsidian folder.
+    ///
+    /// The bookmark, not the path, is what carries write permission across a
+    /// relaunch — under the sandbox a bare path is worth nothing, because the
+    /// Obsidian folder is outside anything the app may touch by default. The
+    /// label beside it exists only so the UI can name the destination.
+    static let quickNoteVaultBookmark = Key<Data>("quickNoteVaultBookmark", default: Data())
+    static let quickNoteVaultLabel = Key<String>("quickNoteVaultLabel", default: "")
 
     static let didClearLegacyURLCacheV1 = Key<Bool>("didClearLegacyURLCache_v1", default: false)
 
@@ -225,4 +240,31 @@ extension Defaults.Keys {
     static let weatherAnimatedBackground = Key<Bool>("weatherAnimatedBackground", default: true)
     /// Show the seven-day list under the hourly strip.
     static let weatherShowWeek = Key<Bool>("weatherShowWeek", default: true)
+}
+
+/// Where a quick note is filed.
+///
+/// Deliberately two values, not three. Earlier designs had "automatic" as a
+/// third option, but with `notes` as the default an automatic mode would always
+/// resolve to exactly that — the extra state carried no information and only
+/// gave the user one more thing to get wrong.
+enum QuickNoteTarget: String, CaseIterable, Identifiable {
+    case notes
+    case obsidian
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .notes: return "备忘录"
+        case .obsidian: return "Obsidian"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .notes: return "note.text"
+        case .obsidian: return "doc.text"
+        }
+    }
 }

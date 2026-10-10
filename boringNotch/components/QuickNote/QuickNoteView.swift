@@ -53,6 +53,7 @@ struct QuickNoteView: View {
         case notAuthorized
         case failed(String)
         case pickFolder([NoteFolder])
+        case chooseVault
         case ready
     }
 
@@ -79,6 +80,8 @@ struct QuickNoteView: View {
 
     @Default(.quickNoteFolderID) private var folderID
     @Default(.quickNoteFolderLabel) private var folderLabel
+    @Default(.quickNoteTarget) private var targetRaw
+    @Default(.quickNoteVaultLabel) private var vaultLabel
 
     @State private var phase: Phase = .checking
     @State private var isSaving = false
@@ -101,6 +104,8 @@ struct QuickNoteView: View {
                 failurePrompt(message)
             case .pickFolder(let folders):
                 folderPicker(folders)
+            case .chooseVault:
+                vaultPicker
             case .ready:
                 composer
             }
@@ -152,6 +157,10 @@ struct QuickNoteView: View {
             HStack(spacing: 8) {
                 chipButton("打开系统设置", prominent: true) { openAutomationSettings() }
                 chipButton("重试") { Task { await fetchFolders() } }
+                // The refusal is answered rather than repeated: this is the
+                // "ask once, and if they say no, use Obsidian" path. Without
+                // it the tab is a dead end for anyone who declines.
+                chipButton("改用 Obsidian") { switchTo(.obsidian) }
             }
         }
     }
@@ -207,11 +216,39 @@ struct QuickNoteView: View {
         }
     }
 
+    /// Where the Obsidian route starts: pick the folder, or back out to Notes.
+    private var vaultPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "folder.badge.plus").font(.system(size: 11))
+                Text("选择 Obsidian 文件夹")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+
+            Text("速记会存成 .md 文件写进你选的文件夹。vault 根目录或其中任意文件夹都可以，需要新建文件夹也可以在这里建。")
+                .font(.system(size: 11))
+                .foregroundStyle(.white.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                chipButton("选择文件夹…", prominent: true) { chooseVault() }
+                chipButton("改用备忘录") { switchTo(.notes) }
+            }
+        }
+    }
+
     private var composer: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: "folder").font(.system(size: 10))
-                Text(folderLabel.isEmpty ? "备忘录" : folderLabel)
+                targetSwitch
+
+                Divider()
+                    .frame(height: 10)
+                    .overlay { Color.white.opacity(0.15) }
+
+                Image(systemName: target.icon).font(.system(size: 10))
+                Text(destinationLabel)
                     .font(.system(size: 11))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -330,13 +367,79 @@ struct QuickNoteView: View {
         }
     }
 
-    /// A chip with its own background: plain text next to the folder label
+    /// The two destinations, side by side.
+    ///
+    /// Two chips rather than a popup menu: the notch panel is a non-activating
+    /// panel, and a menu needs an active app before it will open at all.
+    private var targetSwitch: some View {
+        HStack(spacing: 3) {
+            ForEach(QuickNoteTarget.allCases) { option in
+                let active = option == target
+                Button {
+                    switchTo(option)
+                } label: {
+                    Text(option.label)
+                        .font(.system(size: 10, weight: active ? .semibold : .regular))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule().fill(
+                                Color.white.opacity(active ? 0.22 : 0.07)
+                            )
+                        )
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(active ? 0.95 : 0.5))
+            }
+        }
+    }
+
+    /// What the header states as the destination — the Notes folder for one
+    /// route, the chosen vault folder for the other.
+    private var destinationLabel: String {
+        switch target {
+        case .notes:
+            return folderLabel.isEmpty ? "备忘录" : folderLabel
+        case .obsidian:
+            return vaultLabel.isEmpty ? "未选择文件夹" : vaultLabel
+        }
+    }
+
+    /// A chip with its own background: plain text next to the destination label
     /// read as part of the label and was effectively invisible.
     private var changeFolderChip: some View {
-        chipButton("更改", small: true) {
+        chipButton("更改", small: true) { pickDestination() }
+            .help(target == .notes ? "选择其他备忘录文件夹" : "选择其他文件夹")
+    }
+
+    /// Both routes re-pick their destination; they differ only in which picker
+    /// opens.
+    private func pickDestination() {
+        if target == .notes {
             Task { await fetchFolders() }
+        } else {
+            chooseVault()
         }
-        .help("选择其他文件夹")
+    }
+
+    /// Points the tab at a destination and lands in whatever state that
+    /// destination needs — the editor if it is already set up, its picker if
+    /// not. Switching target never clears the other one's configuration, so
+    /// going back and forth costs nothing.
+    private func switchTo(_ newTarget: QuickNoteTarget) {
+        guard newTarget != target else { return }
+        QuickNoteSelfTest.log("switchTo: \(newTarget.rawValue)")
+        targetRaw = newTarget.rawValue
+        Task { await prepare() }
+    }
+
+    /// Opens the folder picker for the Obsidian route.
+    private func chooseVault() {
+        guard let label = ObsidianService.shared.chooseFolder() else { return }
+        QuickNoteSelfTest.log("chooseVault: \(label)")
+        showFlash("已指向 \(label)", isError: false)
+        phase = .ready
     }
 
     /// The one button style used across the quick-note UI. Every action in
@@ -536,23 +639,51 @@ struct QuickNoteView: View {
 
     // MARK: - Data
 
+    /// The destination the tab is currently pointed at.
+    ///
+    /// Falls back to Notes rather than failing: the stored value is a raw
+    /// string, and a typo or a downgrade should not leave the tab with no
+    /// destination at all.
+    private var target: QuickNoteTarget {
+        QuickNoteTarget(rawValue: targetRaw) ?? .notes
+    }
+
     private var canSave: Bool {
-        // An empty folder means save() would silently no-op, so the button
-        // must be off in that case rather than clickable-and-dead.
-        !folderID.isEmpty && !isSaving && !draft.attributedText.string
-            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard !isSaving else { return false }
+        guard !draft.attributedText.string
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        // Save would silently no-op with no destination, so the button must be
+        // off in that case rather than clickable-and-dead.
+        switch target {
+        case .notes:
+            return !folderID.isEmpty
+        case .obsidian:
+            return ObsidianService.shared.isConfigured
+        }
     }
 
     private func prepare() async {
-        // Already configured — trust the stored folder and show the editor
-        // straight away. Re-listing folders would spend an AppleScript round
-        // trip to learn something already known.
-        QuickNoteSelfTest.log("prepare: folderID=\(folderID.isEmpty ? "EMPTY" : "set(\(folderID))")")
-        if !folderID.isEmpty {
-            phase = .ready
-            return
+        switch target {
+        case .obsidian:
+            // A vault folder is ordinary file I/O — there is nothing to ask the
+            // system, so the only open question is whether one has been chosen.
+            QuickNoteSelfTest.log(
+                "prepare: target=obsidian vault=\(vaultLabel.isEmpty ? "EMPTY" : vaultLabel)"
+            )
+            phase = ObsidianService.shared.isConfigured ? .ready : .chooseVault
+        case .notes:
+            // Already configured — trust the stored folder and show the editor
+            // straight away. Re-listing folders would spend an AppleScript round
+            // trip to learn something already known.
+            QuickNoteSelfTest.log(
+                "prepare: target=notes folderID=\(folderID.isEmpty ? "EMPTY" : "set(\(folderID))")"
+            )
+            if !folderID.isEmpty {
+                phase = .ready
+                return
+            }
+            await fetchFolders()
         }
-        await fetchFolders()
     }
 
     private func fetchFolders() async {
@@ -574,35 +705,68 @@ struct QuickNoteView: View {
     }
 
     private func save() {
+        guard canSave else { return }
+
+        // Both routes read the draft before the write begins: on success the
+        // editor is cleared, and a failure must leave the text intact.
+        let markdown = NoteMarkdown.make(from: draft.attributedText)
         let html = NoteHTML.make(from: draft.attributedText)
-        let target = folderID
-        guard canSave, !target.isEmpty else { return }
+        let notesFolder = folderID
+        let destination = target
 
         isSaving = true
         flash = nil
 
         Task { @MainActor in
             do {
-                // No `name` is sent: Notes derives the list title from the
-                // first body line. Passing one as well rendered the first
-                // line twice — once as the title row, once as the body.
-                try await NotesService.shared.createNote(
-                    title: "",
-                    html: html,
-                    in: target
-                )
+                switch destination {
+                case .notes:
+                    // No `name` is sent: Notes derives the list title from the
+                    // first body line. Passing one as well rendered the first
+                    // line twice — once as the title row, once as the body.
+                    try await NotesService.shared.createNote(
+                        title: "",
+                        html: html,
+                        in: notesFolder
+                    )
+                case .obsidian:
+                    // A file this small is written synchronously; handing it to
+                    // another executor would buy nothing and cost a hop.
+                    _ = try ObsidianService.shared.write(body: markdown)
+                }
                 draft.attributedText = NSAttributedString(string: "")
                 releaseKeyboard()
                 showFlash("已保存", isError: false)
             } catch {
+                if let obsidian = error as? ObsidianError {
+                    switch obsidian {
+                    case .folderUnavailable, .notConfigured:
+                        // The grant is gone and the service has already cleared
+                        // it, so go straight to picking a new folder instead of
+                        // leaving a dead Save button with no way forward.
+                        phase = .chooseVault
+                    default:
+                        break
+                    }
+                }
                 // The draft is deliberately left untouched: the user may have
                 // written a long note and a failed write must not destroy it.
-                let message = (error as? NotesError)?.errorDescription
-                    ?? error.localizedDescription
-                showFlash(message, isError: true)
+                showFlash(Self.message(for: error), isError: true)
             }
             isSaving = false
         }
+    }
+
+    /// One message for every error family — the UI shows the same thing for
+    /// all of them, so there is no reason to branch any higher up.
+    private static func message(for error: Error) -> String {
+        if let notes = error as? NotesError, let text = notes.errorDescription {
+            return text
+        }
+        if let obsidian = error as? ObsidianError, let text = obsidian.errorDescription {
+            return text
+        }
+        return error.localizedDescription
     }
 
     // MARK: - Focus hand-back
