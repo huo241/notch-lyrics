@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <!--
     Sparkle appcast for Notch Lyrics.
 
@@ -9,16 +9,26 @@
     which is exactly what SUFeedURL in NotchLyrics/Info.plist points at, so no
     GitHub Pages setup is involved.
 
-    It starts out with no <item> entries because this fork has not published a
-    release yet. Run scripts/release.sh to build a version and append an entry
-    here; that script also signs each archive with this project's EdDSA key.
-    The matching public key lives in NotchLyrics/Info.plist under SUPublicEDKey,
-    and Sparkle verifies every download against it.
+    Run scripts/release.sh to build a version and append an entry here; that
+    script also signs each archive with this project's EdDSA key. The matching
+    public key lives in NotchLyrics/Info.plist under SUPublicEDKey, and Sparkle
+    verifies every download against it.
+
+    Each enclosure URL points at an asset attached to the matching GitHub
+    Release, so an entry must never be published before its archive exists.
 -->
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Notch Lyrics</title>
         <description>Notch Lyrics release feed.</description>
         <language>en</language>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Sat, 10 Oct 2026 17:06:02 +0800</pubDate>
+            <sparkle:version>281</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.0.0/NotchLyrics-1.0.0.zip" length="11290975" type="application/octet-stream" sparkle:edSignature="8UMHvnWanMOFISCyNooe7lSSoS7W+1rJdUyINBeM65CIF8eLO1SzUrSHOMM5MPnjcOf8kMMUguG3cKX4ls0OBg=="/>
+        </item>
     </channel>
 </rss>
