@@ -6,19 +6,16 @@
 
 **Time-synced lyrics, the weather, and a scratchpad — all in your MacBook's notch.**
 
-A fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch) that adds a
-real lyrics pane, a weather tab, and a quick note that files itself into Apple Notes.
-
-> **This is a modified version of Boring Notch.** An independent fork, modified
-> since **6 October 2026**. Not affiliated with or endorsed by The Bored Team.
-> Released under GPL-3.0; what changed is listed in [NOTICE](NOTICE).
+> **Notch Lyrics is a modified version of Boring Notch**, an earlier GPL-3.0
+> project. Independent work since **6 October 2026**, not affiliated with or
+> endorsed by the original authors. Provenance and the full change list are in
+> [NOTICE](NOTICE).
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md)
 
 <!-- Badges -->
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black.svg)](#requirements)
-[![Fork of](https://img.shields.io/badge/fork%20of-TheBoredTeam%2Fboring.notch-orange.svg)](https://github.com/TheBoredTeam/boring.notch)
 [![Release](https://img.shields.io/github/v/release/huo241/notch-lyrics?include_prereleases&sort=semver)](https://github.com/huo241/notch-lyrics/releases)
 [![Downloads](https://img.shields.io/github/downloads/huo241/notch-lyrics/total)](https://github.com/huo241/notch-lyrics/releases)
 [![Stars](https://img.shields.io/github/stars/huo241/notch-lyrics?style=flat)](https://github.com/huo241/notch-lyrics/stargazers)
@@ -28,7 +25,6 @@ real lyrics pane, a weather tab, and a quick note that files itself into Apple N
 [![Download](https://img.shields.io/badge/⬇%20Download-DMG-2ea44f?style=for-the-badge)](https://github.com/huo241/notch-lyrics/releases/latest)
 [![Star](https://img.shields.io/badge/⭐%20Star-this%20repo-yellow?style=for-the-badge)](https://github.com/huo241/notch-lyrics/stargazers)
 [![Report](https://img.shields.io/badge/🐞%20Report-an%20issue-red?style=for-the-badge)](https://github.com/huo241/notch-lyrics/issues)
-[![Upstream](https://img.shields.io/badge/⬆%20Upstream-boring.notch-lightgrey?style=for-the-badge)](https://github.com/TheBoredTeam/boring.notch)
 
 </div>
 
@@ -36,33 +32,21 @@ real lyrics pane, a weather tab, and a quick note that files itself into Apple N
 
 ## What's new in 1.0
 
-This is the release where the fork stopped being a fork. Upstream's name is gone
-from the project, the bundle ID, the XPC helper and the CI; the lyric lookup was
-rebuilt instead of patched; and the update channel is now this repository's own.
+This is the release where the app stopped carrying someone else's identity.
+Every layer — project, targets, scheme, bundle ID, XPC helper and CI — now bears
+the Notch Lyrics name; the lyric lookup was rebuilt instead of patched; and
+updates come from this repository's own signed feed.
 Full notes: [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
 
 | | |
 |---|---|
-| 🪪 **An identity of its own** | Project, targets, scheme, bundle ID and XPC helper renamed; every upstream reference stripped from CI, including the job that published to upstream's Homebrew tap. |
+| 🪪 **An identity of its own** | Targets, scheme, bundle ID, XPC helper and the whole CI pipeline renamed to Notch Lyrics — including retiring the job that used to publish elsewhere. |
 | 🔍 **Lyrics that were never missing** | LRCLIB's exact-match endpoint tolerates a **two-second** duration difference. The lookup falls back to a duration-free query and then to a locally scored search, with bracketed and dash-suffix noise stripped from the title first. |
 | 🎯 **No more wrong matches** | Search results are scored against the playing track and everything below the threshold is rejected — showing nothing beats showing the wrong song. |
 | ▶️ **The active line fills as it plays** | The current lyric wipes from dim to bright over its own duration, measured against the width of the text itself. |
 | ✍️ **Quick notes: Notes or Obsidian** | The note panel picks its destination, and a chosen vault is remembered as a security-scoped bookmark — no new entitlement. |
 | 🔄 **Its own update channel** | Sparkle checks this repository's feed and verifies it against a key generated for this project. |
 | 🏷️ **A switch that lied** | The lyrics toggle said *"below artist name"*, a location that has not existed for a long time — it drives the pane on the right of the open notch. Renamed, and the Chinese catalogue finally has a real translation. |
-
-### Inherited from upstream 2.8.0
-
-Everything below came from boring.notch and is unchanged in this fork; it is
-listed here because 1.0 is the first release this repository publishes.
-
-| | |
-|---|---|
-| 🌤️ **Weather tab** | Current conditions, an hourly temperature curve with precipitation, and a 7-day strip. [Open-Meteo](https://open-meteo.com) data, **no API key**, search any city in any language, or let IP location do it. |
-| ✍️ **Quick note** | A scratchpad in the notch with a formatting toolbar. Press Enter and the note lands in an Apple Notes folder you pick. |
-| 🎵 **Playback state heals itself** | After sleep or a long idle stretch the panel used to freeze on the old track: play started music, but the icon and lyrics never moved. It now re-reads state on its own. |
-| ⏱️ **AppleScript has a timeout** | One Apple Event that never answered used to block the serial script queue permanently — the whole panel froze with it. Scripts now give up after 5 seconds. |
-| 🪟 **No more notch shadow** | Removed entirely, along with its setting. The shadow was composited offscreen on every animation frame, which made it flicker against the animated sky. |
 
 ## Three tabs, one notch
 
@@ -77,13 +61,13 @@ each tab is a different face of it.
 
 ### 🎵 Lyrics that actually scroll
 
-Boring Notch has a lyrics toggle, but it only ever renders **a single line of
-text** — the timing data was being thrown away before it reached the screen.
-Turning it on got you one static line that swapped text as the song played.
+The notch's lyric display used to render **a single line of text** — the timing
+data was discarded before it reached the screen. Turning lyrics on got you one
+static line that swapped text as the song played.
 
-This fork fixes the pipeline and the presentation:
+This project rebuilt both the pipeline and the presentation:
 
-| | Upstream | This fork |
+| | Before | Now |
 |---|---|---|
 | Lyrics display | One line, no scrolling | **5-line scrolling window, current line highlighted** |
 | Timing source | Discarded | **LRC timestamps from LRCLIB** |
@@ -171,9 +155,10 @@ xattr -dr com.apple.quarantine "/Applications/Notch Lyrics.app"
 Then open it normally.
 
 > [!IMPORTANT]
-> Because the signing identity differs from upstream, macOS treats this as a
-> different app: **you will need to re-grant Accessibility, Automation and
-> Calendar permissions** the first time you run it.
+> The build is ad-hoc signed rather than notarised, so macOS treats it as a
+> different app whenever it replaces an earlier install: **you will need to
+> re-grant Accessibility, Automation and Calendar permissions** the first time
+> you run it.
 
 ### Permissions worth granting
 
@@ -247,9 +232,9 @@ swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 
 ## Fixes carried here
 
-Bugs found in upstream while working on lyrics, fixed in this fork:
+Bugs surfaced while building the lyrics pipeline, fixed in this project:
 
-| Fix | Symptom upstream |
+| Fix | Symptom |
 |---|---|
 | `AppleScriptHelper` now serialises scripts | `NSAppleScript` isn't thread-safe; concurrent calls threw or returned the *previous* call's result |
 | Booleans read via `AppleScriptBoolean` | `favorited` returns `'true'`/`'fals'`, for which `booleanValue` is always `false` — the heart never lit up |
@@ -258,13 +243,13 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
 | AppleScript runs with a 5-second timeout | One Apple Event that never got a reply blocked the serial script queue for good — every later script queued behind it and the panel froze |
 | Playback state refreshes itself | After sleep/midnight, `com.apple.Music.playerInfo` silently stops delivering and nothing ever re-read state: tapping play did start the music, but the icon and lyrics stayed frozen on the old track |
 
-## Differences from upstream
+## What's different here
 
 - The app is **Notch Lyrics**, with its own bundle identifier
   (`blog.snappy.notchlyrics`). macOS treats it as a separate app, so settings
-  from a Boring Notch install are not carried over.
+  from an earlier install are not carried over.
 - **Auto-update is enabled** and points at this repository's own signed feed
-  (`updater/appcast.xml`); releases are published here, not upstream.
+  (`updater/appcast.xml`); every release is published here.
 - The window-shadow experiment is gone for good — the window is back to its
   original width, and there is no shadow setting to fight with.
 
@@ -291,7 +276,7 @@ belongs is described in [CONTRIBUTING.md](CONTRIBUTING.md).
 Notch Lyrics stands on the shoulders of these projects:
 
 - **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — the
-  original Boring Notch, the foundation this project builds on
+  codebase this project started from
 - **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** — the
   Now Playing source on macOS 15.4+
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — basis of the Shelf feature

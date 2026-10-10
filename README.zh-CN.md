@@ -6,17 +6,15 @@
 
 **滚动的歌词、天气和速记，都放进 MacBook 的刘海。**
 
-基于 [Boring Notch](https://github.com/TheBoredTeam/boring.notch) 的分支：补上了真正的歌词面板，加了天气页，还有一块能直接存进备忘录的速记板。
-
-> **本软件是 Boring Notch 的修改版。** 独立分支，自 **2026 年 10 月 6 日**起修改。
-> 与 The Bored Team 无隶属关系，亦未获其背书。以 GPL-3.0 发布，具体改动见 [NOTICE](NOTICE)。
+> **Notch Lyrics 是 Boring Notch 的修改版**，后者是一个更早的 GPL-3.0 项目。
+> 自 **2026 年 10 月 6 日**起独立开发，与原作者无隶属关系，亦未获其背书。
+> 来源与完整改动清单见 [NOTICE](NOTICE)。
 
 [English](README.md) | 简体中文 | [Español](README.es.md)
 
 <!-- 徽章 -->
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black.svg)](#环境要求)
-[![Fork of](https://img.shields.io/badge/fork%20of-TheBoredTeam%2Fboring.notch-orange.svg)](https://github.com/TheBoredTeam/boring.notch)
 [![Release](https://img.shields.io/github/v/release/huo241/notch-lyrics?include_prereleases&sort=semver)](https://github.com/huo241/notch-lyrics/releases)
 [![Downloads](https://img.shields.io/github/downloads/huo241/notch-lyrics/total)](https://github.com/huo241/notch-lyrics/releases)
 [![Stars](https://img.shields.io/github/stars/huo241/notch-lyrics?style=flat)](https://github.com/huo241/notch-lyrics/stargazers)
@@ -26,7 +24,6 @@
 [![下载](https://img.shields.io/badge/⬇%20下载-DMG-2ea44f?style=for-the-badge)](https://github.com/huo241/notch-lyrics/releases/latest)
 [![Star](https://img.shields.io/badge/⭐%20点个%20Star-yellow?style=for-the-badge)](https://github.com/huo241/notch-lyrics/stargazers)
 [![反馈](https://img.shields.io/badge/🐞%20反馈问题-red?style=for-the-badge)](https://github.com/huo241/notch-lyrics/issues)
-[![原项目](https://img.shields.io/badge/⬆%20原项目-boring.notch-lightgrey?style=for-the-badge)](https://github.com/TheBoredTeam/boring.notch)
 
 </div>
 
@@ -34,31 +31,19 @@
 
 ## 1.0 更新了什么
 
-这是本分支不再只是「分支」的一版。上游的名字从工程、Bundle ID、XPC 助手到 CI 全部清掉；
-歌词查询是重建而不是打补丁；更新通道也换成了本仓库自己的。
+这是这个应用不再顶着别人的身份的一版。从工程、target、scheme、Bundle ID、XPC 助手到 CI，
+每一层现在都叫 Notch Lyrics；歌词查询是重建而不是打补丁；更新通道也换成了本仓库自己的签名源。
 完整说明见 [`docs/releases/1.0.0.zh-CN.md`](docs/releases/1.0.0.zh-CN.md)。
 
 | | |
 |---|---|
-| 🪪 **有了自己的身份** | 工程 / target / scheme / Bundle ID / XPC 助手全部改名；CI 里的上游引用全部清除，包括那个「发版到上游 Homebrew tap」的任务。 |
+| 🪪 **有了自己的身份** | target / scheme / Bundle ID / XPC 助手以及整条 CI 流水线全部改名为 Notch Lyrics——包括撤掉那个「发版到别处」的任务。 |
 | 🔍 **那些「本来就没有」的歌词** | LRCLIB 的精确匹配接口对时长的容差只有**两秒**。现在会退到不带时长的查询、再退到本地打分的搜索；标题里的括号后缀、破折号尾巴都先剥掉。 |
 | 🎯 **不再匹配错歌** | 搜索结果会跟正在播放的曲目打分比对，低于阈值的一律丢掉——宁可什么都不显示，也不要显示错的那首。 |
 | ▶️ **当前行跟着播放填充** | 当前歌词行从暗到亮擦过去，用它自己的时长作分母，并且以文字自身实测宽度为基准。 |
 | ✍️ **便签可以存进备忘录或 Obsidian** | 便签面板自己选目标；选中的库以 security-scoped bookmark 记住，**不新增 entitlement**。 |
 | 🔄 **自己的更新通道** | Sparkle 查本仓库的更新源，验为本项目生成的密钥。 |
 | 🏷️ **一个说谎的开关** | 歌词开关原本写着「在艺术家名下方」——那个位置早就不存在了，它控制的是打开刘海后右侧的面板。已改名，中文语言包也终于有了真正的翻译。 |
-
-### 继承自上游 2.8.0
-
-以下内容来自 boring.notch，本分支未作改动；列在这里是因为 1.0 是本仓库发布的第一个版本。
-
-| | |
-|---|---|
-| 🌤️ **天气页** | 实况、逐小时温度曲线（带降水概率）、7 天预报。数据来自 [Open-Meteo](https://open-meteo.com)，**不需要 API Key**；城市名用什么语言都能搜，也可以交给 IP 自动定位。 |
-| ✍️ **速记** | 刘海里的便签板，带格式工具栏。回车一下，内容就落进你指定的备忘录文件夹。 |
-| 🎵 **播放状态会自愈** | 隔夜或长时间闲置之后，面板曾会卡在旧曲目：点播放音乐确实响了，图标和歌词却纹丝不动。现在它会主动重读状态。 |
-| ⏱️ **AppleScript 加了超时** | 一条等不到回复的 Apple Event 会把脚本串行队列永久占死，整个面板跟着冻住。现在脚本 5 秒就放弃。 |
-| 🪟 **刘海阴影彻底移除** | 连设置项一起删掉了。那个阴影每帧都要离屏合成一次，碰上会动的天空背景就会闪。 |
 
 ## 三个标签页，一个刘海
 
@@ -72,11 +57,11 @@
 
 ### 🎵 真的会滚动的歌词
 
-Boring Notch 本来就有歌词开关，但它**永远只显示一行字**——时间轴数据在送到屏幕之前就被丢掉了。打开开关的效果，只是一行文字随着播放换内容。
+歌词区**过去永远只显示一行字**——时间轴数据在送到屏幕之前就被丢掉了。打开歌词的效果，只是一行文字随着播放换内容。
 
-这个分支修好了数据链路和显示方式：
+这一版把数据链路和显示方式都重做了：
 
-| | 原版 | 本分支 |
+| | 原来 | 现在 |
 |---|---|---|
 | 歌词显示 | 一行，不滚动 | **5 行滚动窗口，当前行高亮** |
 | 时间轴来源 | 被丢弃 | **LRCLIB 的 LRC 时间戳** |
@@ -141,7 +126,7 @@ xattr -dr com.apple.quarantine "/Applications/Notch Lyrics.app"
 然后正常打开。
 
 > [!IMPORTANT]
-> 因为签名身份和原版不同，macOS 会把它当作**另一个应用**：首次运行需要**重新授予辅助功能、自动化、日历权限**。
+> 因为不是经过公证的正式签名，macOS 会在它替换旧版本时把它当作**另一个应用**：首次运行需要**重新授予辅助功能、自动化、日历权限**。
 
 ### 建议授予的权限
 
@@ -200,11 +185,11 @@ LRC 解析器（`NotchLyrics/helpers/LyricsParser.swift`）刻意不依赖任何
 swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 ```
 
-## 本分支修复的问题
+## 顺带修掉的老问题
 
-做歌词功能时发现的上游 bug，已在本分支修复：
+做歌词功能时冒出来的一些 bug，一并在此修掉：
 
-| 修复 | 上游的症状 |
+| 修复 | 原来的症状 |
 |---|---|
 | `AppleScriptHelper` 改为串行执行 | `NSAppleScript` 非线程安全；并发调用会抛异常，或返回**上一次调用的结果** |
 | 用 `AppleScriptBoolean` 读布尔值 | `favorited` 返回 `'true'`/`'fals'` 类型，而 `booleanValue` 对它恒为 `false`——爱心永远不亮 |
@@ -213,9 +198,9 @@ swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 | AppleScript 脚本加 5 秒超时 | 一条等不到回复的 Apple Event 会把脚本串行队列永久占死，之后所有脚本都在后面排队——整个面板冻结 |
 | 播放状态自动恢复 | 隔夜或睡眠之后 `com.apple.Music.playerInfo` 静默断流，而代码从不主动重读状态：点播放音乐确实响了，图标和歌词却永远停在旧曲目 |
 
-## 与上游的差异
+## 本项目的变化
 
-- 应用名为 **Notch Lyrics**，并使用自己的 bundle ID（`blog.snappy.notchlyrics`）。macOS 把它当作独立应用，Boring Notch 的旧设置不会带过来。
+- 应用名为 **Notch Lyrics**，并使用自己的 bundle ID（`blog.snappy.notchlyrics`）。macOS 把它当作独立应用，旧版本的设置不会带过来。
 - **自动更新已启用**，指向本仓库自己的签名更新源（`updater/appcast.xml`）；发版都在本仓库进行。
 - 窗口阴影那次尝试已经彻底作废——窗口恢复原来的宽度，也不再有任何阴影相关的设置项。
 
@@ -239,7 +224,7 @@ swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 
 Notch Lyrics 站在这些项目的肩膀上：
 
-- **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)**——原版 Boring Notch，本项目基于它构建
+- **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)**——本项目起步所基于的代码库
 - **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)**——macOS 15.4+ 的 Now Playing 来源
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)**——文件架功能的基础
 - **[LRCLIB](https://lrclib.net)**——歌词数据来源

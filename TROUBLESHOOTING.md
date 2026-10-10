@@ -135,8 +135,8 @@ Music.app over AppleScript; in `Apple Music` mode it uses a different path.
 Switching modes is usually the quickest test.
 
 If it persists, note that macOS ties Automation permission to the app's signing
-identity. Because this fork is signed differently from upstream, it is treated
-as a **separate application** — open **System Settings → Privacy & Security →
+identity. Notch Lyrics is not notarised, so any build it replaces counts as a
+**separate application** — open **System Settings → Privacy & Security →
 Automation** and make sure Music is enabled for **Notch Lyrics**.
 
 ### A tap that appears to undo itself
