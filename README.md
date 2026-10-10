@@ -273,7 +273,8 @@ belongs is described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgments
 
-Notch Lyrics stands on the shoulders of these projects:
+Notch Lyrics is a project built on the shoulders of giants — very little of it
+starts from nothing. These are the projects that carry it:
 
 - **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — the
   codebase this project started from
@@ -285,6 +286,13 @@ Notch Lyrics stands on the shoulders of these projects:
 - **[Photon](https://photon.komoot.io)** (OpenStreetMap) — city geocoding
 
 See [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES) for the full list.
+
+Thanks also to the **[Ech0](https://github.com/lin-snow/Ech0)** community — its
+authors and its users alike — for the company and the encouragement.
+
+> *"Two are better than one... if either of them falls down, one can help the
+> other up."*
+> — Ecclesiastes 4:9–10
 
 ## License
 
