@@ -2,132 +2,133 @@
 
 Thank you for taking the time to contribute! ❤️
 
-These guidelines help streamline the contribution process for everyone involved. By following them, you'll make it easier for maintainers to review your work and collaborate with you effectively.
+These guidelines help streamline the contribution process. By following them, you'll make
+it easier to review your work and collaborate effectively.
 
-You can contribute in many ways: writing code, improving documentation, reporting bugs, requesting features, or creating tutorials and blog posts. Every contribution, large or small, helps make Boring Notch better.
+## This is a fork — where does your change belong?
+
+Notch Lyrics is a fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch).
+Before you start, decide which repository should receive your change:
+
+- **Fixes or features for what this fork adds** — the lyrics panel, the weather page, the
+  quick-note board (Notes / Obsidian), or the Notch Lyrics visual identity → send it
+  **here**, to [`huo241/notch-lyrics`](https://github.com/huo241/notch-lyrics).
+- **Anything else** — the media player, calendar, notch window, gestures, build system,
+  or any upstream feature → send it to
+  [**upstream**](https://github.com/TheBoredTeam/boring.notch) instead. Fixes made there
+  flow back into this fork when we rebase, and they have the user base to test them
+  properly.
+
+If you are not sure, open an issue here first and we will point you the right way.
 
 ## Table of Contents
 
-- [Localizations](#localizations)
+- [Ways to Contribute](#ways-to-contribute)
 - [Contributing Code](#contributing-code)
-  - [Before You Start](#before-you-start)
-  - [Setting Up Your Environment](#setting-up-your-environment)
-  - [Making Changes](#making-changes)
-  - [Pull Requests](#pull-requests)
-<!-- - [Code Style Guidelines](#code-style-guidelines) -->
+- [Translations](#translations)
 - [Reporting Bugs](#reporting-bugs)
 - [Feature Requests](#feature-requests)
-- [Getting Help](#getting-help)
+- [Licence](#licence)
 
-## Localizations
+## Ways to Contribute
 
-Please submit all translations to [Crowdin](https://crowdin.com/project/boring-notch). New strings added to the `dev` branch from code changes will sync automatically to Crowdin, and Crowdin will automatically open a new PR with translations to allow us to integrate them.
+Writing code, improving documentation, reporting bugs, requesting features, translating
+strings, or writing tutorials and blog posts. Every contribution, large or small, helps.
 
 ## Contributing Code
 
 ### Before You Start
 
-- **Check existing issues**: Before creating a new issue or starting work, search existing issues to avoid duplicates.
-- **Discuss major changes**: For significant features or major changes, please open an issue first to discuss your approach with maintainers and the community.
-<!-- - **Review the code style**: Familiarize yourself with our code style guidelines below to ensure consistency. -->
-
-> [!IMPORTANT]
-> All code contributions must be based on the `dev` branch, not `main`. Documentation changes should be based on `main` instead.
+- **Search existing issues** first, to avoid duplicates.
+- **Discuss major changes**: for significant features, open an issue and describe your
+  approach before writing code. It is much cheaper to agree on a design than to rework a
+  pull request.
 
 ### Setting Up Your Environment
 
-1. **Fork the repository**: Click the "Fork" button at the top of the repository page to create your own copy.
+1. **Fork** [`huo241/notch-lyrics`](https://github.com/huo241/notch-lyrics) on GitHub.
 
 2. **Clone your fork**:
+
    ```bash
-   git clone https://github.com/{your-username}/boring.notch.git
-   cd boring.notch
+   git clone https://github.com/{your-username}/notch-lyrics.git
+   cd notch-lyrics
    ```
+
    Replace `{your-username}` with your GitHub username.
 
-3. **Switch to the `dev` branch**:
-   ```bash
-   git checkout dev
-   ```
-   All code contributions must be based on the `dev` branch, not `main`. Documentation changes should be based on `main` instead.
+3. **Build it**: open `NotchLyrics.xcodeproj` in Xcode 16 or newer, or from the terminal:
 
-5. **Create a new feature branch**:
+   ```bash
+   xcodebuild build -project NotchLyrics.xcodeproj -scheme NotchLyrics
+   ```
+
+   Requires macOS 14 or newer. The default branch is `main` — base your work on it.
+
+4. **Create a branch**:
+
    ```bash
    git checkout -b feature/{your-feature-name}
    ```
-   Replace `{your-feature-name}` with a descriptive name. Use lowercase letters, numbers, and hyphens only (e.g., `feature/add-dark-mode` or `fix/notification-crash`).
+
+   Use lowercase letters, numbers, and hyphens only (for example
+   `feature/spotify-lyrics-offset` or `fix/note-save-crash`).
 
 ### Making Changes
 
-1. **Make your changes**: Implement your feature or bug fix. Write clean, well-documented code <!-- following the project's style guidelines. -->
+1. Implement your change, following the conventions already used in the file you touch.
+2. Build and run it. A change that does not compile will not be reviewed.
+3. Commit with a message that explains **what** changed and **why**:
 
-2. **Test your changes**: Ensure your changes work as expected and don't break existing functionality.
-
-3. **Commit your changes**:
    ```bash
    git add .
-   git commit -m "Add descriptive commit message"
+   git commit -m "Describe the change"
    ```
-   Write clear, concise commit messages that explain what your changes do and why.
 
-4. **Keep your branch up to date**:
-   Regularly sync your branch with the latest changes from the `dev` branch to avoid conflicts.
-
-5. **Push to your fork**:
-   ```bash
-   git push origin feature/{your-feature-name}
-   ```
+4. Keep your branch up to date with `main`.
 
 ### Pull Requests
 
-1. **Create a pull request**: Go to the original repository and click "New Pull Request." Select your feature branch and set the base branch to `dev`.
+Open a pull request against `main` of this repository. A good description includes:
 
-2. **Write a detailed description**: Your PR should include:
-   - A clear title summarizing the changes
-   - A detailed description of what was changed and why
-   - Reference to any related issues (e.g., "Fixes #123" or "Relates to #456")
-   - Screenshots or screen recordings for UI changes
+- a clear title summarising the change;
+- what changed and why;
+- any related issues (for example, "Fixes #12");
+- screenshots or a short recording for anything visible in the UI.
 
-3. **Respond to feedback**: Maintainers may request changes.
+Then respond to review feedback. Reviews may take a little time — thank you for your
+patience.
 
-4. **Be patient**: Reviews take time. Maintainers will get to your PR as soon as they can.
+## Translations
 
-<!-- ## Code Style Guidelines
+Strings live in `NotchLyrics/Localizable.xcstrings`, a String Catalog. This fork does
+**not** use Crowdin and does not sync translations from any external service: add or fix
+translations directly in the catalog as part of your pull request.
 
-- Follow the existing code style and conventions used in the project
-- Write clear, self-documenting code with meaningful variable and function names
-- Add comments for complex logic or non-obvious implementations
-- Ensure your code is properly formatted before committing
-- Remove any debugging code, console logs, or commented-out code before submitting -->
+Chinese (Simplified) is the language the fork's own strings are written in first, so if
+you add a new user-visible string, please fill in both English and Simplified Chinese.
 
 ## Reporting Bugs
 
-When reporting bugs, please include:
+Please include:
 
-- A clear, descriptive title
-- Steps to reproduce the issue
-- Expected behavior vs. actual behavior
-- Screenshots or error messages if applicable
-- Your environment details (OS version, app version, etc.)
+- a clear, descriptive title;
+- steps to reproduce;
+- expected behaviour versus what actually happened;
+- screenshots or error messages where relevant;
+- your environment: macOS version, app version, and whether it is a release build or one
+  you built yourself.
 
 ## Feature Requests
 
-Feature requests are welcome! Please:
+Feature requests are welcome. Check whether it has already been requested, describe the
+use case, explain why it would be valuable, and stay open to alternative approaches.
 
-- Check if the feature has already been requested
-- Clearly describe the feature and its use case
-- Explain why this feature would be valuable to users
-- Be open to discussion and alternative approaches
+## Licence
 
-## Getting Help
-
-If you need help or have questions:
-
-- Check the project documentation
-- Search existing issues for similar questions
-- Open a new issue with the "question" label
-- Join our [community Discord server](https://discord.com/servers/boring-notch-1269588937320566815)
+Notch Lyrics is distributed under the **GPL-3.0**, the same licence as the project it is
+based on. By contributing, you agree that your changes are licensed under the same terms.
 
 ---
 
-Thank you for contributing to Boring Notch! Your efforts help make this project better for everyone. 🎉
+Thank you for contributing! 🎉

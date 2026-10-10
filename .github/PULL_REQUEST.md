@@ -1,22 +1,34 @@
 ## Pull Request template
-Please, go through these steps before you submit a PR.
 
-1. Make sure that your PR is not a duplicate.
-2. If not, then make sure that:
+Please go through these steps before you submit a PR.
 
-    a. Your changes MUST NOT change translations. Please submit translations on [Crowdin](https://crowdin.com/project/boring-notch).
+1. Make sure your PR is not a duplicate.
 
-    b. You have tested the code yourself to ensure it builds correctly and functions as intended.
+2. Decide whether it belongs here. Notch Lyrics is a fork of
+   [Boring Notch](https://github.com/TheBoredTeam/boring.notch). Changes to what this
+   fork adds — the lyrics panel, the weather page, the quick-note board — belong here;
+   changes to upstream features usually belong
+   [upstream](https://github.com/TheBoredTeam/boring.notch) instead. See
+   [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-3. **After** these steps, you're ready to open a pull request.
+3. Make sure that:
 
-    a. Your pull request MUST NOT target the `main` branch on this repository. You probably want to target `dev` instead.
+    a. Your changes build and have been run by you — not just compiled.
 
-    b. Give a descriptive title to your PR.
+    b. If you add a user-visible string, you also filled in the English and Simplified
+       Chinese entries in `NotchLyrics/Localizable.xcstrings`. There is no Crowdin
+       workflow in this repository; translations are part of the pull request.
 
-    c. Describe your changes. PR should also include screen recording or screenshots to show the changes that were made.
+4. Then open the pull request:
 
-    d. Put `closes #XXXX` in your description to link your PR to the issue(s) that it fixes (if such).
+    a. Target the `main` branch of **this** repository.
+
+    b. Give it a descriptive title.
+
+    c. Describe your changes, and include screenshots or a screen recording for anything
+       visible in the UI.
+
+    d. Write `closes #XXXX` to link the issue your PR fixes, if there is one.
 
 IMPORTANT: Please review the [CONTRIBUTING.md](../CONTRIBUTING.md) file for detailed contributing guidelines.
 

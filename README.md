@@ -201,7 +201,7 @@ knowing:
 ```bash
 git clone https://github.com/huo241/notch-lyrics.git
 cd notch-lyrics
-open boringNotch.xcodeproj
+open NotchLyrics.xcodeproj
 ```
 
 Then press `Cmd + R`.
@@ -215,15 +215,15 @@ Then press `Cmd + R`.
 ## Testing
 
 ```bash
-xcodebuild build -project boringNotch.xcodeproj -scheme boringNotch \
+xcodebuild build -project NotchLyrics.xcodeproj -scheme NotchLyrics \
   -configuration Release -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 ```
 
-The LRC parser (`boringNotch/helpers/LyricsParser.swift`) is dependency-free by
+The LRC parser (`NotchLyrics/helpers/LyricsParser.swift`) is dependency-free by
 design so it can be exercised on its own:
 
 ```bash
-swiftc -O boringNotch/helpers/LyricsParser.swift your_test.swift -o t && ./t
+swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 ```
 
 ## Fixes carried here
@@ -245,7 +245,7 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
   preferences keep working.
 - **Auto-update is disabled.** The upstream appcast ships builds without these
   changes, so updating against it would silently remove them. Re-enable it by
-  setting `SUFeedURL` in `boringNotch/Info.plist` to your own feed.
+  setting `SUFeedURL` in `NotchLyrics/Info.plist` to your own feed.
 - The window-shadow experiment is gone for good — the window is back to its
   original width, and there is no shadow setting to fight with.
 

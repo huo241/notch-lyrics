@@ -205,7 +205,7 @@ Las letras sincronizadas vienen de [LRCLIB](https://lrclib.net). Conviene saber 
 ```bash
 git clone https://github.com/huo241/notch-lyrics.git
 cd notch-lyrics
-open boringNotch.xcodeproj
+open NotchLyrics.xcodeproj
 ```
 
 Después pulsa `Cmd + R`.
@@ -219,15 +219,15 @@ Después pulsa `Cmd + R`.
 ## Pruebas
 
 ```bash
-xcodebuild build -project boringNotch.xcodeproj -scheme boringNotch \
+xcodebuild build -project NotchLyrics.xcodeproj -scheme NotchLyrics \
   -configuration Release -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 ```
 
-El analizador de LRC (`boringNotch/helpers/LyricsParser.swift`) no tiene
+El analizador de LRC (`NotchLyrics/helpers/LyricsParser.swift`) no tiene
 dependencias a propósito, para poder probarlo por separado:
 
 ```bash
-swiftc -O boringNotch/helpers/LyricsParser.swift your_test.swift -o t && ./t
+swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 ```
 
 ## Correcciones incluidas
@@ -250,7 +250,7 @@ ya corregidos aquí:
   así que tus preferencias actuales siguen funcionando.
 - **La actualización automática está desactivada.** El appcast original publica
   compilaciones sin estos cambios, así que actualizar desde ahí los eliminaría
-  sin avisar. Para reactivarla, apunta `SUFeedURL` en `boringNotch/Info.plist` a
+  sin avisar. Para reactivarla, apunta `SUFeedURL` en `NotchLyrics/Info.plist` a
   tu propio canal.
 - El experimento de la sombra de ventana queda descartado para siempre: la
   ventana vuelve a su ancho original y ya no hay ningún ajuste de sombra con el

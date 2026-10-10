@@ -47,7 +47,7 @@ Both use the same `<name>-<suffix>` naming, so you can copy one into the other.
 Read the exact names, versions and revisions from:
 
 ```
-boringNotch.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+NotchLyrics.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 ```
 
 > [!NOTE]
@@ -77,7 +77,7 @@ as-is and process the local cache, printing `(cached)` per package instead of
 re-fetching:
 
 ```bash
-xcodebuild build -project boringNotch.xcodeproj -scheme boringNotch \
+xcodebuild build -project NotchLyrics.xcodeproj -scheme NotchLyrics \
   -configuration Release -destination 'platform=macOS' \
   -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO
 ```
