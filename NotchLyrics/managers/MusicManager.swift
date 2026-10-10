@@ -747,6 +747,12 @@ class MusicManager: ObservableObject {
         LyricsParser.currentIndex(in: syncedLyrics, at: elapsed)
     }
 
+    /// How far playback is through the highlighted line (0...1), so the UI can
+    /// fill that line left to right as it is sung.
+    func currentLineProgress(at elapsed: Double) -> Double {
+        LyricsParser.lineProgress(in: syncedLyrics, at: elapsed, fallbackEnd: songDuration)
+    }
+
     func lyricLine(at elapsed: Double) -> String {
         guard !syncedLyrics.isEmpty else { return currentLyrics }
         guard let idx = currentLyricIndex(at: elapsed) else { return currentLyrics }

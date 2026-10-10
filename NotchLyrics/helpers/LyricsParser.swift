@@ -97,4 +97,37 @@ enum LyricsParser {
         }
         return idx
     }
+
+    /// Fraction (0...1) of the way through the highlighted line, used to fill
+    /// it from left to right as it plays.
+    ///
+    /// LRC only timestamps the start of a line, so a line's end is taken to be
+    /// the next line's start. For the final line `fallbackEnd` (the track
+    /// duration) stands in; if that does not come after the start the line is
+    /// treated as already complete rather than left permanently blank.
+    /// - Returns: 0 when no line is active.
+    static func lineProgress(
+        in lines: [(time: Double, text: String)],
+        at elapsed: Double,
+        fallbackEnd: Double
+    ) -> Double {
+        guard let idx = currentIndex(in: lines, at: elapsed) else { return 0 }
+        let start = lines[idx].time
+
+        let end: Double
+        if idx + 1 < lines.count {
+            let next = lines[idx + 1].time
+            // Duplicate timestamps leave nothing to fill, so treat the line as
+            // complete rather than stretching it to the end of the track.
+            guard next > start else { return 1 }
+            end = next
+        } else if fallbackEnd > start {
+            end = fallbackEnd
+        } else {
+            return 1
+        }
+
+        guard end > start else { return 1 }
+        return min(max((elapsed - start) / (end - start), 0), 1)
+    }
 }

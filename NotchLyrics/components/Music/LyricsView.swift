@@ -44,6 +44,7 @@ struct ScrollingLyricsView: View {
         TimelineView(.animation(minimumInterval: 0.1)) { timeline in
             let elapsed = currentElapsed(at: timeline.date)
             let current = musicManager.currentLyricIndex(at: elapsed) ?? 0
+            let progress = musicManager.currentLineProgress(at: elapsed)
             let lines = musicManager.syncedLyrics
 
             GeometryReader { geometry in
@@ -52,21 +53,61 @@ struct ScrollingLyricsView: View {
                     ForEach(lines.indices, id: \.self) { index in
                         let distance = index - current
                         if abs(distance) < windowSize {
-                            Text(lines[index].text)
-                                .font(font(forDistance: distance))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                                .frame(width: width, alignment: .center)
-                                .position(x: width / 2, y: centerY + CGFloat(distance) * lineHeight)
-                                .opacity(opacity(forDistance: distance))
-                                .scaleEffect(scale(forDistance: distance))
+                            lyricLine(
+                                text: lines[index].text,
+                                distance: distance,
+                                progress: distance == 0 ? progress : 1
+                            )
+                            .frame(width: width, alignment: .center)
+                            .position(x: width / 2, y: centerY + CGFloat(distance) * lineHeight)
+                            .opacity(opacity(forDistance: distance))
+                            .scaleEffect(scale(forDistance: distance))
                         }
                     }
                 }
                 .animation(.easeInOut(duration: 0.35), value: current)
                 .mask(edgeFadeMask)
             }
+        }
+    }
+
+    /// A single lyric line.
+    ///
+    /// The highlighted line fills from left to right as it is sung: a dimmed
+    /// base sits underneath an identically laid out bright copy that is masked
+    /// to the fraction played so far. Every other line is drawn flat.
+    @ViewBuilder
+    private func lyricLine(text: String, distance: Int, progress: Double) -> some View {
+        let font = font(forDistance: distance)
+
+        if abs(distance) == 0 {
+            ZStack {
+                Text(text)
+                    .font(font)
+                    .foregroundStyle(.white.opacity(0.35))
+                Text(text)
+                    .font(font)
+                    .foregroundStyle(.white)
+                    .mask {
+                        // Sized to the text itself, not the pane, so short
+                        // lines fill across their own width.
+                        GeometryReader { proxy in
+                            Rectangle()
+                                .frame(width: proxy.size.width * progress)
+                        }
+                    }
+            }
+            .lineLimit(1)
+            .truncationMode(.tail)
+            // Ticks arrive every 0.1s; interpolating between them keeps the
+            // fill moving smoothly instead of stepping.
+            .animation(.linear(duration: 0.12), value: progress)
+        } else {
+            Text(text)
+                .font(font)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
     }
 
