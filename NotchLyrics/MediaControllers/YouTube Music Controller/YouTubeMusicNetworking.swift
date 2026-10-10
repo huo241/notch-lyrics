@@ -11,11 +11,13 @@ import Foundation
 final class YouTubeMusicHTTPClient: ObservableObject {
     private let session: URLSession
     private let baseURL: String
+    private let clientID: String
     private static let decoder = JSONDecoder()
     private static let encoder = JSONEncoder()
-    
-    init(baseURL: String) {
+
+    init(baseURL: String, clientID: String) {
         self.baseURL = baseURL
+        self.clientID = clientID
         
         let config = URLSessionConfiguration.default
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -27,8 +29,11 @@ final class YouTubeMusicHTTPClient: ObservableObject {
     }
     
     // MARK: - Authentication
+    /// Asks the YouTube Music desktop app for an access token. The app shows the
+    /// user a one-time approval dialog naming this client, so the id below is
+    /// user-visible and deliberately not the upstream project's name.
     func authenticate() async throws -> String {
-        guard let url = URL(string: "\(baseURL)/auth/boringNotch") else {
+        guard let url = URL(string: "\(baseURL)/auth/\(clientID)") else {
             throw YouTubeMusicError.invalidURL
         }
 

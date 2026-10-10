@@ -58,7 +58,8 @@ final class YouTubeMusicController: MediaControllerProtocol {
     // MARK: - Initialization
     init(configuration: YouTubeMusicConfiguration = .default) {
         self.configuration = configuration
-        self.httpClient = YouTubeMusicHTTPClient(baseURL: configuration.baseURL)
+        self.httpClient = YouTubeMusicHTTPClient(
+            baseURL: configuration.baseURL, clientID: configuration.clientID)
         self.authManager = YouTubeMusicAuthManager(httpClient: httpClient)
         
         setupAppStateObserver()

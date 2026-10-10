@@ -11,12 +11,17 @@ import Foundation
 struct YouTubeMusicConfiguration: Sendable {
     let baseURL: String
     let bundleIdentifier: String
+    /// Name this app presents to the YouTube Music desktop app's API server.
+    /// The server asks the user to approve each client id once, so this string
+    /// is what shows up in that permission dialog.
+    let clientID: String
     let reconnectDelay: ClosedRange<TimeInterval>
     let updateInterval: TimeInterval
-    
+
     static let `default` = YouTubeMusicConfiguration(
         baseURL: "http://localhost:26538",
         bundleIdentifier: "com.github.th-ch.youtube-music",
+        clientID: "notchLyrics",
         reconnectDelay: 1...60,
         updateInterval: 2.0
     )
