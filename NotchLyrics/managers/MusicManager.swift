@@ -591,40 +591,93 @@ class MusicManager: ObservableObject {
         return "NotchLyrics/\(version) (https://github.com/huo241/notch-lyrics)"
     }()
 
-    @MainActor
-    private func fetchLyricsFromWeb(title: String, artist: String, trackKey: String) async {
+    /// Percent-encodes one value of a query string.
+    ///
+    /// `.urlQueryAllowed` is wrong here: it leaves `&`, `=` and `+` intact, so
+    /// a title containing one of them silently truncates the query.
+    private static let lyricsQueryValueAllowed: CharacterSet = {
+        var set = CharacterSet.alphanumerics
+        set.insert(charactersIn: "-._~")
+        return set
+    }()
+
+    private func lyricsQueryString(title: String, artist: String) -> String? {
         let cleanTitle = normalizedQuery(title)
         let cleanArtist = normalizedQuery(artist)
         guard !cleanTitle.isEmpty,
-              let encodedTitle = cleanTitle.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let encodedArtist = cleanArtist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-            self.apply(LyricsPayload(kind: .none, plain: "", synced: []), trackKey: trackKey)
-            return
+              let encodedTitle = cleanTitle.addingPercentEncoding(
+                withAllowedCharacters: Self.lyricsQueryValueAllowed),
+              let encodedArtist = cleanArtist.addingPercentEncoding(
+                withAllowedCharacters: Self.lyricsQueryValueAllowed)
+        else { return nil }
+
+        return "track_name=\(encodedTitle)&artist_name=\(encodedArtist)"
+    }
+
+    /// Looks the track up on LRCLIB.
+    ///
+    /// Two things make this more than a single request. `/api/get` matches the
+    /// artist and title spelling exactly, while a player's metadata is often a
+    /// noisy variant of it, so every spelling `LyricsQuery` can derive is
+    /// tried. And `/api/search` answers with everything whose metadata merely
+    /// *contains* the query, so its results are ranked locally and a record
+    /// that does not look like this track is dropped instead of displayed.
+    @MainActor
+    private func fetchLyricsFromWeb(title: String, artist: String, trackKey: String) async {
+        var best: (record: [String: Any], score: Double)?
+
+        /// Keeps the highest-scoring record seen so far, and reports whether it
+        /// is good enough to stop looking.
+        func consider(_ record: [String: Any]) -> Bool {
+            let score = LyricsQuery.score(
+                record: record, title: title, artist: artist, duration: songDuration)
+            if best == nil || score > best!.score { best = (record, score) }
+            return score >= LyricsQuery.minimumScore
         }
 
-        var query = "track_name=\(encodedTitle)&artist_name=\(encodedArtist)"
-        // `duration` is optional but sharpens matching considerably. LRCLIB only
-        // accepts it between 1 and 3600 seconds and only matches within ±2s of
-        // the stored record, so it is left out whenever the player has not
-        // reported a usable duration yet.
-        if songDuration >= 1, songDuration <= 3600 {
-            query += "&duration=\(Int(songDuration.rounded()))"
+        // 1. Exact-signature lookups across every spelling the metadata might
+        //    be a noisy variant of. Bounded, because a track nobody has
+        //    transcribed would otherwise cost a request per combination.
+        var budget = 8
+        lookup: for candidate in LyricsQuery.candidates(title: title, artist: artist).prefix(6) {
+            guard let base = lyricsQueryString(title: candidate.title, artist: candidate.artist) else { continue }
+
+            // LRCLIB's `duration` filter is the sharpest signal it offers, but
+            // it only matches within ±2s — a different master or a re-encoded
+            // local file misses outright. The unfiltered lookup therefore goes
+            // second rather than being skipped.
+            var probes = [base]
+            if songDuration >= 1, songDuration <= 3600 {
+                probes.insert(base + "&duration=\(Int(songDuration.rounded()))", at: 0)
+            }
+
+            for probe in probes {
+                guard budget > 0 else { break lookup }
+                budget -= 1
+                guard let record = await fetchLyricsRecord(path: "api/get", query: probe) else { continue }
+                if consider(record) { break lookup }
+            }
         }
 
-        // Exact signature first, keyword search only as a fallback.
-        var record = await fetchLyricsRecord(path: "api/get", query: query)
-        if record == nil {
-            record = await fetchLyricsRecords(path: "api/search", query: query).first
+        // 2. Keyword search, for tracks the exact signature cannot reach.
+        if best == nil || best!.score < LyricsQuery.minimumScore {
+            let seed = LyricsQuery.cleaned(title: title, artist: artist)
+            if let base = lyricsQueryString(title: seed.title, artist: seed.artist) {
+                for record in await fetchLyricsRecords(path: "api/search", query: base) {
+                    _ = consider(record)
+                }
+            }
         }
 
         // A response for a track the user has already skipped past is useless.
         guard trackKey == loadedLyricsTrackKey else { return }
 
-        guard let record else {
+        guard let match = best else {
             self.apply(LyricsPayload(kind: .none, plain: "", synced: []), trackKey: trackKey)
             return
         }
 
+        let record = match.record
         if (record["instrumental"] as? Bool) == true {
             self.apply(LyricsPayload(kind: .instrumental, plain: "", synced: []), trackKey: trackKey)
             return
