@@ -6,7 +6,7 @@
 
 **滚动的歌词、天气和速记，都放进 MacBook 的刘海。**
 
-> **Notch Lyrics 是 Boring Notch 的修改版**，后者是一个更早的 GPL-3.0 项目。
+> **Notch Lyrics 基于 Boring Notch 开发**，后者是一个更早的 GPL-3.0 项目。
 > 自 **2026 年 10 月 6 日**起独立开发，与原作者无隶属关系，亦未获其背书。
 > 来源与完整改动清单见 [NOTICE](NOTICE)。
 

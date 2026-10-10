@@ -6,7 +6,7 @@
 
 **Time-synced lyrics, the weather, and a scratchpad — all in your MacBook's notch.**
 
-> **Notch Lyrics is a modified version of Boring Notch**, an earlier GPL-3.0
+> **Notch Lyrics is built on Boring Notch**, an earlier GPL-3.0
 > project. Independent work since **6 October 2026**, not affiliated with or
 > endorsed by the original authors. Provenance and the full change list are in
 > [NOTICE](NOTICE).
