@@ -33,10 +33,28 @@ directamente en Notas de Apple.
 
 ---
 
-## Novedades de la 2.8.0
+## Novedades de la 1.0
 
-Es el salto más grande del fork hasta ahora: el notch dejó de ser un widget de
-música y pasó a ser tres pestañas que comparten una misma caja.
+Esta es la versión en la que el fork dejó de ser un fork. El nombre original
+desaparece del proyecto, del bundle ID, del helper XPC y de la CI; la búsqueda de
+letras se reconstruyó en lugar de parchearse; y el canal de actualizaciones es
+ahora el de este repositorio.
+Notas completas: [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
+
+| | |
+|---|---|
+| 🪪 **Identidad propia** | Proyecto, targets, esquema, bundle ID y helper XPC renombrados; toda referencia al proyecto original eliminada de la CI, incluido el trabajo que publicaba en su tap de Homebrew. |
+| 🔍 **Letras que nunca faltaban** | El endpoint de coincidencia exacta de LRCLIB solo tolera **dos segundos** de diferencia en la duración. Ahora se prueba sin duración y después con una búsqueda puntuada localmente, quitando antes el ruido entre paréntesis y los sufijos tras el guion. |
+| 🎯 **Sin coincidencias equivocadas** | Los resultados se puntúan contra la pista que suena y todo lo que no llega al umbral se descarta: mejor nada que la canción equivocada. |
+| ▶️ **La línea activa se rellena mientras suena** | La letra actual pasa de tenue a brillante a lo largo de su propia duración, medida sobre el ancho real del texto. |
+| ✍️ **Notas rápidas: Notas u Obsidian** | El panel de notas elige su destino y el vault elegido se recuerda como bookmark con ámbito de seguridad, sin nuevos entitlements. |
+| 🔄 **Canal de actualizaciones propio** | Sparkle consulta el feed de este repositorio y lo verifica con una clave generada para este proyecto. |
+| 🏷️ **Un interruptor que mentía** | El interruptor de letras decía *"below artist name"*, una ubicación que ya no existe: controla el panel a la derecha del notch abierto. Renombrado, y el catálogo en chino ya tiene traducción real. |
+
+### Heredado de la 2.8.0 original
+
+Todo lo de abajo viene del proyecto original y este fork no lo ha tocado; se
+enumera aquí porque la 1.0 es la primera versión que publica este repositorio.
 
 | | |
 |---|---|

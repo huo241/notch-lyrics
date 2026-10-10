@@ -32,10 +32,27 @@ real lyrics pane, a weather tab, and a quick note that files itself into Apple N
 
 ---
 
-## What's new in 2.8.0
+## What's new in 1.0
 
-This release is the fork's biggest step yet — the notch stopped being a music
-widget and became three tabs sharing one box.
+This is the release where the fork stopped being a fork. Upstream's name is gone
+from the project, the bundle ID, the XPC helper and the CI; the lyric lookup was
+rebuilt instead of patched; and the update channel is now this repository's own.
+Full notes: [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
+
+| | |
+|---|---|
+| 🪪 **An identity of its own** | Project, targets, scheme, bundle ID and XPC helper renamed; every upstream reference stripped from CI, including the job that published to upstream's Homebrew tap. |
+| 🔍 **Lyrics that were never missing** | LRCLIB's exact-match endpoint tolerates a **two-second** duration difference. The lookup falls back to a duration-free query and then to a locally scored search, with bracketed and dash-suffix noise stripped from the title first. |
+| 🎯 **No more wrong matches** | Search results are scored against the playing track and everything below the threshold is rejected — showing nothing beats showing the wrong song. |
+| ▶️ **The active line fills as it plays** | The current lyric wipes from dim to bright over its own duration, measured against the width of the text itself. |
+| ✍️ **Quick notes: Notes or Obsidian** | The note panel picks its destination, and a chosen vault is remembered as a security-scoped bookmark — no new entitlement. |
+| 🔄 **Its own update channel** | Sparkle checks this repository's feed and verifies it against a key generated for this project. |
+| 🏷️ **A switch that lied** | The lyrics toggle said *"below artist name"*, a location that has not existed for a long time — it drives the pane on the right of the open notch. Renamed, and the Chinese catalogue finally has a real translation. |
+
+### Inherited from upstream 2.8.0
+
+Everything below came from boring.notch and is unchanged in this fork; it is
+listed here because 1.0 is the first release this repository publishes.
 
 | | |
 |---|---|
