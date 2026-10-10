@@ -6,20 +6,16 @@
 
 **Letras sincronizadas, el tiempo y un bloc de notas — todo en el notch de tu MacBook.**
 
-Un fork de [Boring Notch](https://github.com/TheBoredTeam/boring.notch) que añade un
-panel de letras de verdad, una pestaña del tiempo y una nota rápida que se guarda
-directamente en Notas de Apple.
-
-> **Esta es una versión modificada de Boring Notch.** Un fork independiente,
-> modificado desde el **6 de octubre de 2026**. Sin afiliación ni respaldo de
-> The Bored Team. Publicado bajo GPL-3.0; los cambios se detallan en [NOTICE](NOTICE).
+> **Notch Lyrics es una versión modificada de Boring Notch**, un proyecto anterior
+> con licencia GPL-3.0. Trabajo independiente desde el **6 de octubre de 2026**,
+> sin afiliación ni respaldo de los autores originales. El origen y la lista
+> completa de cambios están en [NOTICE](NOTICE).
 
 [English](README.md) | [简体中文](README.zh-CN.md) | Español
 
 <!-- Insignias -->
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black.svg)](#requisitos)
-[![Fork of](https://img.shields.io/badge/fork%20of-TheBoredTeam%2Fboring.notch-orange.svg)](https://github.com/TheBoredTeam/boring.notch)
 [![Release](https://img.shields.io/github/v/release/huo241/notch-lyrics?include_prereleases&sort=semver)](https://github.com/huo241/notch-lyrics/releases)
 [![Downloads](https://img.shields.io/github/downloads/huo241/notch-lyrics/total)](https://github.com/huo241/notch-lyrics/releases)
 [![Stars](https://img.shields.io/github/stars/huo241/notch-lyrics?style=flat)](https://github.com/huo241/notch-lyrics/stargazers)
@@ -29,7 +25,6 @@ directamente en Notas de Apple.
 [![Descargar](https://img.shields.io/badge/⬇%20Descargar-DMG-2ea44f?style=for-the-badge)](https://github.com/huo241/notch-lyrics/releases/latest)
 [![Star](https://img.shields.io/badge/⭐%20Dar%20una%20estrella-yellow?style=for-the-badge)](https://github.com/huo241/notch-lyrics/stargazers)
 [![Reportar](https://img.shields.io/badge/🐞%20Reportar-un%20fallo-red?style=for-the-badge)](https://github.com/huo241/notch-lyrics/issues)
-[![Original](https://img.shields.io/badge/⬆%20Proyecto%20original-boring.notch-lightgrey?style=for-the-badge)](https://github.com/TheBoredTeam/boring.notch)
 
 </div>
 
@@ -37,34 +32,21 @@ directamente en Notas de Apple.
 
 ## Novedades de la 1.0
 
-Esta es la versión en la que el fork dejó de ser un fork. El nombre original
-desaparece del proyecto, del bundle ID, del helper XPC y de la CI; la búsqueda de
-letras se reconstruyó en lugar de parchearse; y el canal de actualizaciones es
-ahora el de este repositorio.
+Esta es la versión en la que la app dejó de llevar la identidad de otro. Todas las
+capas —proyecto, targets, esquema, bundle ID, helper XPC y CI— llevan ahora el
+nombre Notch Lyrics; la búsqueda de letras se reconstruyó en lugar de parchearse;
+y las actualizaciones llegan desde el canal firmado de este repositorio.
 Notas completas: [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
 
 | | |
 |---|---|
-| 🪪 **Identidad propia** | Proyecto, targets, esquema, bundle ID y helper XPC renombrados; toda referencia al proyecto original eliminada de la CI, incluido el trabajo que publicaba en su tap de Homebrew. |
+| 🪪 **Identidad propia** | Targets, esquema, bundle ID, helper XPC y toda la CI renombrados a Notch Lyrics, incluida la retirada del trabajo que publicaba en otro sitio. |
 | 🔍 **Letras que nunca faltaban** | El endpoint de coincidencia exacta de LRCLIB solo tolera **dos segundos** de diferencia en la duración. Ahora se prueba sin duración y después con una búsqueda puntuada localmente, quitando antes el ruido entre paréntesis y los sufijos tras el guion. |
 | 🎯 **Sin coincidencias equivocadas** | Los resultados se puntúan contra la pista que suena y todo lo que no llega al umbral se descarta: mejor nada que la canción equivocada. |
 | ▶️ **La línea activa se rellena mientras suena** | La letra actual pasa de tenue a brillante a lo largo de su propia duración, medida sobre el ancho real del texto. |
 | ✍️ **Notas rápidas: Notas u Obsidian** | El panel de notas elige su destino y el vault elegido se recuerda como bookmark con ámbito de seguridad, sin nuevos entitlements. |
 | 🔄 **Canal de actualizaciones propio** | Sparkle consulta el feed de este repositorio y lo verifica con una clave generada para este proyecto. |
 | 🏷️ **Un interruptor que mentía** | El interruptor de letras decía *"below artist name"*, una ubicación que ya no existe: controla el panel a la derecha del notch abierto. Renombrado, y el catálogo en chino ya tiene traducción real. |
-
-### Heredado de la 2.8.0 original
-
-Todo lo de abajo viene del proyecto original y este fork no lo ha tocado; se
-enumera aquí porque la 1.0 es la primera versión que publica este repositorio.
-
-| | |
-|---|---|
-| 🌤️ **Pestaña del tiempo** | Condiciones actuales, curva de temperatura por horas con precipitación y previsión a 7 días. Datos de [Open-Meteo](https://open-meteo.com), **sin clave de API**; busca cualquier ciudad en cualquier idioma o deja que la ubicación por IP lo haga. |
-| ✍️ **Nota rápida** | Un bloc dentro del notch con barra de formato. Pulsa Intro y la nota cae en la carpeta de Notas de Apple que elijas. |
-| 🎵 **El estado de reproducción se cura solo** | Tras dormir o un rato largo sin tocar nada, el panel se quedaba congelado en la pista anterior: la música sonaba, pero el icono y las letras no se movían. Ahora vuelve a leer el estado por su cuenta. |
-| ⏱️ **AppleScript tiene límite de tiempo** | Un solo Apple Event que nunca respondía bloqueaba para siempre la cola serial de scripts, y con ella todo el panel. Ahora los scripts se rinden a los 5 segundos. |
-| 🪟 **Se acabó la sombra del notch** | Eliminada por completo, junto con su ajuste. La sombra se componía fuera de pantalla en cada fotograma, y eso la hacía parpadear contra el cielo animado. |
 
 ## Tres pestañas, un notch
 
@@ -79,14 +61,13 @@ compartida y cada pestaña es una cara distinta.
 
 ### 🎵 Letras que de verdad se desplazan
 
-Boring Notch ya tenía un interruptor de letras, pero **solo mostraba una línea
-de texto**: los datos de sincronización se descartaban antes de llegar a la
-pantalla. Activarlo te daba una línea estática que cambiaba de texto mientras
-sonaba la canción.
+La zona de letras **antes mostraba siempre una sola línea de texto**: los datos de
+sincronización se descartaban antes de llegar a la pantalla. Activarla te daba una
+línea estática que cambiaba de texto mientras sonaba la canción.
 
-Este fork arregla tanto el flujo de datos como la presentación:
+Esta versión rehízo tanto el flujo de datos como la presentación:
 
-| | Original | Este fork |
+| | Antes | Ahora |
 |---|---|---|
 | Visualización | Una línea, sin desplazamiento | **Ventana de 5 líneas con desplazamiento y línea actual resaltada** |
 | Sincronización | Descartada | **Marcas de tiempo LRC desde LRCLIB** |
@@ -177,9 +158,10 @@ xattr -dr com.apple.quarantine "/Applications/Notch Lyrics.app"
 Después ábrela con normalidad.
 
 > [!IMPORTANT]
-> Como la firma es distinta a la del proyecto original, macOS la trata como
-> **otra aplicación**: la primera vez tendrás que **volver a conceder los
-> permisos de Accesibilidad, Automatización y Calendario**.
+> Como la firma no está notarizada, macOS la trata como **otra aplicación**
+> cuando sustituye a una instalación anterior: la primera vez tendrás que
+> **volver a conceder los permisos de Accesibilidad, Automatización y
+> Calendario**.
 
 ### Permisos recomendados
 
@@ -252,10 +234,9 @@ swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 
 ## Correcciones incluidas
 
-Fallos encontrados en el proyecto original mientras trabajábamos en las letras,
-ya corregidos aquí:
+Fallos que aparecieron al construir el flujo de letras, corregidos aquí:
 
-| Corrección | Síntoma original |
+| Corrección | Síntoma |
 |---|---|
 | `AppleScriptHelper` ahora serializa los scripts | `NSAppleScript` no es seguro entre hilos; las llamadas concurrentes fallaban o devolvían el resultado de la llamada **anterior** |
 | Booleanos leídos con `AppleScriptBoolean` | `favorited` devuelve `'true'`/`'fals'`, para los que `booleanValue` siempre es `false` — el corazón nunca se encendía |
@@ -264,14 +245,13 @@ ya corregidos aquí:
 | Los scripts de AppleScript se ejecutan con un límite de 5 segundos | Un solo Apple Event que nunca recibía respuesta bloqueaba para siempre la cola serial de scripts: los siguientes se encolaban detrás y el panel entero se congelaba |
 | El estado de reproducción se refresca solo | Tras dormir, o al cambiar el día, `com.apple.Music.playerInfo` deja de llegar en silencio y nada volvía a leer el estado: pulsar reproducir sí arrancaba la música, pero el icono y las letras se quedaban congelados en la pista anterior |
 
-## Diferencias con el proyecto original
+## Diferencias respecto a lo anterior
 
 - La app es **Notch Lyrics**, con su propio identificador de paquete
   (`blog.snappy.notchlyrics`). macOS la trata como una app independiente, así
-  que los ajustes de una instalación de Boring Notch no se trasladan.
+  que los ajustes de una instalación anterior no se trasladan.
 - **La actualización automática está activada** y apunta al canal firmado de
-  este repositorio (`updater/appcast.xml`); las versiones se publican aquí,
-  no en el proyecto original.
+  este repositorio (`updater/appcast.xml`); cada versión se publica aquí.
 - El experimento de la sombra de ventana queda descartado para siempre: la
   ventana vuelve a su ancho original y ya no hay ningún ajuste de sombra con el
   que lidiar.
@@ -299,8 +279,8 @@ enviar cada tipo de cambio.
 
 Notch Lyrics se apoya en estos proyectos:
 
-- **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — el Boring
-  Notch original, la base sobre la que se construye este proyecto
+- **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — el código
+  del que partió este proyecto
 - **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** — la
   fuente de Now Playing en macOS 15.4+
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — base de la función Shelf
