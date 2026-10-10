@@ -266,12 +266,12 @@ ya corregidos aquí:
 
 ## Diferencias con el proyecto original
 
-- El nombre de la app es **Notch Lyrics**; el identificador de paquete no cambia,
-  así que tus preferencias actuales siguen funcionando.
-- **La actualización automática está desactivada.** El appcast original publica
-  compilaciones sin estos cambios, así que actualizar desde ahí los eliminaría
-  sin avisar. Para reactivarla, apunta `SUFeedURL` en `NotchLyrics/Info.plist` a
-  tu propio canal.
+- La app es **Notch Lyrics**, con su propio identificador de paquete
+  (`blog.snappy.notchlyrics`). macOS la trata como una app independiente, así
+  que los ajustes de una instalación de Boring Notch no se trasladan.
+- **La actualización automática está activada** y apunta al canal firmado de
+  este repositorio (`updater/appcast.xml`); las versiones se publican aquí,
+  no en el proyecto original.
 - El experimento de la sombra de ventana queda descartado para siempre: la
   ventana vuelve a su ancho original y ya no hay ningún ajuste de sombra con el
   que lidiar.
@@ -283,6 +283,7 @@ ya corregidos aquí:
 - [x] Caché de letras por canción
 - [x] Pestaña del tiempo con búsqueda libre de ciudades
 - [x] Nota rápida que se archiva en Notas de Apple
+- [x] Relleno de progreso por línea
 - [ ] Resaltado palabra por palabra (karaoke)
 - [ ] Tamaño de fuente y número de líneas configurables
 - [ ] Caché de letras sin conexión
@@ -290,38 +291,29 @@ ya corregidos aquí:
 ## Contribuir
 
 Las incidencias y los pull requests son bienvenidos — ábrelos
-[aquí](https://github.com/huo241/notch-lyrics/issues).
-
-Como esto es un fork, valora si tu cambio corresponde mejor al
-[proyecto original](https://github.com/TheBoredTeam/boring.notch). Las
-correcciones que no son específicas de las letras suelen aportar más allí.
-
-Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para las normas del proyecto original.
+[aquí](https://github.com/huo241/notch-lyrics/issues). En
+[CONTRIBUTING.md](CONTRIBUTING.md) se explica a qué repositorio conviene
+enviar cada tipo de cambio.
 
 ## Agradecimientos
 
-Este es un fork: la mayor parte del código es trabajo de otras personas.
+Notch Lyrics se apoya en estos proyectos:
 
 - **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — el Boring
-  Notch original y todo lo que hace
+  Notch original, la base sobre la que se construye este proyecto
 - **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** — la
   fuente de Now Playing en macOS 15.4+
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — base de la función Shelf
-- **[LRCLIB](https://lrclib.net)** — la base de datos de letras de la que depende este fork
+- **[LRCLIB](https://lrclib.net)** — la base de datos de letras de la que depende este proyecto
 - **[Open-Meteo](https://open-meteo.com)** — datos meteorológicos, sin clave
 - **[Photon](https://photon.komoot.io)** (OpenStreetMap) — geocodificación de ciudades
-- Iconos: [@maxtron95](https://github.com/maxtron95)
-- Web: [@himanshhhhuv](https://github.com/himanshhhhuv)
 
 La lista completa está en [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES).
 
-Si quieres apoyar al proyecto original:
-**[Ko-fi del autor original](https://www.ko-fi.com/alexander5015)**.
-
 ## Licencia
 
-**GPL-3.0**, igual que el proyecto original — consulta [LICENSE](LICENSE).
+**GPL-3.0** — consulta [LICENSE](LICENSE).
 
-Tal como exige la licencia, este fork se distribuye con su código fuente
+Tal como exige la licencia, este proyecto se distribuye con su código fuente
 completo y deja constancia de sus modificaciones. Si lo redistribuyes, mantén
 la licencia, el código fuente y la atribución.

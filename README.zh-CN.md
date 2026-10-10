@@ -213,10 +213,10 @@ swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 | AppleScript 脚本加 5 秒超时 | 一条等不到回复的 Apple Event 会把脚本串行队列永久占死，之后所有脚本都在后面排队——整个面板冻结 |
 | 播放状态自动恢复 | 隔夜或睡眠之后 `com.apple.Music.playerInfo` 静默断流，而代码从不主动重读状态：点播放音乐确实响了，图标和歌词却永远停在旧曲目 |
 
-## 与原版的差异
+## 与上游的差异
 
-- 应用名改为 **Notch Lyrics**；bundle ID 未变，所以原有设置继续有效。
-- **已关闭自动更新。** 官方 appcast 发布的构建不含这些改动，跟着更新会把它们悄悄覆盖掉。如需启用，把 `NotchLyrics/Info.plist` 里的 `SUFeedURL` 指向你自己的更新源。
+- 应用名为 **Notch Lyrics**，并使用自己的 bundle ID（`blog.snappy.notchlyrics`）。macOS 把它当作独立应用，Boring Notch 的旧设置不会带过来。
+- **自动更新已启用**，指向本仓库自己的签名更新源（`updater/appcast.xml`）；发版都在本仓库进行。
 - 窗口阴影那次尝试已经彻底作废——窗口恢复原来的宽度，也不再有任何阴影相关的设置项。
 
 ## 路线图
@@ -226,37 +226,30 @@ swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 - [x] 按曲目缓存歌词
 - [x] 天气页（支持自由搜索城市）
 - [x] 速记（直接存入备忘录）
+- [x] 整行进度填充
 - [ ] 逐字（卡拉OK）高亮
 - [ ] 歌词字号与行数可调
 - [ ] 歌词离线缓存
 
 ## 参与贡献
 
-欢迎提 issue 和 PR——请到[这里](https://github.com/huo241/notch-lyrics/issues)。
-
-本项目是分支，请先判断你的改动是否更适合提到[上游](https://github.com/TheBoredTeam/boring.notch)。与歌词无关的修复，通常提到上游更好。
-
-上游的贡献规范见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎提 issue 和 PR——请到[这里](https://github.com/huo241/notch-lyrics/issues)。改动适合提到哪里，[CONTRIBUTING.md](CONTRIBUTING.md) 里有分流说明。
 
 ## 致谢
 
-这是个分支项目，绝大部分代码是别人的成果。
+Notch Lyrics 站在这些项目的肩膀上：
 
-- **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)**——原版 Boring Notch 和它的全部功能
+- **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)**——原版 Boring Notch，本项目基于它构建
 - **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)**——macOS 15.4+ 的 Now Playing 来源
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)**——文件架功能的基础
-- **[LRCLIB](https://lrclib.net)**——本分支依赖的歌词库
+- **[LRCLIB](https://lrclib.net)**——歌词数据来源
 - **[Open-Meteo](https://open-meteo.com)**——天气数据，免 Key
 - **[Photon](https://photon.komoot.io)**（OpenStreetMap）——城市地理编码
-- 图标：[@maxtron95](https://github.com/maxtron95)
-- 网站：[@himanshhhhuv](https://github.com/himanshhhhuv)
 
 完整的第三方清单见 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)。
 
-想支持原项目的话：**[给原作者买杯咖啡](https://www.ko-fi.com/alexander5015)**。
-
 ## 许可证
 
-**GPL-3.0**，与原版一致——见 [LICENSE](LICENSE)。
+**GPL-3.0**——见 [LICENSE](LICENSE)。
 
-按许可证要求，本分支随附完整源码并标注了修改内容。如果你要再分发，请保留许可证、源码和署名。
+按许可证要求，本项目随附完整源码并标注了修改内容。如果你要再分发，请保留许可证、源码和署名。

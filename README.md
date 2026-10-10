@@ -260,11 +260,11 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
 
 ## Differences from upstream
 
-- App name is **Notch Lyrics**; the bundle identifier is unchanged, so existing
-  preferences keep working.
-- **Auto-update is disabled.** The upstream appcast ships builds without these
-  changes, so updating against it would silently remove them. Re-enable it by
-  setting `SUFeedURL` in `NotchLyrics/Info.plist` to your own feed.
+- The app is **Notch Lyrics**, with its own bundle identifier
+  (`blog.snappy.notchlyrics`). macOS treats it as a separate app, so settings
+  from a Boring Notch install are not carried over.
+- **Auto-update is enabled** and points at this repository's own signed feed
+  (`updater/appcast.xml`); releases are published here, not upstream.
 - The window-shadow experiment is gone for good — the window is back to its
   original width, and there is no shadow setting to fight with.
 
@@ -275,6 +275,7 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
 - [x] Per-track lyrics cache
 - [x] Weather tab with free-text city search
 - [x] Quick note that files itself into Apple Notes
+- [x] Line-fill progress highlighting
 - [ ] Word-by-word (karaoke) highlighting
 - [ ] User-adjustable lyric font and line count
 - [ ] Offline lyrics cache
@@ -282,38 +283,28 @@ Bugs found in upstream while working on lyrics, fixed in this fork:
 ## Contributing
 
 Issues and pull requests are welcome — please open them
-[here](https://github.com/huo241/notch-lyrics/issues).
-
-Since this is a fork, consider whether your change belongs
-[upstream](https://github.com/TheBoredTeam/boring.notch) instead. Fixes that
-aren't lyrics-specific are usually better contributed there.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the upstream contribution guidelines.
+[here](https://github.com/huo241/notch-lyrics/issues). Where a change
+belongs is described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgments
 
-This project is a fork; the vast majority of the code is other people's work.
+Notch Lyrics stands on the shoulders of these projects:
 
 - **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — the
-  original Boring Notch and everything it does
+  original Boring Notch, the foundation this project builds on
 - **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** — the
   Now Playing source on macOS 15.4+
 - **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — basis of the Shelf feature
-- **[LRCLIB](https://lrclib.net)** — the lyrics database this fork depends on
+- **[LRCLIB](https://lrclib.net)** — the lyrics database this project depends on
 - **[Open-Meteo](https://open-meteo.com)** — weather data, no key required
 - **[Photon](https://photon.komoot.io)** (OpenStreetMap) — city geocoding
-- Icon credits: [@maxtron95](https://github.com/maxtron95)
-- Website credits: [@himanshhhhuv](https://github.com/himanshhhhuv)
 
 See [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES) for the full list.
 
-If you'd like to support the original project:
-**[Ko-fi for the upstream author](https://www.ko-fi.com/alexander5015)**.
-
 ## License
 
-**GPL-3.0**, same as upstream — see [LICENSE](LICENSE).
+**GPL-3.0** — see [LICENSE](LICENSE).
 
-As required by the licence, this fork is distributed with its complete source
-code and notes its modifications. If you redistribute it, keep the licence, the
-source, and the attribution intact.
+As required by the licence, this project is distributed with its complete
+source code and notes its modifications. If you redistribute it, keep the
+licence, the source, and the attribution intact.
