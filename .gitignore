@@ -53,6 +53,10 @@ build/
 *.xcarchive
 *.dSYM
 
+# Release archives produced by scripts/release.sh. Attached to a GitHub
+# Release, never committed.
+dist/
+
 
 # Internal design and planning notes. Kept locally only: they contain
 # machine-specific detail (real folder names, sample note text) that does
