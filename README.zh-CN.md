@@ -222,7 +222,8 @@ swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 
 ## 致谢
 
-Notch Lyrics 站在这些项目的肩膀上：
+Notch Lyrics 是一个**踩在巨人的肩膀上做出来的项目**——几乎没有哪一行是从零开始的。
+托着它的是这些项目：
 
 - **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)**——本项目起步所基于的代码库
 - **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)**——macOS 15.4+ 的 Now Playing 来源
@@ -232,6 +233,12 @@ Notch Lyrics 站在这些项目的肩膀上：
 - **[Photon](https://photon.komoot.io)**（OpenStreetMap）——城市地理编码
 
 完整的第三方清单见 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)。
+
+还要感谢 **[Ech0](https://github.com/lin-snow/Ech0)** 社区——项目的作者们和使用者们，
+感谢你们给予我的陪伴和鼓励。
+
+> 「两个人总比一个人好……若是跌倒，这人可以扶起他的同伴。」
+> ——传道书 4:9–10
 
 ## 许可证
 

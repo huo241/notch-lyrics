@@ -277,7 +277,8 @@ enviar cada tipo de cambio.
 
 ## Agradecimientos
 
-Notch Lyrics se apoya en estos proyectos:
+Notch Lyrics está construido sobre hombros de gigantes: muy poco de él parte de
+cero. Estos son los proyectos que lo sostienen:
 
 - **[The Bored Team](https://github.com/TheBoredTeam/boring.notch)** — el código
   del que partió este proyecto
@@ -289,6 +290,13 @@ Notch Lyrics se apoya en estos proyectos:
 - **[Photon](https://photon.komoot.io)** (OpenStreetMap) — geocodificación de ciudades
 
 La lista completa está en [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES).
+
+Gracias también a la comunidad de **[Ech0](https://github.com/lin-snow/Ech0)**
+—sus autores y sus usuarios— por la compañía y el ánimo.
+
+> «Mejores son dos que uno; porque si uno cayere, el otro levantará a su
+> compañero.»
+> — Eclesiastés 4:9–10
 
 ## Licencia
 
