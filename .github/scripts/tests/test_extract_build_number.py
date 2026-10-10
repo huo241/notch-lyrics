@@ -25,11 +25,7 @@ buildSettings = {
 };
 buildSettings = {
     CURRENT_PROJECT_VERSION = 900;
-    PRODUCT_BUNDLE_IDENTIFIER = blog.snappy.notchlyrics.BoringNotchXPCHelper;
-};
-buildSettings = {
-    CURRENT_PROJECT_VERSION = 1;
-    PRODUCT_BUNDLE_IDENTIFIER = com.qareai.boringNotchTests;
+    PRODUCT_BUNDLE_IDENTIFIER = blog.snappy.notchlyrics.XPCHelper;
 };
 """
 

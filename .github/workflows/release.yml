@@ -1,4 +1,4 @@
-name: "Deploy Boring Notch"
+name: "Deploy Notch Lyrics"
 
 on:
   workflow_dispatch:
@@ -18,8 +18,8 @@ permissions:
   pull-requests: read
 
 env:
-  PROJECT_NAME: boringNotch
-  APP_NAME: Boring Notch
+  PROJECT_NAME: NotchLyrics
+  APP_NAME: Notch Lyrics
   BETA_CHANNEL_NAME: beta
 
 jobs:
@@ -277,7 +277,7 @@ jobs:
         with:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          repositories: boring.notch
+          repositories: ${{ github.event.repository.name }}
           permission-contents: write
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -325,8 +325,8 @@ jobs:
           fi
           printf '%s' "$SPARKLE_PRIVATE_KEY" | "$RUNNER_TEMP/generate_appcast" \
             --ed-key-file - \
-            --link "https://github.com/TheBoredTeam/boring.notch/releases" \
-            --download-url-prefix "https://github.com/TheBoredTeam/boring.notch/releases/download/v${VERSION}/" \
+            --link "${{ github.server_url }}/${{ github.repository }}/releases" \
+            --download-url-prefix "${{ github.server_url }}/${{ github.repository }}/releases/download/v${VERSION}/" \
             --embed-release-notes \
             "${CHANNEL_ARGS[@]}" \
             -o "$APPCAST_OUT" \
@@ -373,7 +373,7 @@ jobs:
         with:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          repositories: boring.notch
+          repositories: ${{ github.event.repository.name }}
           permission-contents: write
 
       - name: Merge release PR
@@ -431,7 +431,7 @@ jobs:
         with:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          repositories: boring.notch
+          repositories: ${{ github.event.repository.name }}
           permission-contents: write
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -506,7 +506,7 @@ jobs:
         with:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          repositories: boring.notch
+          repositories: ${{ github.event.repository.name }}
           permission-contents: write
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -568,125 +568,10 @@ jobs:
           echo "::error::Could not publish beta ${VERSION} after 5 attempts"
           exit 1
 
-  upgrade-brew:
-    name: Update Homebrew cask
-    if: ${{ always() && needs.preparation.result == 'success' && ((needs.preparation.outputs.is_beta == 'true' && needs.publish_beta.result == 'success') || (needs.preparation.outputs.is_beta == 'false' && needs.publish_stable.result == 'success')) }}
-    needs: [preparation, publish, publish_beta, publish_stable]
-    runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ needs.preparation.outputs.version }}
-      IS_BETA: ${{ needs.preparation.outputs.is_beta }}
-    steps:
-      - name: Generate cask files
-        run: |
-          set -euo pipefail
-          DMG_URL="https://github.com/TheBoredTeam/boring.notch/releases/download/v${VERSION}/${PROJECT_NAME}.dmg"
-
-          # Retry SHA calculation (release may need a moment to propagate)
-          for attempt in 1 2 3; do
-            if SHA256=$(curl -sL --fail "$DMG_URL" | shasum -a 256 | cut -d' ' -f1); then break; fi
-            echo "Attempt $attempt failed, retrying in 10s..."; sleep 10
-          done
-          [[ -n "${SHA256:-}" ]] || { echo "::error::Failed to download DMG for SHA256"; exit 1; }
-
-          write_cask() {
-            local CASK_NAME="$1" DISPLAY_NAME="$2" DESC="$3"
-            cat <<CASK
-          cask "${CASK_NAME}" do
-            version "${VERSION}"
-            sha256 "${SHA256}"
-            url "${DMG_URL}"
-            name "${DISPLAY_NAME}"
-            desc "${DESC}"
-            homepage "https://github.com/TheBoredTeam/boring.notch"
-            livecheck do
-              url :url
-              strategy :github_latest
-            end
-            auto_updates true
-            depends_on macos: :sonoma
-            app "Boring Notch.app"
-
-            postflight do
-              app_path = appdir/"Boring Notch.app"
-              next unless app_path.exist?
-              system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", app_path]
-            end
-
-            uninstall quit: "theboringteam.boringnotch"
-
-            zap trash: [
-              "~/Library/Application Scripts/theboringteam.boringnotch/",
-              "~/Library/Containers/theboringteam.boringnotch/",
-            ]
-          end
-          CASK
-          }
-
-          write_cask "boring-notch@rc" "Boring Notch RC" \
-            "Not so boring notch That Rocks (Release Candidate)" > boring-notch@rc.rb
-          if [[ "${IS_BETA}" == "false" ]]; then
-            write_cask "boring-notch" "Boring Notch" \
-              "Not so boring notch That Rocks" > boring-notch.rb
-          fi
-
-      - name: Upload cask artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: homebrew-cask-${{ env.VERSION }}
-          path: boring-notch*.rb
-
-      - name: Create Homebrew tap app token
-        id: tap_app_token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
-        with:
-          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          repositories: homebrew-boring-notch
-          permission-contents: write
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: TheBoredTeam/homebrew-boring-notch
-          path: homebrew-tap
-          persist-credentials: false
-
-      - name: Update casks in tap
-        id: update_casks
-        run: |
-          set -euo pipefail
-          cp boring-notch@rc.rb homebrew-tap/Casks/boring-notch@rc.rb
-          COMMIT_MSG="Update boring-notch@rc to v${VERSION}"
-          if [[ "${IS_BETA}" == "false" ]]; then
-            cp boring-notch.rb homebrew-tap/Casks/boring-notch.rb
-            COMMIT_MSG="Update boring-notch and boring-notch@rc to v${VERSION}"
-          fi
-          cd homebrew-tap
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            echo "casks_changed=false" >> "$GITHUB_OUTPUT"
-          else
-            git commit -m "$COMMIT_MSG"
-            echo "casks_changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Push casks to tap
-        if: steps.update_casks.outputs.casks_changed == 'true'
-        env:
-          TAP_APP_TOKEN: ${{ steps.tap_app_token.outputs.token }}
-        run: |
-          set -euo pipefail
-          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TAP_APP_TOKEN" | base64 | tr -d '\n')"
-          cd homebrew-tap
-          git -c http.extraheader="$AUTH_HEADER" push origin "HEAD:refs/heads/$(git symbolic-ref --short HEAD)"
-
   ending:
     name: Finalize
     if: ${{ always() && needs.preparation.result != 'skipped' }}
-    needs: [preparation, build, publish, merge_release, publish_stable, publish_beta, upgrade-brew]
+    needs: [preparation, build, publish, merge_release, publish_stable, publish_beta]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -708,10 +593,9 @@ jobs:
           fi
           {
             if [[ "${RELEASE_SUCCEEDED}" == "true" ]]; then
-              echo "✅ Released Boring Notch v${VERSION} (${BUILD_TYPE} build ${BUILD_NUMBER})"
-              echo "🍺 Homebrew cask updated"
+              echo "✅ Released Notch Lyrics v${VERSION} (${BUILD_TYPE} build ${BUILD_NUMBER})"
               echo "📱 Sparkle appcast updated"
             else
-              echo "❌ Release failed${VERSION:+ for Boring Notch v${VERSION}}"
+              echo "❌ Release failed${VERSION:+ for Notch Lyrics v${VERSION}}"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
