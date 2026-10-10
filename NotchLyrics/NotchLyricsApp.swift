@@ -21,12 +21,12 @@ struct DynamicNotchApp: App {
     let updaterController: SPUStandardUpdaterController
 
     init() {
-        // This fork ships changes the upstream release feed does not contain, so
-        // the updater is not started automatically — pointing it at the upstream
-        // appcast would replace those changes. "Check for Updates…" stays
-        // available in the menu for a manual, explicit check.
+        // Updates are served from this fork's own appcast (SUFeedURL in
+        // Info.plist) and verified against its own EdDSA key, so the updater
+        // runs on launch. "Check for Updates…" in the menu triggers a manual
+        // check at any time.
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
+            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
         // Initialize the settings window controller with the updater controller
         SettingsWindowController.shared.setUpdaterController(updaterController)
