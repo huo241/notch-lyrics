@@ -733,10 +733,35 @@ struct Media: View {
 struct QuickNoteSettings: View {
     @Default(.quickNoteFolderID) private var folderID
     @Default(.quickNoteFolderLabel) private var folderLabel
+    @Default(.quickNoteTarget) private var targetRaw
+    @Default(.quickNoteVaultLabel) private var vaultLabel
 
     @State private var folders: [NoteFolder] = []
     @State private var isLoading = false
     @State private var statusMessage: String?
+
+    private var target: QuickNoteTarget {
+        QuickNoteTarget(rawValue: targetRaw) ?? .notes
+    }
+
+    /// Same two destinations the note panel offers, surfaced here so the
+    /// choice can be made without opening the notch. Switching never clears
+    /// the other route's configuration, so going back and forth is free.
+    private var targetSelection: Binding<String> {
+        Binding(
+            get: { targetRaw },
+            set: { newValue in
+                guard newValue != targetRaw else { return }
+                targetRaw = newValue
+                // The Notes list is only fetched for the Notes route: asking
+                // for it means an Apple Events round-trip to Notes, and there
+                // is no reason to spend that while Obsidian is the target.
+                if (QuickNoteTarget(rawValue: newValue) ?? .notes) == .notes {
+                    Task { await loadFolders() }
+                }
+            }
+        )
+    }
 
     private var folderSelection: Binding<String> {
         Binding(
@@ -751,42 +776,85 @@ struct QuickNoteSettings: View {
     var body: some View {
         Form {
             Section {
-                Picker("默认保存文件夹", selection: folderSelection) {
-                    Text("未选择").tag("")
-                    ForEach(folders) { folder in
-                        Text(folder.displayName).tag(folder.id)
-                    }
-                    // The stored folder may have gone missing (deleted, or the
-                    // list simply failed to load) — keep it visible rather than
-                    // letting the Picker render a blank row.
-                    if !folderID.isEmpty, !folders.contains(where: { $0.id == folderID }) {
-                        Text(folderLabel.isEmpty ? folderID : folderLabel).tag(folderID)
+                Picker("保存到", selection: targetSelection) {
+                    ForEach(QuickNoteTarget.allCases) { option in
+                        Text(option.label).tag(option.rawValue)
                     }
                 }
-
-                HStack {
-                    Button("刷新文件夹列表") { Task { await loadFolders() } }
-                    if isLoading {
-                        ProgressView().controlSize(.small)
-                    }
-                    if let statusMessage {
-                        Text(statusMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
+                .pickerStyle(.segmented)
             } header: {
-                Text("便签")
+                Text("速记保存位置")
             } footer: {
-                Text("速记每次保存都会在所选文件夹新建一条备忘录，不会改动已有内容。")
+                Text("切换目标不会清掉另一边的设置，随时可以切回来。")
+            }
+
+            if target == .notes {
+                Section {
+                    Picker("默认保存文件夹", selection: folderSelection) {
+                        Text("未选择").tag("")
+                        ForEach(folders) { folder in
+                            Text(folder.displayName).tag(folder.id)
+                        }
+                        // The stored folder may have gone missing (deleted, or the
+                        // list simply failed to load) — keep it visible rather than
+                        // letting the Picker render a blank row.
+                        if !folderID.isEmpty, !folders.contains(where: { $0.id == folderID }) {
+                            Text(folderLabel.isEmpty ? folderID : folderLabel).tag(folderID)
+                        }
+                    }
+
+                    HStack {
+                        Button("刷新文件夹列表") { Task { await loadFolders() } }
+                        if isLoading {
+                            ProgressView().controlSize(.small)
+                        }
+                        if let statusMessage {
+                            Text(statusMessage)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                } header: {
+                    Text("备忘录")
+                } footer: {
+                    Text("速记每次保存都会在所选文件夹新建一条备忘录，不会改动已有内容。")
+                }
+            } else {
+                Section {
+                    HStack {
+                        Text("文件夹")
+                        Spacer()
+                        Text(vaultLabel.isEmpty ? "未选择" : vaultLabel)
+                            .foregroundStyle(vaultLabel.isEmpty ? .secondary : .primary)
+                    }
+
+                    HStack {
+                        Button(vaultLabel.isEmpty ? "选择文件夹…" : "更改文件夹…") {
+                            chooseVault()
+                        }
+                        if !vaultLabel.isEmpty {
+                            Button("清除") { ObsidianService.shared.forget() }
+                        }
+                    }
+                } header: {
+                    Text("Obsidian")
+                } footer: {
+                    Text("速记会在所选文件夹里新建一个 .md 文件，文件名取自第一行。")
+                }
             }
         }
         .accentColor(.effectiveAccent)
         // Without a title of its own the window keeps showing the *previous*
         // pane's title — SwiftUI only rewrites it when a navigationTitle exists.
         .navigationTitle("便签")
-        .task { await loadFolders() }
+        .task { if target == .notes { await loadFolders() } }
+    }
+
+    /// Opens the vault picker. The grant is stored as a security-scoped
+    /// bookmark; writing a bare path would not survive a relaunch.
+    private func chooseVault() {
+        ObsidianService.shared.chooseFolder()
     }
 
     private func loadFolders() async {
