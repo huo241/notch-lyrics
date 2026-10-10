@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/assets/icon.png" width="128" alt="Notch Lyrics icon">
+
 # Notch Lyrics
 
 **Letras sincronizadas, el tiempo y un bloc de notas — todo en el notch de tu MacBook.**
