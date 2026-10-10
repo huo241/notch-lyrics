@@ -33,9 +33,9 @@ class WorkflowSmokeTests(unittest.TestCase):
 
     def test_nightly_uses_the_fixed_rolling_tag_and_asset(self) -> None:
         self.assertIn("TAG: nightly", self.nightly)
-        self.assertIn("ASSET_NAME: boringNotch-nightly.dmg", self.nightly)
+        self.assertIn("ASSET_NAME: notchlyrics-nightly.dmg", self.nightly)
         self.assertNotRegex(self.nightly, r'TAG="nightly-\$')
-        self.assertNotRegex(self.nightly, r"ASSET_NAME=\"boringNotch-\$")
+        self.assertNotRegex(self.nightly, r"ASSET_NAME=\"notchlyrics-\$")
 
     def test_nightly_uses_the_rolling_release_title(self) -> None:
         self.assertIn("TITLE: Latest Nightly", self.nightly)
@@ -46,7 +46,7 @@ class WorkflowSmokeTests(unittest.TestCase):
         # TAG is pinned to `nightly` below, so this prefix always resolves to
         # .../releases/download/nightly/.
         self.assertIn(
-            "https://github.com/TheBoredTeam/boring.notch/releases/download/${TAG}/",
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${TAG}/",
             self.nightly,
         )
         self.assertIn("TAG: nightly", self.nightly)
@@ -307,41 +307,36 @@ class WorkflowSmokeTests(unittest.TestCase):
         for removed in ("immutable", ".immutable", "immutable-release"):
             self.assertNotIn(removed, self.nightly)
 
-    def test_built_product_is_named_boring_notch(self) -> None:
-        # The Xcode product and app bundle are "Boring Notch", while the public
-        # DMG keeps the legacy boringNotch.dmg name for download/appcast
-        # compatibility. The project/target/scheme remain boringNotch.
+    def test_built_product_is_named_notch_lyrics(self) -> None:
+        # The Xcode product, app bundle and the published DMG all carry the
+        # Notch Lyrics identity; the project/target/scheme are NotchLyrics.
         pbxproj = (
-            REPOSITORY_ROOT / "boringNotch.xcodeproj" / "project.pbxproj"
+            REPOSITORY_ROOT / "NotchLyrics.xcodeproj" / "project.pbxproj"
         ).read_text(encoding="utf-8")
-        self.assertEqual(pbxproj.count('PRODUCT_NAME = "Boring Notch";'), 2)
-        self.assertEqual(pbxproj.count('INFOPLIST_KEY_CFBundleName = "Boring Notch";'), 2)
-        self.assertEqual(pbxproj.count('INFOPLIST_KEY_CFBundleDisplayName = "Boring Notch";'), 2)
+        self.assertEqual(pbxproj.count('PRODUCT_NAME = "Notch Lyrics";'), 2)
+        self.assertEqual(pbxproj.count('INFOPLIST_KEY_CFBundleName = "Notch Lyrics";'), 2)
+        self.assertEqual(pbxproj.count('INFOPLIST_KEY_CFBundleDisplayName = "Notch Lyrics";'), 2)
 
         # Reusable build: archives under the project name, exports the app under
-        # APP_NAME, and publishes the compatibility DMG under PROJECT_NAME.
-        self.assertIn("APP_NAME: Boring Notch", self.build_reusable)
+        # APP_NAME, and publishes the DMG under PROJECT_NAME.
+        self.assertIn("APP_NAME: Notch Lyrics", self.build_reusable)
         self.assertIn('"Release/$APP_NAME.app"', self.build_reusable)
         self.assertIn('"Release/$PROJECT_NAME.dmg"', self.build_reusable)
         self.assertIn('name: ${{ env.PROJECT_NAME }}.dmg', self.build_reusable)
         self.assertNotIn("Release/$PROJECT_NAME.app", self.build_reusable)
         self.assertNotIn("Release/$APP_NAME.dmg", self.build_reusable)
 
-        # Release pipeline: draft download, artifact download, release upload,
-        # embedded notes, and the Homebrew cask all use the legacy DMG name.
-        self.assertIn("APP_NAME: Boring Notch", self.release)
+        # Release pipeline: draft download, artifact download, release upload
+        # and embedded notes all use the DMG name.
+        self.assertIn("APP_NAME: Notch Lyrics", self.release)
         self.assertIn('--pattern "$PROJECT_NAME.dmg"', self.release)
         self.assertIn('name: ${{ env.PROJECT_NAME }}.dmg', self.release)
         self.assertIn('"Release/$PROJECT_NAME.dmg"', self.release)
         self.assertIn("printf '%s' \"$RELEASE_NOTES\" > \"Release/${PROJECT_NAME}.html\"", self.release)
-        self.assertIn("/${PROJECT_NAME}.dmg", self.release)
-        self.assertIn('app "Boring Notch.app"', self.release)
-        self.assertNotIn("Boring%20Notch.dmg", self.release)
-        self.assertNotIn('app "boringNotch.app"', self.release)
 
-        # Nightly: downloads the compatibility artifact, then renames it to the
-        # fixed rolling asset name (which is intentionally unchanged).
-        self.assertIn("APP_NAME: Boring Notch", self.nightly)
+        # Nightly: downloads the DMG artifact, then renames it to the fixed
+        # rolling asset name.
+        self.assertIn("APP_NAME: Notch Lyrics", self.nightly)
         self.assertIn('name: ${{ env.PROJECT_NAME }}.dmg', self.nightly)
         self.assertIn('mv "Release/${PROJECT_NAME}.dmg" "Release/${ASSET_NAME}"', self.nightly)
         self.assertNotIn("${APP_NAME}.dmg", self.nightly)
@@ -355,7 +350,7 @@ class WorkflowSmokeTests(unittest.TestCase):
         self.assertIn("updater/appcast.xml", self.release)
         self.assertIn("publish_stable", self.release)
         self.assertIn("publish_beta", self.release)
-        self.assertNotIn("boringNotch-nightly.dmg", self.release)
+        self.assertNotIn("notchlyrics-nightly.dmg", self.release)
         self.assertNotIn('TAG: nightly', self.release)
         self.assertNotIn("actions/attest", self.release)
         self.assertNotIn("artifact-metadata", self.release)
@@ -370,7 +365,7 @@ class WorkflowSmokeTests(unittest.TestCase):
         # Five call sites: resume probe, two notes reads, stable publish, beta publish.
         self.assertEqual(self.release.count('gh release view "'), 5)
         stable_block = self.release.split("  publish_stable:", 1)[1].split("  publish_beta:", 1)[0]
-        beta_block = self.release.split("  publish_beta:", 1)[1].split("  upgrade-brew:", 1)[0]
+        beta_block = self.release.split("  publish_beta:", 1)[1].split("  ending:", 1)[0]
         for job, block in (("publish_stable", stable_block), ("publish_beta", beta_block)):
             self.assertIn('gh release view "$TAG"', block, job)
             self.assertIn("--json isDraft", block, job)
