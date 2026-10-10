@@ -15,11 +15,11 @@ permissions:
   contents: read
 
 env:
-  PROJECT_NAME: boringNotch
-  APP_NAME: Boring Notch
+  PROJECT_NAME: NotchLyrics
+  APP_NAME: Notch Lyrics
   NIGHTLY_BRANCH: dev
   TAG: nightly
-  ASSET_NAME: boringNotch-nightly.dmg
+  ASSET_NAME: notchlyrics-nightly.dmg
   TITLE: Latest Nightly
   APPCAST_FILE: appcast-dev.xml
   CAUTION_WARNING: >-

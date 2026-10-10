@@ -161,7 +161,7 @@ xattr -dr com.apple.quarantine "/Applications/Notch Lyrics.app"
 ```bash
 git clone https://github.com/huo241/notch-lyrics.git
 cd notch-lyrics
-open boringNotch.xcodeproj
+open NotchLyrics.xcodeproj
 ```
 
 然后按 `Cmd + R`。
@@ -172,14 +172,14 @@ open boringNotch.xcodeproj
 ## 测试
 
 ```bash
-xcodebuild build -project boringNotch.xcodeproj -scheme boringNotch \
+xcodebuild build -project NotchLyrics.xcodeproj -scheme NotchLyrics \
   -configuration Release -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 ```
 
-LRC 解析器（`boringNotch/helpers/LyricsParser.swift`）刻意不依赖任何东西，可以单独跑：
+LRC 解析器（`NotchLyrics/helpers/LyricsParser.swift`）刻意不依赖任何东西，可以单独跑：
 
 ```bash
-swiftc -O boringNotch/helpers/LyricsParser.swift your_test.swift -o t && ./t
+swiftc -O NotchLyrics/helpers/LyricsParser.swift your_test.swift -o t && ./t
 ```
 
 ## 本分支修复的问题
@@ -198,7 +198,7 @@ swiftc -O boringNotch/helpers/LyricsParser.swift your_test.swift -o t && ./t
 ## 与原版的差异
 
 - 应用名改为 **Notch Lyrics**；bundle ID 未变，所以原有设置继续有效。
-- **已关闭自动更新。** 官方 appcast 发布的构建不含这些改动，跟着更新会把它们悄悄覆盖掉。如需启用，把 `boringNotch/Info.plist` 里的 `SUFeedURL` 指向你自己的更新源。
+- **已关闭自动更新。** 官方 appcast 发布的构建不含这些改动，跟着更新会把它们悄悄覆盖掉。如需启用，把 `NotchLyrics/Info.plist` 里的 `SUFeedURL` 指向你自己的更新源。
 - 窗口阴影那次尝试已经彻底作废——窗口恢复原来的宽度，也不再有任何阴影相关的设置项。
 
 ## 路线图
