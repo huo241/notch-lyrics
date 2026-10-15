@@ -51,7 +51,6 @@ class MusicManager: ObservableObject {
     @Published var isPlaying = false
     @Published var album: String = "Self Love"
     @Published var isPlayerIdle: Bool = true
-    @Published var animations: NotchAnimations = .init()
     @Published var avgColor: NSColor = .white
     @Published var bundleIdentifier: String? = nil
     @Published var songDuration: TimeInterval = 0
@@ -75,6 +74,10 @@ class MusicManager: ObservableObject {
     @Published var hasActiveTrack: Bool = false
     @Published var canFavoriteTrack: Bool = false
     @Published var isFavoriteTrack: Bool = false
+
+    /// True when the displayed artwork is a real album cover rather than the
+    /// default heart placeholder, so it is worth attaching to a shared post.
+    var canShareArtwork: Bool { albumArt !== defaultImage }
 
     /// A favourite toggle the user just performed, held until the read-back
     /// settles. The liked state is read back asynchronously and can briefly
@@ -113,9 +116,6 @@ class MusicManager: ObservableObject {
     @Published var isFlipping: Bool = false
     private var flipWorkItem: DispatchWorkItem?
 
-    @Published var isTransitioning: Bool = false
-    private var transitionWorkItem: DispatchWorkItem?
-
     // MARK: - Initialization
     init() {
         // Listen for changes to the default controller preference
@@ -149,7 +149,6 @@ class MusicManager: ObservableObject {
         cancellables.removeAll()
         controllerCancellables.removeAll()
         flipWorkItem?.cancel()
-        transitionWorkItem?.cancel()
 
         // Release active controller
         activeController = nil

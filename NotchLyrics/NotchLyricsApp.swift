@@ -13,7 +13,7 @@ import Sparkle
 import SwiftUI
 
 @main
-struct DynamicNotchApp: App {
+struct NotchLyricsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Default(.menubarIcon) var showMenuBarIcon
     @Environment(\.openWindow) var openWindow
@@ -34,7 +34,7 @@ struct DynamicNotchApp: App {
 
     var body: some Scene {
         MenuBarExtra("Notch Lyrics", systemImage: "sparkle", isInserted: $showMenuBarIcon) {
-            Button("Settings") {
+            Button(L("Settings")) {
                 DispatchQueue.main.async {
                     SettingsWindowController.shared.showWindow()
                 }
@@ -42,10 +42,10 @@ struct DynamicNotchApp: App {
             .keyboardShortcut(KeyEquivalent(","), modifiers: .command)
             CheckForUpdatesView(updater: updaterController.updater)
             Divider()
-            Button("Restart Notch Lyrics") {
+            Button(L("Restart Notch Lyrics")) {
                 ApplicationRelauncher.restart()
             }
-            Button("Quit", role: .destructive) {
+            Button(L("Quit"), role: .destructive) {
                 NSApplication.shared.terminate(self)
             }
             .keyboardShortcut(KeyEquivalent("Q"), modifiers: .command)
@@ -284,6 +284,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+
+        // Debug: `-appearance-dark` / `-appearance-light` force the appearance, handy for comparing both palettes.
+        if ProcessInfo.processInfo.arguments.contains("-appearance-dark") {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        } else if ProcessInfo.processInfo.arguments.contains("-appearance-light") {
+            NSApp.appearance = NSAppearance(named: .aqua)
+        }
+
+        // Debug: `-open-settings` opens the settings window on launch and centers it.
+        if ProcessInfo.processInfo.arguments.contains("-open-settings") {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1))
+                SettingsWindowController.shared.showWindow()
+                SettingsWindowController.shared.window?.center()
+            }
+        }
 
         if ProcessInfo.processInfo.arguments.contains("-quicknote-selftest") {
             QuickNoteSelfTest.log("bootstrap: seeding fake folder + will open notch")

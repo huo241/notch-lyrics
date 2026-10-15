@@ -17,7 +17,6 @@ final class ShelfItemViewModel: ObservableObject {
     @Published private(set) var item: ShelfItem
     @Published var thumbnail: NSImage?
     @Published var isDropTargeted: Bool = false
-    @Published var isRenaming: Bool = false
     @Published var draftTitle: String = ""
     private var sharingLifecycle: SharingLifecycleDelegate?
     private var quickShareLifecycle: SharingLifecycleDelegate?

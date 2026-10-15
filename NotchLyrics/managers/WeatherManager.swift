@@ -117,31 +117,31 @@ enum WeatherCode {
 
     static func label(_ code: Int) -> String {
         switch code {
-        case 0: return "晴"
-        case 1: return "晴间多云"
-        case 2: return "局部多云"
-        case 3: return "阴"
-        case 45, 48: return "雾"
-        case 51: return "小毛毛雨"
-        case 53: return "毛毛雨"
-        case 55: return "大毛毛雨"
-        case 56, 57: return "冻毛毛雨"
-        case 61: return "小雨"
-        case 63: return "中雨"
-        case 65: return "大雨"
-        case 66, 67: return "冻雨"
-        case 71: return "小雪"
-        case 73: return "中雪"
-        case 75: return "大雪"
-        case 77: return "米雪"
-        case 80: return "小阵雨"
-        case 81: return "阵雨"
-        case 82: return "强阵雨"
-        case 85: return "小阵雪"
-        case 86: return "大阵雪"
-        case 95: return "雷阵雨"
-        case 96, 99: return "雷阵雨伴冰雹"
-        default: return "未知"
+        case 0: return L("Clear sky")
+        case 1: return L("Mainly clear")
+        case 2: return L("Partly cloudy")
+        case 3: return L("Overcast")
+        case 45, 48: return L("Fog")
+        case 51: return L("Light drizzle")
+        case 53: return L("Drizzle")
+        case 55: return L("Heavy drizzle")
+        case 56, 57: return L("Freezing drizzle")
+        case 61: return L("Light rain")
+        case 63: return L("Rain")
+        case 65: return L("Heavy rain")
+        case 66, 67: return L("Freezing rain")
+        case 71: return L("Light snow")
+        case 73: return L("Snow")
+        case 75: return L("Heavy snow")
+        case 77: return L("Snow grains")
+        case 80: return L("Light showers")
+        case 81: return L("Showers")
+        case 82: return L("Violent showers")
+        case 85: return L("Light snow showers")
+        case 86: return L("Heavy snow showers")
+        case 95: return L("Thunderstorm")
+        case 96, 99: return L("Thunderstorm with hail")
+        default: return L("Unknown")
         }
     }
 
@@ -189,20 +189,20 @@ final class WeatherManager: ObservableObject {
     /// Built-in places. Coordinates are city-centre; weather models resolve to
     /// a grid cell several kilometres wide, so finer precision is noise.
     static let builtInPlaces: [WeatherPlace] = [
-        WeatherPlace(name: "长兴", latitude: 31.0267, longitude: 119.9103),
-        WeatherPlace(name: "湖州", latitude: 30.8703, longitude: 120.0933),
-        WeatherPlace(name: "杭州", latitude: 30.2741, longitude: 120.1551),
-        WeatherPlace(name: "上海", latitude: 31.2304, longitude: 121.4737),
-        WeatherPlace(name: "南京", latitude: 32.0603, longitude: 118.7969),
-        WeatherPlace(name: "苏州", latitude: 31.2989, longitude: 120.5853),
-        WeatherPlace(name: "北京", latitude: 39.9042, longitude: 116.4074),
-        WeatherPlace(name: "广州", latitude: 23.1291, longitude: 113.2644),
-        WeatherPlace(name: "深圳", latitude: 22.5431, longitude: 114.0579),
-        WeatherPlace(name: "成都", latitude: 30.5728, longitude: 104.0668),
-        WeatherPlace(name: "西安", latitude: 34.3416, longitude: 108.9398),
-        WeatherPlace(name: "武汉", latitude: 30.5928, longitude: 114.3055),
-        WeatherPlace(name: "重庆", latitude: 29.5630, longitude: 106.5516),
-        WeatherPlace(name: "厦门", latitude: 24.4798, longitude: 118.0894),
+        WeatherPlace(name: L("Changxing"), latitude: 31.0267, longitude: 119.9103),
+        WeatherPlace(name: L("Huzhou"), latitude: 30.8703, longitude: 120.0933),
+        WeatherPlace(name: L("Hangzhou"), latitude: 30.2741, longitude: 120.1551),
+        WeatherPlace(name: L("Shanghai"), latitude: 31.2304, longitude: 121.4737),
+        WeatherPlace(name: L("Nanjing"), latitude: 32.0603, longitude: 118.7969),
+        WeatherPlace(name: L("Suzhou"), latitude: 31.2989, longitude: 120.5853),
+        WeatherPlace(name: L("Beijing"), latitude: 39.9042, longitude: 116.4074),
+        WeatherPlace(name: L("Guangzhou"), latitude: 23.1291, longitude: 113.2644),
+        WeatherPlace(name: L("Shenzhen"), latitude: 22.5431, longitude: 114.0579),
+        WeatherPlace(name: L("Chengdu"), latitude: 30.5728, longitude: 104.0668),
+        WeatherPlace(name: L("Xi'an"), latitude: 34.3416, longitude: 108.9398),
+        WeatherPlace(name: L("Wuhan"), latitude: 30.5928, longitude: 114.3055),
+        WeatherPlace(name: L("Chongqing"), latitude: 29.5630, longitude: 106.5516),
+        WeatherPlace(name: L("Xiamen"), latitude: 24.4798, longitude: 118.0894),
     ]
 
     /// The place the user pinned manually, if any.
@@ -344,7 +344,7 @@ final class WeatherManager: ObservableObject {
             resolvedFromIP = true
             await load(place: place, resolvedFromIP: true)
         } catch {
-            errorMessage = "定位失败：\(error.localizedDescription)"
+            errorMessage = String(localized: "Location failed: \(error.localizedDescription)")
             isLoading = false
         }
     }
@@ -379,7 +379,7 @@ final class WeatherManager: ObservableObject {
         } catch {
             // Keep whatever was on screen; a stale reading beats a blank tab.
             if snapshot == nil {
-                errorMessage = "天气获取失败：\(error.localizedDescription)"
+                errorMessage = String(localized: "Weather request failed: \(error.localizedDescription)")
             }
         }
         isLoading = false
@@ -568,7 +568,7 @@ final class WeatherManager: ObservableObject {
         guard payload.success != false,
               let lat = payload.latitude, let lon = payload.longitude
         else { throw WeatherError.locationUnavailable }
-        return WeatherPlace(name: payload.city ?? "当前位置", latitude: lat, longitude: lon)
+        return WeatherPlace(name: payload.city ?? L("Current location"), latitude: lat, longitude: lon)
     }
 
     private func locateViaIPInfo() async throws -> WeatherPlace {
@@ -578,7 +578,7 @@ final class WeatherManager: ObservableObject {
         guard parts.count == 2,
               let lat = Double(parts[0]), let lon = Double(parts[1])
         else { throw WeatherError.locationUnavailable }
-        return WeatherPlace(name: payload.city ?? "当前位置", latitude: lat, longitude: lon)
+        return WeatherPlace(name: payload.city ?? L("Current location"), latitude: lat, longitude: lon)
     }
 
     /// The IP answer is cached for a day: it rarely changes, and it gives the
@@ -643,8 +643,8 @@ enum WeatherError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .badResponse: return "天气服务暂时不可用"
-        case .locationUnavailable: return "无法通过网络定位，请在设置里手动选择城市"
+        case .badResponse: return L("The weather service is temporarily unavailable")
+        case .locationUnavailable: return L("Couldn't locate you over the network. Pick a city manually in Settings.")
         }
     }
 }

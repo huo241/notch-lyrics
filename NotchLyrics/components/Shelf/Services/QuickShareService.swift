@@ -146,10 +146,94 @@ class QuickShareService: ObservableObject {
         }
         sharingAccessingURLs.removeAll()
     }
-// MARK: - SharingServiceDelegate
+    // MARK: - Now Playing Share
 
-private class SharingServiceDelegate: NSObject {}
-    
+    /// Shares the currently playing track through the system share sheet: a text
+    /// summary plus the album art, and — when the source player exposes one — a
+    /// direct link to the song (Apple Music / Spotify). Falls back to
+    /// text + artwork when no link is available; never errors out.
+    @MainActor
+    func shareNowPlaying() async {
+        let m = MusicManager.shared
+        guard m.hasActiveTrack, !m.songTitle.isEmpty else { return }
+
+        var items: [Any] = []
+        var summary = "🎵 \(m.songTitle)"
+        if !m.artistName.isEmpty {
+            summary += "\n\(m.artistName)"
+            if !m.album.isEmpty { summary += " · \(m.album)" }
+        }
+        items.append(summary as NSString)
+
+        if m.canShareArtwork {
+            items.append(m.albumArt)
+        }
+
+        if let link = await resolveSourceURL() {
+            items.append(link)
+        }
+
+        // Anchor the picker to the notch window's content view. Getting the
+        // anchor from the real window (rather than an injected NSView kept as a
+        // SwiftUI background) avoids compositing artifacts under the music
+        // player's drawingGroup.
+        let anchor = NSApp.windows.first(where: { $0 is NotchSkyLightWindow })?.contentView
+
+        let systemMenu = QuickShareProvider(id: "System Share Menu", imageData: nil, supportsRawText: true)
+        if availableProviders.isEmpty { await discoverAvailableProviders() }
+        await shareFilesOrText(items, using: systemMenu, from: anchor)
+    }
+
+    /// Resolves a shareable link for the current track when the source player
+    /// exposes one. Spotify yields a precise track URL via AppleScript; Apple
+    /// Music falls back to a search URL built from track metadata (MusicKit's
+    /// `SystemMusicPlayer` is unavailable on macOS). Other players return nil
+    /// and the share gracefully degrades to text + artwork.
+    private func resolveSourceURL() async -> URL? {
+        guard let bundle = MusicManager.shared.bundleIdentifier else { return nil }
+        switch bundle {
+        case "com.apple.Music":
+            return await appleMusicSearchURL()
+        case "com.spotify.client":
+            return await spotifyTrackURL()
+        default:
+            return nil
+        }
+    }
+
+    /// Apple Music on macOS does not expose a public deep link for the
+    /// currently-playing track, so we build a store search URL from the
+    /// metadata. It opens Apple Music to the matching results.
+    private func appleMusicSearchURL() async -> URL? {
+        let m = MusicManager.shared
+        guard !m.songTitle.isEmpty else { return nil }
+        var query = m.songTitle
+        if !m.artistName.isEmpty { query += " \(m.artistName)" }
+        if !m.album.isEmpty { query += " \(m.album)" }
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://music.apple.com/search?term=\(encoded)") else { return nil }
+        return url
+    }
+
+    /// Spotify's AppleScript `current track` returns a `spotify:track:<id>` URI,
+    /// which maps directly onto the open.spotify.com web link.
+    private func spotifyTrackURL() async -> URL? {
+        let script = """
+        tell application "Spotify"
+            if (player state is playing or player state is paused) then
+                return id of current track
+            else
+                return ""
+            end if
+        end tell
+        """
+        guard let result = try? await AppleScriptHelper.execute(script),
+              let uri = result.stringValue, !uri.isEmpty else { return nil }
+        let parts = uri.split(separator: ":")
+        guard parts.count == 3, parts[0] == "spotify", parts[1] == "track" else { return nil }
+        return URL(string: "https://open.spotify.com/track/\(parts[2])")
+    }
+
     func shareDroppedFiles(_ providers: [NSItemProvider], using shareProvider: QuickShareProvider, from view: NSView?) async {
         var itemsToShare: [Any] = []
         var foundText: String?

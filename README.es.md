@@ -6,10 +6,8 @@
 
 **Letras sincronizadas, el tiempo y un bloc de notas — todo en el notch de tu MacBook.**
 
-> **Notch Lyrics está desarrollado sobre Boring Notch**, un proyecto anterior
-> con licencia GPL-3.0. Trabajo independiente desde el **6 de octubre de 2026**,
-> sin afiliación ni respaldo de los autores originales. El origen y la lista
-> completa de cambios están en [NOTICE](NOTICE).
+> Un proyecto independiente bajo GPL-3.0. El origen y los detalles de licencia
+> están en [NOTICE](NOTICE).
 
 [English](README.md) | [简体中文](README.zh-CN.md) | Español
 
@@ -30,23 +28,21 @@
 
 ---
 
-## Novedades de la 1.0
+## Novedades de la 1.1
 
-Esta es la versión en la que la app dejó de llevar la identidad de otro. Todas las
-capas —proyecto, targets, esquema, bundle ID, helper XPC y CI— llevan ahora el
-nombre Notch Lyrics; la búsqueda de letras se reconstruyó en lugar de parchearse;
-y las actualizaciones llegan desde el canal firmado de este repositorio.
-Notas completas: [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
+La 1.0.0 se publicó sin poder abrirse. Esta versión lo corrige y mete en un
+catálogo de traducciones cada texto que la app puede mostrar.
+Notas completas: [`docs/releases/1.1.0.md`](docs/releases/1.1.0.md). La historia
+de la 1.0 —el cambio de identidad y la reconstrucción del pipeline de letras—
+está en [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
 
 | | |
 |---|---|
-| 🪪 **Identidad propia** | Targets, esquema, bundle ID, helper XPC y toda la CI renombrados a Notch Lyrics, incluida la retirada del trabajo que publicaba en otro sitio. |
-| 🔍 **Letras que nunca faltaban** | El endpoint de coincidencia exacta de LRCLIB solo tolera **dos segundos** de diferencia en la duración. Ahora se prueba sin duración y después con una búsqueda puntuada localmente, quitando antes el ruido entre paréntesis y los sufijos tras el guion. |
-| 🎯 **Sin coincidencias equivocadas** | Los resultados se puntúan contra la pista que suena y todo lo que no llega al umbral se descarta: mejor nada que la canción equivocada. |
-| ▶️ **La línea activa se rellena mientras suena** | La letra actual pasa de tenue a brillante a lo largo de su propia duración, medida sobre el ancho real del texto. |
-| ✍️ **Notas rápidas: Notas u Obsidian** | El panel de notas elige su destino y el vault elegido se recuerda como bookmark con ámbito de seguridad, sin nuevos entitlements. |
-| 🔄 **Canal de actualizaciones propio** | Sparkle consulta el feed de este repositorio y lo verifica con una clave generada para este proyecto. |
-| 🏷️ **Un interruptor que mentía** | El interruptor de letras decía *"below artist name"*, una ubicación que ya no existe: controla el panel a la derecha del notch abierto. Renombrado, y el catálogo en chino ya tiene traducción real. |
+| 🚑 **La 1.0.0 no abría** | El hardened runtime junto con una firma ad-hoc hacían que `dyld` rechazara cargar el framework multimedia incrustado: la app moría antes de dibujar una ventana. Un entitlement lo arregla; el hardened runtime se mantiene. |
+| 🌍 **405 cadenas, por fin en un catálogo** | Descripciones del tiempo, marcadores de posición de las letras, mensajes de error: mucho texto visible eran literales en chino dentro del código. Ahora todo vive en el String Catalog, con claves en inglés. |
+| 🗣 **Elige tu idioma dentro de la app** | Ajustes › General, 17 entradas, cada una con el nombre de su propio idioma. Español y chino simplificado están completos; trece idiomas más cubren algo menos de la mitad del catálogo y recurren al inglés. |
+| 🧱 **Doce páginas de ajustes, un solo juego de componentes** | Todas reconstruidas sobre una librería compartida de filas, secciones, interruptores y selectores, en lugar de las doce variantes que se habían ido separando. |
+| 🔗 **Comparte lo que suena** | Un botón de compartir en el notch: resumen de texto, carátula y un enlace a la canción cuando el reproductor lo expone. |
 
 ## Tres pestañas, un notch
 
@@ -271,9 +267,8 @@ Fallos que aparecieron al construir el flujo de letras, corregidos aquí:
 ## Contribuir
 
 Las incidencias y los pull requests son bienvenidos — ábrelos
-[aquí](https://github.com/huo241/notch-lyrics/issues). En
-[CONTRIBUTING.md](CONTRIBUTING.md) se explica a qué repositorio conviene
-enviar cada tipo de cambio.
+[aquí](https://github.com/huo241/notch-lyrics/issues). Las normas están en
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Agradecimientos
 
@@ -293,6 +288,8 @@ La lista completa está en [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES).
 
 Gracias también a la comunidad de **[Ech0](https://github.com/lin-snow/Ech0)**
 —sus autores y sus usuarios— por la compañía y el ánimo.
+
+Y a mi amor — gracias.
 
 > «Mejores son dos que uno; porque si uno cayere, el otro levantará a su
 > compañero.»

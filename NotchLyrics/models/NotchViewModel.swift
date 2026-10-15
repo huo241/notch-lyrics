@@ -16,7 +16,6 @@ class NotchViewModel: NSObject, ObservableObject {
     let animationLibrary: NotchAnimations = .init()
     let animation: Animation?
 
-    @Published var contentType: ContentType = .normal
     @Published private(set) var notchState: NotchState = .closed
 
     @Published var dragDetectorTargeting: Bool = false

@@ -28,9 +28,9 @@ struct ScrollingLyricsView: View {
             case .plain:
                 staticLyricsBody
             case .instrumental:
-                placeholder("纯音乐")
+                placeholder(L("Instrumental"))
             case .none:
-                placeholder(musicManager.isFetchingLyrics ? "加载中…" : "未找到歌词")
+                placeholder(musicManager.isFetchingLyrics ? L("Loading…") : L("No lyrics found"))
             }
         }
         .frame(width: width)
@@ -151,7 +151,7 @@ struct ScrollingLyricsView: View {
             .map { $0.trimmingCharacters(in: .whitespaces) }
 
         return VStack(alignment: .leading, spacing: 4) {
-            Text("无时间轴")
+            Text(L("No timeline"))
                 .font(.system(size: 9))
                 .foregroundStyle(.gray.opacity(0.6))
             ScrollView(.vertical, showsIndicators: false) {

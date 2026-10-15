@@ -5,21 +5,10 @@ Thank you for taking the time to contribute! ❤️
 These guidelines help streamline the contribution process. By following them, you'll make
 it easier to review your work and collaborate effectively.
 
-## This is a fork — where does your change belong?
+## Where to start
 
-Notch Lyrics is a fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch).
-Before you start, decide which repository should receive your change:
-
-- **Fixes or features for what this fork adds** — the lyrics panel, the weather page, the
-  quick-note board (Notes / Obsidian), or the Notch Lyrics visual identity → send it
-  **here**, to [`huo241/notch-lyrics`](https://github.com/huo241/notch-lyrics).
-- **Anything else** — the media player, calendar, notch window, gestures, build system,
-  or any upstream feature → send it to
-  [**upstream**](https://github.com/TheBoredTeam/boring.notch) instead. Fixes made there
-  flow back into this fork when we rebase, and they have the user base to test them
-  properly.
-
-If you are not sure, open an issue here first and we will point you the right way.
+Everything in Notch Lyrics lives in this repository. Open your issue or pull request
+[here](https://github.com/huo241/notch-lyrics) — that is the only place it needs to go.
 
 ## Table of Contents
 
@@ -101,12 +90,12 @@ patience.
 
 ## Translations
 
-Strings live in `NotchLyrics/Localizable.xcstrings`, a String Catalog. This fork does
+Strings live in `NotchLyrics/Localizable.xcstrings`, a String Catalog. This project does
 **not** use Crowdin and does not sync translations from any external service: add or fix
 translations directly in the catalog as part of your pull request.
 
-Chinese (Simplified) is the language the fork's own strings are written in first, so if
-you add a new user-visible string, please fill in both English and Simplified Chinese.
+English is the catalog's source language, so write new user-visible strings in English
+and, where you can, add the Simplified Chinese and Spanish translations alongside them.
 
 ## Reporting Bugs
 
@@ -126,8 +115,8 @@ use case, explain why it would be valuable, and stay open to alternative approac
 
 ## Licence
 
-Notch Lyrics is distributed under the **GPL-3.0**, the same licence as the project it is
-based on. By contributing, you agree that your changes are licensed under the same terms.
+Notch Lyrics is distributed under the **GPL-3.0**. By contributing, you agree that your
+changes are licensed under the same terms.
 
 ---
 

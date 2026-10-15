@@ -17,8 +17,8 @@ class SettingsWindowController: NSWindowController {
     
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 660),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -41,11 +41,38 @@ class SettingsWindowController: NSWindowController {
     private func setupWindow() {
         guard let window = window else { return }
         
-        window.title = "Notch Lyrics Settings"
-        window.titlebarAppearsTransparent = false
+        // Window skeleton: 52pt titlebar (a .unified empty toolbar pulls it to
+        // the standard height) + 232pt sidebar + content. No separator between
+        // the titlebar and the content area.
+        window.title = L("Notch Lyrics Settings")
+        window.titlebarAppearsTransparent = true
         window.titleVisibility = .visible
         window.toolbarStyle = .unified
-        window.isMovableByWindowBackground = true
+        if window.toolbar == nil {
+            window.toolbar = NSToolbar(identifier: "NotchLyricsSettingsToolbar")
+        }
+        window.titlebarSeparatorStyle = .none
+        // Must stay false, or dragging in Media → Layout preview stops working.
+        //
+        // With it true, AppKit drags the whole window whenever you press and move
+        // in the content area, and that outranks SwiftUI's .onDrag. The window
+        // follows the cursor, the cursor never shifts relative to the window, and
+        // the drop therefore always lands on the starting slot:
+        // `processDropString` sees from == to and the swap becomes a no-op.
+        //
+        // The cost is that dragging the window background no longer moves the
+        // window. The titlebar still does, and it is visible here.
+        window.isMovableByWindowBackground = false
+        // Window background is --content-bg (grey); the sidebar and titlebar
+        // lay a --material layer on top of it.
+        window.backgroundColor = NLColor.contentNSColor
+
+        // Debug: `-appearance-dark` / `-appearance-light` force the appearance.
+        if ProcessInfo.processInfo.arguments.contains("-appearance-dark") {
+            window.appearance = NSAppearance(named: .darkAqua)
+        } else if ProcessInfo.processInfo.arguments.contains("-appearance-light") {
+            window.appearance = NSAppearance(named: .aqua)
+        }
         
         // Make it behave like a regular app window with proper Spaces support
         window.collectionBehavior = [.managed, .participatesInCycle, .fullScreenAuxiliary]

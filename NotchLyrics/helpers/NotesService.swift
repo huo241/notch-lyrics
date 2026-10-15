@@ -33,9 +33,9 @@ enum NotesError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notAuthorized:
-            return "没有访问「备忘录」的权限"
+            return L("No permission to access Notes")
         case .noFolders:
-            return "没有找到可写入的备忘录文件夹"
+            return L("No writable Notes folder found")
         case .scriptFailed(let message):
             return message
         }

@@ -66,6 +66,16 @@ enum OptionKeyAction: String, CaseIterable, Identifiable, Defaults.Serializable 
     case none = "No Action"
 
     var id: String { self.rawValue }
+
+    /// Name shown in the UI. `rawValue` is what gets persisted to Defaults and
+    /// **cannot change**, so the display name is layered on top of it.
+    var displayName: String {
+        switch self {
+        case .openSettings: return L("Open System Settings")
+        case .showHUD: return L("Show HUD")
+        case .none: return L("None")
+        }
+    }
 }
 
 extension Defaults.Keys {
@@ -147,12 +157,6 @@ extension Defaults.Keys {
     static let showBatteryIndicator = Key<Bool>("showBatteryIndicator", default: true)
     static let showBatteryPercentage = Key<Bool>("showBatteryPercentage", default: true)
     static let showPowerStatusIcons = Key<Bool>("showPowerStatusIcons", default: true)
-    
-    // MARK: Downloads
-    static let enableDownloadListener = Key<Bool>("enableDownloadListener", default: true)
-    static let enableSafariDownloads = Key<Bool>("enableSafariDownloads", default: true)
-    static let selectedDownloadIndicatorStyle = Key<DownloadIndicatorStyle>("selectedDownloadIndicatorStyle", default: DownloadIndicatorStyle.progress)
-    static let selectedDownloadIconStyle = Key<DownloadIconStyle>("selectedDownloadIconStyle", default: DownloadIconStyle.onlyAppIcon)
     
     // MARK: HUD
     static let hudReplacement = Key<Bool>("hudReplacement", default: false)
@@ -256,7 +260,7 @@ enum QuickNoteTarget: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .notes: return "备忘录"
+        case .notes: return L("Notes")
         case .obsidian: return "Obsidian"
         }
     }

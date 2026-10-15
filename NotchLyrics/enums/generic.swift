@@ -8,17 +8,6 @@
 import Foundation
 import Defaults
 
-public enum Style {
-    case notch
-    case floating
-}
-
-public enum ContentType: Int, Codable, Hashable, Equatable {
-    case normal
-    case menu
-    case settings
-}
-
 public enum NotchState {
     case closed
     case open
@@ -29,28 +18,6 @@ public enum NotchViews {
     case shelf
     case quickNote
     case weather
-}
-
-enum SettingsEnum {
-    case general
-    case about
-    case charge
-    case download
-    case mediaPlayback
-    case hud
-    case shelf
-    case extensions
-}
-
-enum DownloadIndicatorStyle: String, Defaults.Serializable {
-    case progress = "Progress"
-    case percentage = "Percentage"
-}
-
-enum DownloadIconStyle: String, Defaults.Serializable {
-    case onlyAppIcon = "Only app icon"
-    case onlyIcon = "Only download icon"
-    case iconAndAppIcon = "Icon and app icon"
 }
 
 enum MirrorShapeEnum: String, Defaults.Serializable {
@@ -68,4 +35,13 @@ enum SliderColorEnum: String, CaseIterable, Defaults.Serializable {
     case white = "White"
     case albumArt = "Match album art"
     case accent = "Accent color"
+
+    /// Name shown in the UI. `rawValue` is what gets persisted and stays fixed.
+    var displayName: String {
+        switch self {
+        case .white: return L("White")
+        case .albumArt: return L("Match album art")
+        case .accent: return L("Accent color")
+        }
+    }
 }

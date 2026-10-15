@@ -6,6 +6,7 @@
 //  Modified by Harsh Vardhan Goswami & Richard Kunkli & Mustafa Ramadan
 //
 
+import AppKit
 import Combine
 import Defaults
 import SwiftUI
@@ -237,6 +238,12 @@ struct MusicControlsView: View {
             VolumeControlView()
         case .favorite:
             FavoriteControlButton()
+        case .share:
+            HoverButton(icon: "square.and.arrow.up", scale: .medium) {
+                Task { await QuickShareService.shared.shareNowPlaying() }
+            }
+            .disabled(!musicManager.hasActiveTrack)
+            .opacity(musicManager.hasActiveTrack ? 1 : 0.35)
         case .goBackward:
             HoverButton(icon: "gobackward.15", scale: .medium) {
                 MusicManager.shared.skip(seconds: -15)

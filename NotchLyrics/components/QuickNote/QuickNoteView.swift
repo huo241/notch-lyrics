@@ -144,23 +144,23 @@ struct QuickNoteView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "lock.fill").font(.system(size: 11))
-                Text("需要访问「备忘录」的权限")
+                Text(L("Notes access required"))
                     .font(.system(size: 12, weight: .semibold))
             }
             .foregroundStyle(.white)
 
-            Text("在「系统设置 › 隐私与安全性 › 自动化」里允许 Notch Lyrics 控制备忘录，然后回到这里。")
+            Text(L("Allow Notch Lyrics to control Notes in System Settings › Privacy & Security › Automation, then come back here."))
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.6))
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
-                chipButton("打开系统设置", prominent: true) { openAutomationSettings() }
-                chipButton("重试") { Task { await fetchFolders() } }
+                chipButton(L("Open System Settings"), prominent: true) { openAutomationSettings() }
+                chipButton(L("Try Again")) { Task { await fetchFolders() } }
                 // The refusal is answered rather than repeated: this is the
                 // "ask once, and if they say no, use Obsidian" path. Without
                 // it the tab is a dead end for anyone who declines.
-                chipButton("改用 Obsidian") { switchTo(.obsidian) }
+                chipButton(L("Use Obsidian instead")) { switchTo(.obsidian) }
             }
         }
     }
@@ -175,13 +175,13 @@ struct QuickNoteView: View {
             }
             .foregroundStyle(.white.opacity(0.85))
 
-            chipButton("重试") { Task { await fetchFolders() } }
+            chipButton(L("Try Again")) { Task { await fetchFolders() } }
         }
     }
 
     private func folderPicker(_ folders: [NoteFolder]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("选择备忘录文件夹")
+            Text(L("Choose a Notes folder"))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white)
 
@@ -221,19 +221,19 @@ struct QuickNoteView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "folder.badge.plus").font(.system(size: 11))
-                Text("选择 Obsidian 文件夹")
+                Text(L("Choose an Obsidian folder"))
                     .font(.system(size: 12, weight: .semibold))
             }
             .foregroundStyle(.white)
 
-            Text("速记会存成 .md 文件写进你选的文件夹。vault 根目录或其中任意文件夹都可以，需要新建文件夹也可以在这里建。")
+            Text(L("Quick notes are saved as .md files in the folder you pick — the vault root or any folder inside it. You can also create a new folder here."))
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.6))
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
-                chipButton("选择文件夹…", prominent: true) { chooseVault() }
-                chipButton("改用备忘录") { switchTo(.notes) }
+                chipButton(L("Choose Folder…"), prominent: true) { chooseVault() }
+                chipButton(L("Use Notes instead")) { switchTo(.notes) }
             }
         }
     }
@@ -270,7 +270,7 @@ struct QuickNoteView: View {
                 // A plain chip rather than a bordered system button: the
                 // default style renders a light bezel that clashes with the
                 // notch's dark, self-drawn controls.
-                chipButton("保存", prominent: canSave) { save() }
+                chipButton(L("Save"), prominent: canSave) { save() }
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!canSave)
             }
@@ -359,10 +359,10 @@ struct QuickNoteView: View {
 
     private var formatBar: some View {
         HStack(spacing: 3) {
-            formatButton("bold", "粗体", .bold)
-            formatButton("italic", "斜体", .italic)
-            formatButton("underline", "下划线", .underline)
-            formatButton("strikethrough", "删除线", .strikethrough)
+            formatButton("bold", L("Bold"), .bold)
+            formatButton("italic", L("Italic"), .italic)
+            formatButton("underline", L("Underline"), .underline)
+            formatButton("strikethrough", L("Strikethrough"), .strikethrough)
             Spacer()
         }
     }
@@ -400,17 +400,17 @@ struct QuickNoteView: View {
     private var destinationLabel: String {
         switch target {
         case .notes:
-            return folderLabel.isEmpty ? "备忘录" : folderLabel
+            return folderLabel.isEmpty ? L("Notes") : folderLabel
         case .obsidian:
-            return vaultLabel.isEmpty ? "未选择文件夹" : vaultLabel
+            return vaultLabel.isEmpty ? L("No folder selected") : vaultLabel
         }
     }
 
     /// A chip with its own background: plain text next to the destination label
     /// read as part of the label and was effectively invisible.
     private var changeFolderChip: some View {
-        chipButton("更改", small: true) { pickDestination() }
-            .help(target == .notes ? "选择其他备忘录文件夹" : "选择其他文件夹")
+        chipButton(L("Change"), small: true) { pickDestination() }
+            .help(target == .notes ? L("Choose another Notes folder") : L("Choose another folder"))
     }
 
     /// Both routes re-pick their destination; they differ only in which picker
@@ -438,7 +438,7 @@ struct QuickNoteView: View {
     private func chooseVault() {
         guard let label = ObsidianService.shared.chooseFolder() else { return }
         QuickNoteSelfTest.log("chooseVault: \(label)")
-        showFlash("已指向 \(label)", isError: false)
+        showFlash(String(localized: "Now saving to \(label)"), isError: false)
         phase = .ready
     }
 
@@ -500,7 +500,7 @@ struct QuickNoteView: View {
         )
         .overlay(alignment: .topLeading) {
             if draft.attributedText.length == 0 {
-                Text("随手记点什么…")
+                Text(L("Jot something down…"))
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.3))
                     // Matches the editor's textContainerInset (6, 5) so the
@@ -695,7 +695,7 @@ struct QuickNoteView: View {
             case .notAuthorized:
                 phase = .notAuthorized
             case .noFolders:
-                phase = .failed("备忘录里没有可写入的文件夹")
+                phase = .failed(L("No writable folder in Notes"))
             case .scriptFailed(let message):
                 phase = .failed(message)
             }
@@ -736,7 +736,7 @@ struct QuickNoteView: View {
                 }
                 draft.attributedText = NSAttributedString(string: "")
                 releaseKeyboard()
-                showFlash("已保存", isError: false)
+                showFlash(L("Saved"), isError: false)
             } catch {
                 if let obsidian = error as? ObsidianError {
                     switch obsidian {

@@ -30,9 +30,10 @@ struct WeatherView: View {
     @State private var mode: Mode = .today
     @State private var isRefreshing = false
 
+    /// `rawValue` is only a lookup key; display always goes through `L()`.
     private enum Mode: String, CaseIterable {
-        case today = "今天"
-        case week = "一周"
+        case today = "Today"
+        case week = "Week"
     }
 
     var body: some View {
@@ -91,7 +92,7 @@ struct WeatherView: View {
                 Button {
                     withAnimation(.smooth(duration: 0.22)) { mode = candidate }
                 } label: {
-                    Text(candidate.rawValue)
+                    Text(L(candidate.rawValue))
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(mode == candidate ? .white : .white.opacity(0.6))
                         .padding(.horizontal, 9)
@@ -129,15 +130,17 @@ struct WeatherView: View {
                     )
             }
             .buttonStyle(.plain)
-            .help("立即刷新")
+            .help(L("Refresh now"))
         }
         .frame(height: 18)
     }
 
     private static func updatedLabel(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "H:mm"
-        return "更新于 \(formatter.string(from: date))"
+        // A template rather than a hard-coded format, so the 12/24-hour clock and
+    // the "14:30 / 2:30 PM" shape follow the system language.
+        formatter.setLocalizedDateFormatFromTemplate("jm")
+        return String(localized: "Updated \(formatter.string(from: date))")
     }
 }
 
@@ -278,7 +281,7 @@ struct WeatherNowPane: View {
                     Image(systemName: "location.fill")
                         .font(.system(size: 7))
                         .foregroundStyle(.white.opacity(0.45))
-                        .help("由网络定位推断")
+                        .help(L("Inferred from network location"))
                 }
             }
 
@@ -368,7 +371,7 @@ struct WeatherHourlyCard: View {
             HStack(spacing: 0) {
                 ForEach(Array(hours.enumerated()), id: \.element.id) { index, hour in
                     VStack(spacing: 3) {
-                        Text(index == 0 ? "现在" : Self.hourLabel(hour.date))
+                        Text(index == 0 ? L("Now") : Self.hourLabel(hour.date))
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.white.opacity(index == 0 ? 0.95 : 0.7))
 
@@ -508,7 +511,8 @@ struct WeatherHourlyCard: View {
 
     static func hourLabel(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "H时"
+        // Template "j" is the locale's preferred hour: "14时" in Chinese, "2 PM" in English.
+        formatter.setLocalizedDateFormatFromTemplate("j")
         return formatter.string(from: date)
     }
 }
@@ -520,11 +524,11 @@ struct WeatherWeekPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            WeatherSectionHeader(title: "未来一周", icon: "calendar")
+            WeatherSectionHeader(title: L("Next 7 days"), icon: "calendar")
 
             ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                 HStack(spacing: 8) {
-                    Text(index == 0 ? "今天" : Self.weekdayLabel(day.date))
+                    Text(index == 0 ? L("Today") : Self.weekdayLabel(day.date))
                         .font(.system(size: 10, weight: index == 0 ? .semibold : .regular))
                         .foregroundStyle(.white.opacity(index == 0 ? 0.95 : 0.8))
                         .frame(width: 36, alignment: .leading)
@@ -598,8 +602,9 @@ struct WeatherWeekPane: View {
 
     static func weekdayLabel(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "EEE"
+        // This used to be hard-coded to zh_CN, so an English UI showed "周一". Follow the system language instead.
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("EEE")
         return formatter.string(from: date)
     }
 }
@@ -630,7 +635,7 @@ struct WeatherLoadingPane: View {
             ProgressView()
                 .controlSize(.small)
                 .tint(.white)
-            Text("正在获取天气…")
+            Text(L("Loading weather…"))
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.7))
         }
@@ -647,12 +652,12 @@ struct WeatherEmptyPane: View {
             Image(systemName: "cloud.fill")
                 .font(.system(size: 26))
                 .foregroundStyle(.white.opacity(0.55))
-            Text(message ?? "暂无天气数据")
+            Text(message ?? L("No weather data"))
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
             Button(action: retry) {
-                Text("重试")
+                Text(L("Try Again"))
                     .font(.system(size: 11, weight: .medium))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)

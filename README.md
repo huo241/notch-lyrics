@@ -6,10 +6,8 @@
 
 **Time-synced lyrics, the weather, and a scratchpad — all in your MacBook's notch.**
 
-> **Notch Lyrics is built on Boring Notch**, an earlier GPL-3.0
-> project. Independent work since **6 October 2026**, not affiliated with or
-> endorsed by the original authors. Provenance and the full change list are in
-> [NOTICE](NOTICE).
+> An independent, GPL-3.0-licensed project. Provenance and licensing details
+> are in [NOTICE](NOTICE).
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md)
 
@@ -30,23 +28,21 @@
 
 ---
 
-## What's new in 1.0
+## What's new in 1.1
 
-This is the release where the app stopped carrying someone else's identity.
-Every layer — project, targets, scheme, bundle ID, XPC helper and CI — now bears
-the Notch Lyrics name; the lyric lookup was rebuilt instead of patched; and
-updates come from this repository's own signed feed.
-Full notes: [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
+1.0.0 shipped unable to open. This release fixes that, and puts every string the
+app can show behind a translation catalogue.
+Full notes: [`docs/releases/1.1.0.md`](docs/releases/1.1.0.md). The 1.0 story —
+the identity change and the rebuilt lyric pipeline — is in
+[`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
 
 | | |
 |---|---|
-| 🪪 **An identity of its own** | Targets, scheme, bundle ID, XPC helper and the whole CI pipeline renamed to Notch Lyrics — including retiring the job that used to publish elsewhere. |
-| 🔍 **Lyrics that were never missing** | LRCLIB's exact-match endpoint tolerates a **two-second** duration difference. The lookup falls back to a duration-free query and then to a locally scored search, with bracketed and dash-suffix noise stripped from the title first. |
-| 🎯 **No more wrong matches** | Search results are scored against the playing track and everything below the threshold is rejected — showing nothing beats showing the wrong song. |
-| ▶️ **The active line fills as it plays** | The current lyric wipes from dim to bright over its own duration, measured against the width of the text itself. |
-| ✍️ **Quick notes: Notes or Obsidian** | The note panel picks its destination, and a chosen vault is remembered as a security-scoped bookmark — no new entitlement. |
-| 🔄 **Its own update channel** | Sparkle checks this repository's feed and verifies it against a key generated for this project. |
-| 🏷️ **A switch that lied** | The lyrics toggle said *"below artist name"*, a location that has not existed for a long time — it drives the pane on the right of the open notch. Renamed, and the Chinese catalogue finally has a real translation. |
+| 🚑 **1.0.0 would not open** | A hardened runtime plus an ad-hoc signature meant `dyld` refused to load the embedded media framework, so the app died before drawing a window. One entitlement fixes it; the hardened runtime stays on. |
+| 🌍 **405 strings, finally in a catalogue** | Weather descriptions, lyric placeholders, error messages — a lot of visible text was Chinese literals sitting in the source. All of it now lives in the String Catalog, keyed by English. |
+| 🗣 **Pick your language inside the app** | Settings › General, 17 entries, each labelled in its own language. Spanish and Simplified Chinese are complete; thirteen more languages cover just under half the catalogue and fall back to English. |
+| 🧱 **Twelve settings pages, one component set** | Every page rebuilt on a shared library of rows, sections, switches and pickers, instead of the twelve variants that had drifted apart. |
+| 🔗 **Share what is playing** | A share button in the notch: text summary, album art, and a link to the song where the player exposes one. |
 
 ## Three tabs, one notch
 
@@ -268,8 +264,8 @@ Bugs surfaced while building the lyrics pipeline, fixed in this project:
 ## Contributing
 
 Issues and pull requests are welcome — please open them
-[here](https://github.com/huo241/notch-lyrics/issues). Where a change
-belongs is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+[here](https://github.com/huo241/notch-lyrics/issues). Guidelines are in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgments
 
@@ -289,6 +285,8 @@ See [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES) for the full list.
 
 Thanks also to the **[Ech0](https://github.com/lin-snow/Ech0)** community — its
 authors and its users alike — for the company and the encouragement.
+
+And to my beloved — thank you.
 
 > *"Two are better than one... if either of them falls down, one can help the
 > other up."*

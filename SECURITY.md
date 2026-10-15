@@ -2,12 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Notch Lyrics is a fork of [Boring Notch](https://github.com/TheBoredTeam/boring.notch)
-and shares most of its code with it. If you believe an issue also affects the upstream
-project, please report it there as well — they maintain the code this fork is built on,
-and a fix from them reaches every fork.
-
-To report a security issue in **this fork**, use the GitHub Security Advisory
+To report a security issue, use the GitHub Security Advisory
 ["Report a Vulnerability"](https://github.com/huo241/notch-lyrics/security/advisories/new)
 tab on this repository.
 

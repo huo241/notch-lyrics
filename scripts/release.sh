@@ -22,9 +22,13 @@
 #   - Upload anything. Publishing is a separate, explicit step.
 #
 # After it finishes, publish with:
-#   gh release create v<version> "dist/Notch Lyrics <version>.zip" \
+#   gh release create v<version> "dist/NotchLyrics-<version>.zip" \
 #       "dist/NotchLyrics-<version>.dmg" --title "Notch Lyrics <version>"
 #   git add updater/appcast.xml && git commit -m "Release <version>" && git push
+#
+# The zip asset name must match the name the script produced character for
+# character: the appcast enclosure URL is built from it, so a mismatch makes
+# Sparkle fetch a file that does not exist.
 #
 # The appcast is served from
 #   https://raw.githubusercontent.com/huo241/notch-lyrics/main/updater/appcast.xml
@@ -132,18 +136,27 @@ else
 fi
 
 # ---------------------------------------------------------------- appcast ---
-# generate_appcast reuses an existing appcast.xml in the archives directory so
-# previous releases stay in the feed. Seed it from the committed one.
+# generate_appcast applies --download-url-prefix to every archive it can see, so
+# a previous release left sitting in the archives directory has its
+# already-published URL rewritten under the new tag, and Sparkle then hands
+# users a 404 for that older build. Feeding it only this run's archive keeps the
+# earlier entries byte for byte, because they come back verbatim from the seeded
+# feed. It also stops it emitting a delta update, which could not be served
+# anyway: release.sh uploads the zip and nothing else.
+APPC="$ROOT/build/appcast"
+rm -rf "$APPC"
+mkdir -p "$APPC"
+cp "$RELEASES/$ZIP_NAME" "$APPC/"
 if [[ -f "$ROOT/updater/appcast.xml" ]]; then
-    cp "$ROOT/updater/appcast.xml" "$RELEASES/appcast.xml"
+    cp "$ROOT/updater/appcast.xml" "$APPC/appcast.xml"
 fi
 
 echo "==> Generating appcast"
 "$SPARKLE_BIN/generate_appcast" \
     --download-url-prefix "https://github.com/${REPO}/releases/download/${TAG}/" \
-    "$RELEASES"
+    "$APPC"
 
-cp "$RELEASES/appcast.xml" "$ROOT/updater/appcast.xml"
+cp "$APPC/appcast.xml" "$ROOT/updater/appcast.xml"
 cp "$RELEASES/$ZIP_NAME" "$STAGING/$ZIP_NAME"
 
 # ----------------------------------------------------------------- report ---
@@ -155,11 +168,15 @@ echo "    archive : dist/${ZIP_NAME}"
 echo
 echo "Next steps:"
 echo "  1. Attach the archive to a GitHub Release named ${TAG} (asset name must"
-echo "     match '${ZIP_NAME}' exactly, so the appcast URL resolves), plus the"
-echo "     DMG for people who prefer dragging the app across:"
+echo "     match '${ZIP_NAME}' exactly, so the appcast URL resolves):"
 echo
-echo "       gh release create ${TAG} \"dist/${ZIP_NAME}\" \"dist/${DMG_NAME}\" \\"
-echo "           --title \"${APP_NAME} ${VERSION}\""
+if [[ -f "$STAGING/$DMG_NAME" ]]; then
+    echo "       gh release create ${TAG} \"dist/${ZIP_NAME}\" \"dist/${DMG_NAME}\" \\"
+    echo "           --title \"${APP_NAME} ${VERSION}\""
+else
+    echo "       gh release create ${TAG} \"dist/${ZIP_NAME}\" \\"
+    echo "           --title \"${APP_NAME} ${VERSION}\""
+fi
 echo
 echo "  2. Publish the feed:"
 echo

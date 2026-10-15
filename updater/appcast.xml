@@ -23,12 +23,18 @@
         <description>Notch Lyrics release feed.</description>
         <language>en</language>
         <item>
-            <title>1.0.0</title>
-            <pubDate>Sat, 10 Oct 2026 17:06:02 +0800</pubDate>
-            <sparkle:version>281</sparkle:version>
-            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <title>1.1.0</title>
+            <pubDate>Thu, 15 Oct 2026 13:19:58 +0800</pubDate>
+            <sparkle:version>282</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.0.0/NotchLyrics-1.0.0.zip" length="11280105" type="application/octet-stream" sparkle:edSignature="fzPD7Hl/DOkCJtvtrfGTaXkd3Ajh8j0WL9Lma3GhAmEEcLEwZIb0xoH3u7OonIkGjKJi86NXlWeDrSg8Im7QBw=="/>
+            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.1.0/NotchLyrics-1.1.0.zip" length="11588856" type="application/octet-stream" sparkle:edSignature="/ibMKdDgEWOSIMorpjnMDfH9NNWZrsOn13DB1vpo/88ap+xm4MsAKrIVbE4TCUqBLoy6vaGqYrTITS+H9twdBQ=="/>
         </item>
+        <!--
+            1.0.0 is deliberately absent. The archive was signed ad-hoc with the
+            hardened runtime on, so dyld refuses to load its bundled framework
+            and the app dies on launch. An entry here would only offer a
+            download that cannot be opened; users are moved to 1.1.0 instead.
+        -->
     </channel>
 </rss>

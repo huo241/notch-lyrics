@@ -142,8 +142,9 @@ Automation** and make sure Music is enabled for **Notch Lyrics**.
 ### A tap that appears to undo itself
 
 If tapping the heart flips it and it then reverts a second later, that is a
-different problem, and it is fixed as of 2.7.4. The cause was a race between the
-optimistic UI update and the confirmation read:
+different problem, and it is fixed in the current release — the fix first
+shipped as 2.7.4, before the version numbering was reset. The cause was a race
+between the optimistic UI update and the confirmation read:
 
 1. The controller sets the new value locally so the heart responds instantly,
    and publishes that state.

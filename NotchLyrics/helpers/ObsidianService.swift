@@ -22,11 +22,11 @@ enum ObsidianError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            return "还没有选择 Obsidian 文件夹"
+            return L("No Obsidian folder selected yet")
         case .folderUnavailable:
-            return "找不到之前选的文件夹，请重新选择"
+            return L("The previously selected folder is missing. Please choose it again.")
         case .accessDenied:
-            return "没有写入这个文件夹的权限，请重新选择"
+            return L("No permission to write to this folder. Please choose another one.")
         case .writeFailed(let message):
             return message
         }
@@ -81,8 +81,8 @@ final class ObsidianService: Sendable {
             // Lets the user create the `Inbox` they want in place, rather than
             // having us create one for them.
             panel.canCreateDirectories = true
-            panel.prompt = "选择"
-            panel.message = "选择存放速记的文件夹（vault 根目录，或其中的某个文件夹）"
+            panel.prompt = L("Choose")
+            panel.message = L("Choose where quick notes are stored (the vault root, or a folder inside it)")
 
             NSApp.activate(ignoringOtherApps: true)
             guard panel.runModal() == .OK, let url = panel.url else { return nil }

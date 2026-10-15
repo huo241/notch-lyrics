@@ -17,6 +17,7 @@ enum MusicControlButton: String, CaseIterable, Identifiable, Codable, Defaults.S
     case favorite
     case goBackward
     case goForward
+    case share
     case none
 
     var id: String { rawValue }
@@ -26,11 +27,12 @@ enum MusicControlButton: String, CaseIterable, Identifiable, Codable, Defaults.S
         .previous,
         .playPause,
         .next,
-        .none
+        .favorite,
+        .share
     ]
 
     static let minSlotCount: Int = 3
-    static let maxSlotCount: Int = 5
+    static let maxSlotCount: Int = 6
 
     static let pickerOptions: [MusicControlButton] = [
         .shuffle,
@@ -41,31 +43,34 @@ enum MusicControlButton: String, CaseIterable, Identifiable, Codable, Defaults.S
         .favorite,
         .volume,
         .goBackward,
-        .goForward
+        .goForward,
+        .share
     ]
 
     var label: String {
         switch self {
         case .shuffle:
-            return "Shuffle"
+            return L("Shuffle")
         case .previous:
-            return "Previous"
+            return L("Previous")
         case .playPause:
-            return "Play/Pause"
+            return L("Play/Pause")
         case .next:
-            return "Next"
+            return L("Next")
         case .repeatMode:
-            return "Repeat"
+            return L("Repeat")
         case .volume:
-            return "Volume"
+            return L("Volume")
         case .favorite:
-            return "Favorite"
+            return L("Favorite")
         case .goBackward:
-            return "Backward 15s"
+            return L("Back 15 Seconds")
         case .goForward:
-            return "Forward 15s"
+            return L("Forward 15 Seconds")
+        case .share:
+            return L("Share")
         case .none:
-            return "Empty slot"
+            return L("Empty slot")
         }
     }
 
@@ -89,6 +94,8 @@ enum MusicControlButton: String, CaseIterable, Identifiable, Codable, Defaults.S
             return "gobackward.15"
         case .goForward:
             return "goforward.15"
+        case .share:
+            return "square.and.arrow.up"
         case .none:
             return ""
         }
