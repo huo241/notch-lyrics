@@ -24,11 +24,11 @@
         <language>en</language>
         <item>
             <title>1.1.0</title>
-            <pubDate>Thu, 15 Oct 2026 13:19:58 +0800</pubDate>
+            <pubDate>Thu, 15 Oct 2026 20:01:19 +0800</pubDate>
             <sparkle:version>282</sparkle:version>
             <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.1.0/NotchLyrics-1.1.0.zip" length="11588856" type="application/octet-stream" sparkle:edSignature="/ibMKdDgEWOSIMorpjnMDfH9NNWZrsOn13DB1vpo/88ap+xm4MsAKrIVbE4TCUqBLoy6vaGqYrTITS+H9twdBQ=="/>
+            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.1.0/NotchLyrics-1.1.0.zip" length="9898918" type="application/octet-stream" sparkle:edSignature="esytrJQlJhOXJuVTG1EzBSGcXRBIu/C9XdP+TkUoeYc1yo5MYaoSkJtWpXc6k73DSl8RYhh189q3iERTzVCqBg=="/>
         </item>
         <!--
             1.0.0 is deliberately absent. The archive was signed ad-hoc with the
