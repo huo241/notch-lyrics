@@ -647,6 +647,12 @@ struct Media: View {
     @Default(.sneakPeekStyles) var sneakPeekStyles
 
     @Default(.enableLyrics) var enableLyrics
+    @Default(.keepMusicOpen) var keepMusicOpen
+    @Default(.pinnedPlayerBundle) var pinnedPlayerBundle
+
+    /// Observed so the pin row can name the app being followed and enable the
+    /// switch only once a real track has been seen.
+    @ObservedObject var musicManager = MusicManager.shared
 
     var body: some View {
         NLPage(
@@ -715,6 +721,12 @@ struct Media: View {
                 NLRow(title: L("Show lyrics in the notch")) {
                     NLSwitch(isOn: $enableLyrics, accessibilityLabel: L("Show lyrics in the notch"))
                 }
+
+                NLRow(title: L("Keep lyrics on screen while playing"), showsDivider: true) {
+                    NLSwitch(
+                        isOn: $keepMusicOpen,
+                        accessibilityLabel: L("Keep lyrics on screen while playing"))
+                }
             }
         }
     }
@@ -727,14 +739,34 @@ struct Media: View {
                         NLSelectOption(value: $0, label: $0.displayName)
                     },
                     selection: $mediaController,
-                    minWidth: 140
+                    minWidth: 140,
+                    // Product names render verbatim in every language.
+                    localizesLabel: false
                 )
-                .onChange(of: mediaController) { _, _ in
+                .onChange(of: mediaController) { _, newValue in
+                    // The pin only describes a "Now Playing" session. Leaving
+                    // that mode would otherwise hide a lock that is still in
+                    // force the next time the user comes back to it.
+                    if newValue != .nowPlaying {
+                        pinnedPlayerBundle = ""
+                    }
                     NotificationCenter.default.post(
                         name: Notification.Name.mediaControllerChanged,
                         object: nil
                     )
                 }
+            }
+            if mediaController == .nowPlaying, !MusicManager.shared.isNowPlayingDeprecated {
+                NLDivider()
+                NLRow(title: L("Pin to one app"), subtitle: pinSubtitle) {
+                    NLSwitch(isOn: pinBinding, accessibilityLabel: L("Pin to one app"))
+                }
+                NLDivider()
+                NLFootnote(pinHint)
+            }
+            if mediaController == .neteaseCloudMusic {
+                NLDivider()
+                NLFootnote(L("Only tracks the NetEase Cloud Music desktop app. Playback in other apps no longer replaces what the notch shows, and lyrics are looked up on NetEase first."))
             }
             if MusicManager.shared.isNowPlayingDeprecated {
                 NLDivider()
@@ -745,17 +777,79 @@ struct Media: View {
                         URL(string: "https://github.com/pear-devs/pear-desktop")!
                     )
                 )
-            } else {
+            } else if mediaController == .nowPlaying {
                 NLDivider()
                 NLFootnote(L("“Now Playing” was the only option in previous versions and works with every media app."))
             }
         }
     }
 
-    // Only show controller options that are available on this macOS version
+    // MARK: - Pin to a single app
+
+    /// Whether a pin is in force. The switch reflects the stored bundle id
+    /// rather than a separate boolean, so the two can never disagree.
+    private var pinBinding: Binding<Bool> {
+        Binding(
+            get: { !pinnedPlayerBundle.isEmpty },
+            set: { isOn in
+                guard isOn else {
+                    pinnedPlayerBundle = ""
+                    return
+                }
+                // Nothing has been resolved yet (cold launch, or the placeholder
+                // track): pinning now would latch onto the fallback bundle id
+                // and quietly follow an app the user is not even using.
+                guard musicManager.hasResolvedTrack,
+                      let bundle = musicManager.bundleIdentifier,
+                      !bundle.isEmpty
+                else { return }
+                pinnedPlayerBundle = bundle
+            }
+        )
+    }
+
+    private var pinSubtitle: String? {
+        guard !pinnedPlayerBundle.isEmpty else { return nil }
+        return String(
+            format: L("Only %@ is tracked"),
+            appDisplayName(for: pinnedPlayerBundle))
+    }
+
+    /// Explanation shown under the toggle: how to pin, and what is currently
+    /// locked once a pin is in force. Only rendered in the Now Playing branch,
+    /// so no optional needed here.
+    private var pinHint: String {
+        if pinnedPlayerBundle.isEmpty {
+            return L("Turn this on while the app you want is playing. From then on only that app is tracked — starting playback in another app leaves the notch untouched. This is separate from keeping lyrics on screen.")
+        }
+        return String(
+            format: L("Locked to %@. Playback in other apps no longer replaces what the notch shows."),
+            appDisplayName(for: pinnedPlayerBundle))
+    }
+
+    /// Human name for a bundle id. Known music apps use their English product
+    /// names so the wording matches the Music Source picker; anything else
+    /// falls back to Launch Services (which localizes, e.g. 音乐 for Music).
+    private func appDisplayName(for bundle: String) -> String {
+        switch bundle {
+        case "com.apple.Music": return "Apple Music"
+        case "com.spotify.client": return "Spotify"
+        case NeteaseMusicClient.bundleIdentifier: return "NetEase Cloud Music"
+        default: break
+        }
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) else {
+            return bundle
+        }
+        let name = FileManager.default.displayName(atPath: url.path)
+        return name.hasSuffix(".app") ? String(name.dropLast(4)) : name
+    }
+
+    // Only show controller options that are available on this macOS version.
+    // The NetEase source rides on the same MediaRemote pipeline as "Now
+    // Playing", so both go away together when that pipeline is deprecated.
     private var availableMediaControllers: [MediaControllerType] {
         if MusicManager.shared.isNowPlayingDeprecated {
-            return MediaControllerType.allCases.filter { $0 != .nowPlaying }
+            return MediaControllerType.allCases.filter { $0 != .nowPlaying && $0 != .neteaseCloudMusic }
         } else {
             return MediaControllerType.allCases
         }
@@ -763,14 +857,19 @@ struct Media: View {
 }
 
 // MARK: - Display names for the media page (rawValue stays untouched)
+//
+// Music app names are intentionally NOT localized: they are product names and
+// should read the same in every language (Now Playing, Apple Music, Spotify…),
+// matching how the apps brand themselves.
 
 private extension MediaControllerType {
     var displayName: String {
         switch self {
-        case .nowPlaying: return L("Now Playing")
+        case .nowPlaying: return "Now Playing"
         case .appleMusic: return "Apple Music"
         case .spotify: return "Spotify"
         case .youtubeMusic: return "YouTube Music"
+        case .neteaseCloudMusic: return "NetEase Cloud Music"
         }
     }
 }

@@ -79,6 +79,15 @@ class MusicManager: ObservableObject {
     /// default heart placeholder, so it is worth attaching to a shared post.
     var canShareArtwork: Bool { albumArt !== defaultImage }
 
+    /// True once any player has reported a real track.
+    ///
+    /// `hasActiveTrack` only means "a title is present", and the cold-launch
+    /// placeholder has one, so it cannot be used to decide whether there is an
+    /// app worth pinning to.
+    var hasResolvedTrack: Bool {
+        hasActiveTrack && !(songTitle == "I'm Handsome" && artistName == "Me")
+    }
+
     /// A favourite toggle the user just performed, held until the read-back
     /// settles. The liked state is read back asynchronously and can briefly
     /// report the pre-toggle value; without this guard that stale value would
@@ -178,6 +187,16 @@ class MusicManager: ObservableObject {
             newController = SpotifyController()
         case .youtubeMusic:
             newController = YouTubeMusicController()
+        case .neteaseCloudMusic:
+            // Same MediaRemote pipeline as "Now Playing", but permanently
+            // pinned to the NetEase client: other apps are filtered out at the
+            // controller level, so they can never take over the notch.
+            if !self.isNowPlayingDeprecated {
+                newController = NowPlayingController(
+                    forcedPin: NeteaseMusicClient.bundleIdentifier)
+            } else {
+                return nil
+            }
         }
 
         // Set up state observation for the new controller
@@ -336,6 +355,13 @@ class MusicManager: ObservableObject {
             self.bundleIdentifier = state.bundleIdentifier
             // Update volume control support from active controller
             self.volumeControlSupported = activeController?.supportsVolumeControl ?? false
+            // Favorite support depends on the *current* player for the
+            // Now Playing source (only Music.app exposes the liked state via
+            // AppleScript; NetEase and Spotify offer no write path at all), so
+            // it must be re-evaluated when the player changes, not just once
+            // when the controller is created — otherwise the heart stays
+            // enabled from the seeded state and taps light up nothing.
+            self.canFavoriteTrack = activeController?.supportsFavorite ?? false
         }
 
         if repeatModeChanged {
@@ -444,6 +470,13 @@ class MusicManager: ObservableObject {
         hasActiveTrack = !title.isEmpty
 
         guard Defaults[.enableLyrics], !title.isEmpty else {
+            self.cancelLyricsFetch()
+            return
+        }
+
+        // 冷启动时 `songTitle`/`artistName` 还是占位值，会被当成一首真歌去查，
+        // 白打一次请求，还可能匹配到同名的网络歌曲。直接忽略。
+        guard !(title == "I'm Handsome" && artist == "Me") else {
             self.cancelLyricsFetch()
             return
         }
@@ -629,9 +662,8 @@ class MusicManager: ObservableObject {
     /// tried. And `/api/search` answers with everything whose metadata merely
     /// *contains* the query, so its results are ranked locally and a record
     /// that does not look like this track is dropped instead of displayed.
-    @MainActor
-    private func fetchLyricsFromWeb(title: String, artist: String, trackKey: String) async {
-        LyricsDebug.log("web lookup: \"\(title)\" | \"\(artist)\" | dur=\(songDuration)")
+    /// LRCLIB 查询。返回 nil 表示没有足够可信的结果。
+    private func lrclibPayload(title: String, artist: String) async -> LyricsPayload? {
         var best: (record: [String: Any], score: Double)?
 
         /// Keeps the highest-scoring record seen so far, and reports whether it
@@ -678,18 +710,11 @@ class MusicManager: ObservableObject {
             }
         }
 
-        // A response for a track the user has already skipped past is useless.
-        guard trackKey == loadedLyricsTrackKey else { return }
-
-        guard let match = best else {
-            self.apply(LyricsPayload(kind: .none, plain: "", synced: []), trackKey: trackKey)
-            return
-        }
+        guard let match = best else { return nil }
 
         let record = match.record
         if (record["instrumental"] as? Bool) == true {
-            self.apply(LyricsPayload(kind: .instrumental, plain: "", synced: []), trackKey: trackKey)
-            return
+            return LyricsPayload(kind: .instrumental, plain: "", synced: [])
         }
 
         let plain = ((record["plainLyrics"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -699,13 +724,80 @@ class MusicManager: ObservableObject {
         // plain text is only a fallback.
         let synced = syncedRaw.isEmpty ? [] : Self.parseLRC(syncedRaw)
         if synced.count >= 2 {
-            self.apply(
-                LyricsPayload(kind: .synced, plain: plain.isEmpty ? syncedRaw : plain, synced: synced),
-                trackKey: trackKey)
-        } else if !plain.isEmpty {
-            self.apply(LyricsPayload(kind: .plain, plain: plain, synced: []), trackKey: trackKey)
-        } else {
-            self.apply(LyricsPayload(kind: .none, plain: "", synced: []), trackKey: trackKey)
+            return LyricsPayload(
+                kind: .synced, plain: plain.isEmpty ? syncedRaw : plain, synced: synced)
+        }
+        if !plain.isEmpty {
+            return LyricsPayload(kind: .plain, plain: plain, synced: [])
+        }
+        return nil
+    }
+
+    /// 多源编排。
+    ///
+    /// 顺序不是随手定的：LRCLIB 的英文曲库全、时间轴干净；中文歌的覆盖率则要靠
+    /// 网易云（大量国语流行歌在 LRCLIB 里根本没有记录）。所以中文歌先问网易云，
+    /// 其余先问 LRCLIB，谁先给出带时间轴的结果就用谁，另一家只作为补充。
+    @MainActor
+    private func fetchLyricsFromWeb(title: String, artist: String, trackKey: String) async {
+        LyricsDebug.log("web lookup: \"\(title)\" | \"\(artist)\" | dur=\(songDuration)")
+        // 音源选了网易云音乐时无条件网易云优先——用户明说了在用网易云，
+        // 先查它命中率最高，也省一次 LRCLIB 的往返。
+        let chinese = Self.containsCJK(title) || Self.containsCJK(artist)
+            || Defaults[.mediaController] == .neteaseCloudMusic
+        var fallback: LyricsPayload?
+
+        if chinese {
+            if let payload = await NeteaseLyricsProvider.lookup(
+                title: title, artist: artist, duration: songDuration) {
+                guard trackKey == loadedLyricsTrackKey else { return }
+                if payload.kind == .synced || payload.kind == .instrumental {
+                    apply(payload, trackKey: trackKey)
+                    return
+                }
+                fallback = payload
+            }
+        }
+
+        if let payload = await lrclibPayload(title: title, artist: artist) {
+            guard trackKey == loadedLyricsTrackKey else { return }
+            if payload.kind == .synced || payload.kind == .instrumental {
+                apply(payload, trackKey: trackKey)
+                return
+            }
+            if fallback == nil { fallback = payload }
+        }
+
+        if !chinese {
+            if let payload = await NeteaseLyricsProvider.lookup(
+                title: title, artist: artist, duration: songDuration) {
+                guard trackKey == loadedLyricsTrackKey else { return }
+                if payload.kind == .synced || payload.kind == .instrumental {
+                    apply(payload, trackKey: trackKey)
+                    return
+                }
+                if fallback == nil { fallback = payload }
+            }
+        }
+
+        // 跳过下一首之后才回来的结果没有意义。
+        guard trackKey == loadedLyricsTrackKey else { return }
+        apply(fallback ?? LyricsPayload(kind: .none, plain: "", synced: []), trackKey: trackKey)
+    }
+
+    /// 歌名/歌手里是否含中日韩文字。用来决定先问哪一家。
+    private static func containsCJK(_ string: String) -> Bool {
+        string.unicodeScalars.contains { scalar in
+            switch scalar.value {
+            case 0x3400...0x4DBF,   // 扩展 A
+                 0x4E00...0x9FFF,   // 基本汉字
+                 0xF900...0xFAFF,   // 兼容汉字
+                 0x3040...0x30FF,   // 假名
+                 0xAC00...0xD7AF:   // 谚文
+                return true
+            default:
+                return false
+            }
         }
     }
 

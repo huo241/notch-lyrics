@@ -77,11 +77,30 @@ final class ShelfStateViewModel: ObservableObject {
     }
 
 
+    /// URL-based entry point used by the window-level NSDraggingDestination.
+    func load(urls: [URL]) {
+        NLDiag.log("load(urls:) called with \(urls.count) urls")
+        guard !urls.isEmpty else { return }
+        isLoading = true
+        Task { [weak self] in
+            let dropped = await ShelfDropService.items(fromURLs: urls)
+            NLDiag.log("ShelfDropService URL path resolved \(dropped.count) items")
+            await MainActor.run {
+                self?.add(dropped)
+                self?.isLoading = false
+            }
+        }
+    }
+
     func load(_ providers: [NSItemProvider]) {
+        // TEMP DIAGNOSTIC: confirms a drop reached the shelf funnel and how many
+        // items the drop service resolved. Remove once drag-drop is confirmed.
+        NLDiag.log("load() called with \(providers.count) providers")
         guard !providers.isEmpty else { return }
         isLoading = true
         Task { [weak self] in
             let dropped = await ShelfDropService.items(from: providers)
+            NLDiag.log("ShelfDropService resolved \(dropped.count) items")
             await MainActor.run {
                 self?.add(dropped)
                 self?.isLoading = false

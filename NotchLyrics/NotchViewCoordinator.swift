@@ -60,6 +60,47 @@ class NotchViewCoordinator: ObservableObject {
     /// on screen, and back down the moment that tab is left.
     @Published var quickNoteWantsFocus: Bool = false
 
+    /// Whether a file drag is currently hovering over the notch.
+    ///
+    /// The notch window is a non-activating panel whose `canBecomeKey`/`canBecomeMain`
+    /// are otherwise `false` so it never steals focus from the app you're using.
+    /// But a cross-app drag (e.g. a file dragged out of Finder) can only be
+    /// *delivered* to the window if it is allowed to become key at drop time —
+    /// otherwise AppKit bounces the drag back. This flag goes up the moment any
+    /// drop zone is targeted and lets the window accept the drop, then back down
+    /// on drag exit. It does not affect click focus: outside a drag,
+    /// `canBecomeKey` still returns `false`.
+    @Published var isDragTargeting: Bool = false
+
+    /// Set by the window's drop handler right after a file drop is accepted, so
+    /// the SwiftUI side can reveal the shelf. State is mutated *after* the drop
+    /// on purpose: touching the window or the view tree while a drag is in
+    /// flight cancels the session and the file never lands.
+    @Published var pendingShelfReveal: Bool = false
+
+    /// Set for one beat right after a file drop is accepted, so the auto-close
+    /// (triggered when `isDragTargeting` falls back to false) is suppressed and
+    /// the freshly staged file stays on screen instead of vanishing instantly.
+    var didDropFile: Bool = false
+
+    /// Frame of the left-hand "send / AirDrop" square, in **window base
+    /// coordinates** (origin bottom-left), reported by `FileShareView`.
+    ///
+    /// The window itself is the drag destination (see `NotchSkyLightWindow`),
+    /// which means every drop anywhere in the notch would otherwise be staged.
+    /// Comparing `NSDraggingInfo.draggingLocation` against this rect is what
+    /// lets a drop on the share square trigger the share sheet instead.
+    ///
+    /// Deliberately NOT `@Published`: it is written from `NSView` layout
+    /// callbacks, and republishing there would re-enter the SwiftUI layout pass
+    /// mid-drag — the exact thing that kills a drag session.
+    var airDropZoneRect: CGRect = .zero
+
+    /// The AppKit view behind the share square, kept only so the window's drag
+    /// callbacks can light up its border. Highlighting through Core Animation
+    /// avoids touching SwiftUI state while a drag is in flight.
+    weak var airDropZoneView: ZoneFrameView?
+
     /// Whether the quick-note editor currently holds the keyboard.
     ///
     /// Distinct from `quickNoteWantsFocus`, which is raised merely by sitting on

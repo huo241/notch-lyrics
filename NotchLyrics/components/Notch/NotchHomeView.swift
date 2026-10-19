@@ -119,6 +119,7 @@ struct MusicControlsView: View {
     @State private var lastDragged: Date = .distantPast
     @Default(.musicControlSlots) private var slotConfig
     @Default(.musicControlSlotLimit) private var slotLimit
+    @Default(.keepMusicOpen) private var keepMusicOpen
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -131,12 +132,18 @@ struct MusicControlsView: View {
     private var songInfoAndSlider: some View {
         GeometryReader { geo in
             VStack(alignment: .leading, spacing: 4) {
-                songInfo(width: geo.size.width)
+                HStack(alignment: .top, spacing: 6) {
+                    songInfo(width: geo.size.width - 36)
+                    Spacer(minLength: 0)
+                    keepLyricsPin
+                        .padding(.top, 1)
+                }
                 musicSlider
             }
         }
         .padding(.top, 10)
         .padding(.leading, 5)
+        .padding(.trailing, 4)
     }
 
     private func songInfo(width: CGFloat) -> some View {
@@ -155,6 +162,27 @@ struct MusicControlsView: View {
             )
             .fontWeight(.medium)
         }
+    }
+
+    /// A pin toggle that turns "keep lyrics on screen" on/off without leaving
+    /// the music view. Mirrors the `keepMusicOpen` setting so the pin and the
+    /// Settings switch stay in sync.
+    ///
+    /// The two states must read unmistakably different on the dark notch:
+    /// pinned = solid white pin (filled glyph + white color), unpinned =
+    /// outline pin in gray. The previous accent-color tint was too subtle and
+    /// users read the pinned state as "did nothing".
+    private var keepLyricsPin: some View {
+        HoverButton(
+            icon: keepMusicOpen ? "pin.fill" : "pin",
+            iconColor: keepMusicOpen ? .white : .gray,
+            scale: .medium
+        ) {
+            Defaults[.keepMusicOpen] = !Defaults[.keepMusicOpen]
+        }
+        .opacity(musicManager.hasActiveTrack ? 1 : 0.3)
+        .disabled(!musicManager.hasActiveTrack)
+        .help(L("Keep lyrics on screen while playing"))
     }
 
     private var musicSlider: some View {
@@ -200,7 +228,13 @@ struct MusicControlsView: View {
             max(slotLimit, MusicControlButton.minSlotCount),
             MusicControlButton.maxSlotCount
         )
-        let padded = slotConfig.padded(to: sanitizedLimit, filler: .none)
+        // The favorite slot collapses entirely when the current player offers
+        // no write path (NetEase, Spotify) — an invisible slot beats a dead
+        // button, and the remaining controls close the gap.
+        let configuredSlots = musicManager.canFavoriteTrack
+            ? slotConfig
+            : slotConfig.filter { $0 != .favorite }
+        let padded = configuredSlots.padded(to: sanitizedLimit, filler: .none)
         let result = Array(padded.prefix(sanitizedLimit))
         // If calendar and camera are both visible alongside music, hide the edge slots
         let shouldHideEdges = Defaults[.showCalendar] && Defaults[.showMirror] && webcamManager.cameraAvailable && vm.isCameraExpanded
@@ -282,11 +316,14 @@ struct FavoriteControlButton: View {
     @ObservedObject var musicManager = MusicManager.shared
 
     var body: some View {
-        HoverButton(icon: iconName, iconColor: iconColor, scale: .medium) {
-            MusicManager.shared.toggleFavoriteTrack()
+        // No favorite write path exists for this player (e.g. NetEase Cloud
+        // Music) — hide the heart instead of showing a dead one that ignores
+        // taps and reads as broken.
+        if musicManager.canFavoriteTrack {
+            HoverButton(icon: iconName, iconColor: iconColor, scale: .medium) {
+                MusicManager.shared.toggleFavoriteTrack()
+            }
         }
-        .disabled(!musicManager.canFavoriteTrack)
-        .opacity(musicManager.canFavoriteTrack ? 1 : 0.35)
     }
 
     private var iconName: String {

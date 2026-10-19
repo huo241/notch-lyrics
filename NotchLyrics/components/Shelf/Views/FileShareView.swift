@@ -25,13 +25,11 @@ struct FileShareView: View {
 
     var body: some View {
         dropArea
-            .background(NSViewHost(view: $hostView))
-            .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data, .image], isTargeted: $vm.dropZoneTargeting) { providers in
-                interactionNonce = .init()
-                vm.dropEvent = true
-                Task { await handleDrop(providers) }
-                return true
-            }
+            .background(ZoneReporter(view: $hostView) { rect in
+                // Feed the window-level drop handler so it can tell "drop on the
+                // share square" apart from "drop on the shelf".
+                NotchViewCoordinator.shared.airDropZoneRect = rect
+            })
             .onTapGesture {
                 Task {
                     await handleClick()
@@ -107,29 +105,107 @@ struct FileShareView: View {
 
     // MARK: - Actions
 
-    private func handleDrop(_ providers: [NSItemProvider]) async {
-        isProcessing = true
-        defer { isProcessing = false }
-        await quickShare.shareDroppedFiles(providers, using: selectedProvider, from: hostView)
-    }
-    
     private func handleClick() async {
         await quickShare.showFilePicker(for: selectedProvider, from: hostView)
     }
 }
 
-// MARK: - Host NSView extractor for anchoring share sheet
+// MARK: - Host NSView for share-sheet anchoring + drop-zone frame reporting
 
-private struct NSViewHost: NSViewRepresentable {
+/// Backing `NSView` for the share square. It exists for two reasons:
+///   1. it anchors `NSSharingServicePicker`, and
+///   2. it reports its own frame in window coordinates, which the window-level
+///      drag destination uses to decide whether a drop landed on this square.
+private struct ZoneReporter: NSViewRepresentable {
     @Binding var view: NSView?
-    
-    func makeNSView(context: Context) -> NSView {
-        let v = NSView(frame: .zero)
+    var onFrame: (CGRect) -> Void
+
+    func makeNSView(context: Context) -> ZoneFrameView {
+        let v = ZoneFrameView()
+        v.onFrame = onFrame
+        NotchViewCoordinator.shared.airDropZoneView = v
         DispatchQueue.main.async { self.view = v }
         return v
     }
-    
-    func updateNSView(_ nsView: NSView, context: Context) {
+
+    func updateNSView(_ nsView: ZoneFrameView, context: Context) {
+        nsView.onFrame = onFrame
+        NotchViewCoordinator.shared.airDropZoneView = nsView
         DispatchQueue.main.async { self.view = nsView }
+        nsView.reportNow()
+    }
+}
+
+final class ZoneFrameView: NSView {
+    var onFrame: ((CGRect) -> Void)?
+
+    private let ringLayer = CALayer()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupRing()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupRing()
+    }
+
+    private func setupRing() {
+        wantsLayer = true
+        ringLayer.borderColor = NSColor.controlAccentColor.cgColor
+        ringLayer.borderWidth = 3
+        ringLayer.cornerRadius = 12
+        ringLayer.opacity = 0
+        layer?.addSublayer(ringLayer)
+    }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        ringLayer.frame = bounds
+        CATransaction.commit()
+    }
+
+    /// Drawn with Core Animation instead of a SwiftUI state change: republishing
+    /// view state mid-drag rebuilds the SwiftUI tree and cancels the session.
+    func setHighlighted(_ on: Bool) {
+        let target: Float = on ? 1 : 0
+        guard ringLayer.opacity != target else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        ringLayer.opacity = target
+        CATransaction.commit()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil {
+            // Left the hierarchy (e.g. the notch collapsed): drop the stale
+            // frame so an old rect can never be mistaken for a live drop zone.
+            onFrame?(.zero)
+        } else {
+            reportNow()
+        }
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        reportNow()
+    }
+
+    override func setFrameOrigin(_ newOrigin: NSPoint) {
+        super.setFrameOrigin(newOrigin)
+        reportNow()
+    }
+
+    /// `convert(_:to: nil)` gives window base coordinates — the same space as
+    /// `NSDraggingInfo.draggingLocation`.
+    func reportNow() {
+        guard window != nil else { return }
+        let rect = convert(bounds, to: nil)
+        guard rect.width > 1, rect.height > 1 else { return }
+        onFrame?(rect)
     }
 }

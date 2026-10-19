@@ -16,7 +16,7 @@ struct MusicControllerSelectionView: View {
     
     private var availableMediaControllers: [MediaControllerType] {
         if MusicManager.shared.isNowPlayingDeprecated {
-            return MediaControllerType.allCases.filter { $0 != .nowPlaying }
+            return MediaControllerType.allCases.filter { $0 != .nowPlaying && $0 != .neteaseCloudMusic }
         } else {
             return MediaControllerType.allCases
         }
@@ -130,6 +130,8 @@ extension MediaControllerType {
             return "Connects directly to the Apple Music app."
         case .youtubeMusic:
             return "Requires a third-party client with API plugin enabled."
+        case .neteaseCloudMusic:
+            return "Tracks the NetEase Cloud Music desktop app only. Other apps never take over the notch, and lyrics come from NetEase first."
         }
     }
 }

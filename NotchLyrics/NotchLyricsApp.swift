@@ -237,6 +237,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func createNotchWindow(for screen: NSScreen, with viewModel: NotchViewModel) -> NSWindow {
         let rect = NSRect(x: 0, y: 0, width: windowSize.width, height: windowSize.height)
+        // `.nonactivatingPanel` keeps clicks on the notch from activating the app
+        // (i.e. from stealing focus from whatever you are typing in). It governs
+        // activation, not drag delivery — drops are handled by the window-level
+        // NSDraggingDestination in NotchSkyLightWindow, which is what actually
+        // receives cross-app file drags.
         let styleMask: NSWindow.StyleMask = [.borderless, .nonactivatingPanel, .utilityWindow, .hudWindow]
         
         let window = NotchSkyLightWindow(contentRect: rect, styleMask: styleMask, backing: .buffered, defer: false)
@@ -252,6 +257,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: ContentView()
                 .environmentObject(viewModel)
         )
+
+        // Register again now that a content view exists. `configureWindow()`
+        // registers during `init`, which is before this hosting view is attached;
+        // repeating it here guarantees the window is a drag candidate with a live
+        // content view behind it. Registering twice is harmless.
+        window.registerForDraggedTypes([.fileURL, .URL])
 
         window.orderFrontRegardless()
         NotchSpaceManager.shared.notchSpace.windows.insert(window)

@@ -47,8 +47,15 @@ enum MediaControllerType: String, CaseIterable, Identifiable, Defaults.Serializa
     case appleMusic = "Apple Music"
     case spotify = "Spotify"
     case youtubeMusic = "YouTube Music"
-    
+    case neteaseCloudMusic = "NetEase Cloud Music"
+
     var id: String { self.rawValue }
+}
+
+/// The NetEase Cloud Music desktop client. The `.neteaseCloudMusic` media
+/// source is a Now Playing session pinned to this bundle id.
+enum NeteaseMusicClient {
+    static let bundleIdentifier = "com.netease.163music"
 }
 
 // Sneak peek styles for selection in settings
@@ -143,6 +150,20 @@ extension Defaults.Keys {
     static let waitInterval = Key<Double>("waitInterval", default: 3)
     static let showShuffleAndRepeat = Key<Bool>("showShuffleAndRepeat", default: false)
     static let enableLyrics = Key<Bool>("enableLyrics", default: false)
+    /// When on, the notch stays expanded and shows the music/lyrics while a
+    /// track is playing, instead of collapsing on mouse-leave or when another
+    /// app is clicked. Solves the "lyrics only show on touch / get hidden behind
+    /// other apps" feedback. Off by default to preserve the classic hover feel.
+    static let keepMusicOpen = Key<Bool>("keepMusicOpen", default: false)
+    /// Bundle id of the single player the notch should follow while the source
+    /// is "Now Playing". Empty means not pinned.
+    ///
+    /// "Now Playing" tracks whatever app macOS currently reports as the system
+    /// player, so starting a video in another app silently replaces the track in
+    /// the notch. Pinning records one app and makes the controller ignore every
+    /// other app's updates, which is what people actually want when they park
+    /// lyrics in the notch and keep working elsewhere.
+    static let pinnedPlayerBundle = Key<String>("pinnedPlayerBundle", default: "")
     static let musicControlSlots = Key<[MusicControlButton]>(
         "musicControlSlots",
         default: MusicControlButton.defaultLayout

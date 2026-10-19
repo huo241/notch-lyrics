@@ -21,9 +21,6 @@ struct ShelfView: View {
                 .aspectRatio(1, contentMode: .fit)
                 .environmentObject(vm)
             panel
-                .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data], isTargeted: $vm.dragDetectorTargeting) { providers in
-                    handleDrop(providers: providers)
-                }
         }
         // Bind Quick Look to shelf selection
         .onChange(of: selection.selectedIDs) {
@@ -80,17 +77,23 @@ struct ShelfView: View {
     var content: some View {
         Group {
             if tvm.isEmpty {
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     Image(systemName: "tray.and.arrow.down")
                         .symbolVariant(.fill)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.white, .gray)
                         .imageScale(.large)
-                    
-                    Text("Drop files here")
+
+                    Text(L("Drop files to stage them"))
                         .foregroundStyle(.gray)
                         .font(.system(.title3, design: .rounded))
                         .fontWeight(.medium)
+
+                    Text(L("Staged files can be sent via AirDrop"))
+                        .foregroundStyle(.gray.opacity(0.7))
+                        .font(.system(.caption, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 6)
                 }
             } else {
                 ScrollView(.horizontal) {
@@ -103,9 +106,6 @@ struct ShelfView: View {
                 }
                 .padding(-spacing)
                 .scrollIndicators(.never)
-                .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data], isTargeted: $vm.dragDetectorTargeting) { providers in
-                    handleDrop(providers: providers)
-                }
             }
         }
         .onAppear {

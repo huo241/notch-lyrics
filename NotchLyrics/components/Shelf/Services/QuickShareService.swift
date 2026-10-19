@@ -125,11 +125,16 @@ class QuickShareService: ObservableObject {
         lifecycleDelegate = delegate
 
         if let svc = cachedServices[provider.id], svc.canPerform(withItems: items) {
+            NLDiag.log("SHARE direct perform provider=\(provider.id) items=\(items.count)")
             // For direct service path, explicitly mark service interaction start
             delegate.markServiceBegan()
             svc.delegate = delegate
             svc.perform(withItems: items)
         } else {
+            NLDiag.log(
+                "SHARE picker fallback provider=\(provider.id) cached=\(cachedServices[provider.id] != nil) "
+                    + "canPerform=\(cachedServices[provider.id]?.canPerform(withItems: items) ?? false) anchor=\(view != nil)"
+            )
             let picker = NSSharingServicePicker(items: items)
             picker.delegate = delegate
             delegate.markPickerBegan()

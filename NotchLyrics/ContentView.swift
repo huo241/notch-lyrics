@@ -24,6 +24,9 @@ struct ContentView: View {
     @ObservedObject var brightnessManager = BrightnessManager.shared
     @ObservedObject var volumeManager = VolumeManager.shared
     @State private var hoverTask: Task<Void, Never>?
+    /// Tracks the last track that triggered an auto-open so we don't re-open the
+    /// notch for the same track after the user manually dismissed it.
+    @State private var keepMusicLastTrackKey: String?
     @State private var isHovering: Bool = false
     @State private var anyDropDebounceTask: Task<Void, Never>?
 
@@ -173,8 +176,19 @@ struct ContentView: View {
                         // An open notch dismisses on any click outside its
                         // window; while closed the monitors stay uninstalled.
                         ClickOutsideCloser.shared.setActive(newState == .open) {
-                            self.vm.close()
+                            if !self.keepMusicVisible { self.vm.close() }
                         }
+                    }
+                    .onChange(of: musicManager.isPlaying) { _, isPlaying in
+                        guard isPlaying,
+                              Defaults[.keepMusicOpen],
+                              vm.notchState == .closed
+                        else { return }
+                        let key = musicManager.artistName + "|" + musicManager.songTitle
+                        guard key != keepMusicLastTrackKey else { return }
+                        keepMusicLastTrackKey = key
+                        coordinator.currentView = .home
+                        vm.open()
                     }
                     .onChange(of: vm.isBatteryPopoverActive) {
                         if !vm.isBatteryPopoverActive && !isHovering && vm.notchState == .open {
@@ -214,33 +228,19 @@ struct ContentView: View {
             anchor: .top
         )
         .animation(.smooth, value: gestureProgress)
-        .background(dragDetector)
         .preferredColorScheme(.dark)
         .environmentObject(vm)
-        .onChange(of: vm.anyDropZoneTargeting) { _, isTargeted in
-            anyDropDebounceTask?.cancel()
+        .onChange(of: coordinator.pendingShelfReveal) { _, reveal in
+            guard reveal else { return }
+            coordinator.pendingShelfReveal = false
+            NLDiag.log("ContentView reveal shelf after drop state=\(vm.notchState)")
 
-            if isTargeted {
-                if vm.notchState == .closed {
-                    coordinator.currentView = .shelf
-                    doOpen()
-                }
-                return
-            }
-
-            anyDropDebounceTask = Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(500))
-                guard !Task.isCancelled else { return }
-
-                if vm.dropEvent {
-                    vm.dropEvent = false
-                    return
-                }
-
-                vm.dropEvent = false
-                if !SharingStateManager.shared.preventNotchClose {
-                    vm.close()
-                }
+            // The file is already staged at this point, so it is safe to open
+            // the notch. Doing this *after* the drop (instead of on drag-entry)
+            // is what keeps the drag session alive long enough to be delivered.
+            coordinator.currentView = .shelf
+            if vm.notchState == .closed {
+                doOpen()
             }
         }
     }
@@ -368,7 +368,12 @@ struct ContentView: View {
                 .opacity(gestureProgress != 0 ? 1.0 - min(abs(gestureProgress) * 0.1, 0.3) : 1.0)
             }
         }
-        .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data], delegate: GeneralDropTargetDelegate(isTargeted: $vm.generalDropTargeting))
+        // File drag-and-drop is handled at the AppKit window level
+        // (`NotchSkyLightWindow` implements NSDraggingDestination). All SwiftUI
+        // `.onDrop` targets were removed on purpose: the auto-expand animation
+        // rebuilds the SwiftUI subtree mid-drag, which tears down the SwiftUI
+        // drop target and makes the file bounce back on release. The persistent
+        // NSPanel cannot be torn down, so it is the only reliable receiver.
     }
 
     @ViewBuilder
@@ -493,21 +498,10 @@ struct ContentView: View {
         )
     }
 
-    @ViewBuilder
-    var dragDetector: some View {
-        if Defaults[.notchShelf] && vm.notchState == .closed {
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-        .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data], isTargeted: $vm.dragDetectorTargeting) { providers in
-            vm.dropEvent = true
-            ShelfStateViewModel.shared.load(providers)
-            return true
-        }
-        } else {
-            EmptyView()
-        }
-    }
+    // (Removed) `dragDetector` background onDrop — it never reliably received
+    // drops because `.background()` views don't participate in drop hit-testing,
+    // and auto-expand made it vanish mid-drag. Replaced by the foreground
+    // conditional `.onDrop` on NotchLayout's outer VStack above.
 
     private func doOpen() {
         withAnimation(animationSpring) {
@@ -516,6 +510,12 @@ struct ContentView: View {
     }
 
     // MARK: - Hover Management
+
+    /// Whether the music view should resist auto-closing while a track plays
+    /// and the user has asked for persistent lyrics.
+    private var keepMusicVisible: Bool {
+        Defaults[.keepMusicOpen] && musicManager.hasActiveTrack
+    }
 
     /// Schedules the notch to close, but only if nothing still wants it open.
     ///
@@ -546,6 +546,7 @@ struct ContentView: View {
 
             if self.vm.notchState == .open && !self.vm.isBatteryPopoverActive
                 && !SharingStateManager.shared.preventNotchClose
+                && !self.keepMusicVisible
             {
                 self.vm.close()
             }
@@ -656,25 +657,10 @@ struct ContentView: View {
     }
 }
 
-struct GeneralDropTargetDelegate: DropDelegate {
-    @Binding var isTargeted: Bool
-
-    func dropEntered(info: DropInfo) {
-        isTargeted = true
-    }
-
-    func dropExited(info: DropInfo) {
-        isTargeted = false
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        return DropProposal(operation: .cancel)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        return false
-    }
-}
+// (Removed) GeneralDropTargetDelegate — see the note above the NotchLayout
+// closing brace. An outer drop target declared here intercepted the drag
+// session before the inner Shelf panel / FileShare onDrop could receive files,
+// so dragging from Finder always "bounced back" on release.
 
 #Preview {
     let vm = NotchViewModel()

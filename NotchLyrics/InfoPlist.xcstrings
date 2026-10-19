@@ -1,98 +1,134 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "NSAppleEventsUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Used to control the music player’s playback state."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se usa para controlar el estado de reproducción del reproductor de música."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用于控制音乐播放器的播放状态"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Notch Lyrics"
           }
         }
       }
     },
-    "NSCalendarsUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Used to show your schedule in the notch calendar."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se usa para mostrar tu agenda en el calendario del notch."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用于在刘海的日历中显示你的日程"
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Notch Lyrics"
           }
         }
       }
     },
-    "NSCameraUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Used to show the camera feed in the notch mirror."
+    "NSAppleEventsUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used to control the music player’s playback state."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se usa para mostrar la imagen de la cámara en el espejo del notch."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa para controlar el estado de reproducción del reproductor de música."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用于在刘海镜子中显示摄像头画面"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于控制音乐播放器的播放状态"
           }
         }
       }
     },
-    "NSRemindersUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Used to show your reminders in the notch calendar."
+    "NSCalendarsUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used to show your schedule in the notch calendar."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se usa para mostrar tus recordatorios en el calendario del notch."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa para mostrar tu agenda en el calendario del notch."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用于在刘海的日历中显示你的提醒事项"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于在刘海的日历中显示你的日程"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used to show the camera feed in the notch mirror."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa para mostrar la imagen de la cámara en el espejo del notch."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于在刘海镜子中显示摄像头画面"
+          }
+        }
+      }
+    },
+    "NSHumanReadableCopyright" : {
+      "comment" : "Copyright (human-readable)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : ""
+          }
+        }
+      }
+    },
+    "NSRemindersUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used to show your reminders in the notch calendar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa para mostrar tus recordatorios en el calendario del notch."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于在刘海的日历中显示你的提醒事项"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

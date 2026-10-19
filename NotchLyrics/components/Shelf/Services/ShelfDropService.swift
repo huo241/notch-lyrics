@@ -10,6 +10,29 @@ import Foundation
 import UniformTypeIdentifiers
 
 struct ShelfDropService {
+    /// Direct URL path for the window-level drop handler.
+    ///
+    /// The AppKit drop already hands us real file URLs, so rebuilding an
+    /// `NSItemProvider` from each one and loading it back again only adds
+    /// failure modes (the provider round-trip can lose the file-URL
+    /// representation for some types). Bookmarks are created straight from
+    /// the URL, exactly like `processProvider` does.
+    static func items(fromURLs urls: [URL]) async -> [ShelfItem] {
+        var results: [ShelfItem] = []
+
+        for url in urls {
+            if url.isFileURL {
+                if let bookmark = createBookmark(for: url) {
+                    results.append(await ShelfItem(kind: .file(bookmark: bookmark), isTemporary: false))
+                }
+            } else {
+                results.append(await ShelfItem(kind: .link(url: url), isTemporary: false))
+            }
+        }
+
+        return results
+    }
+
     static func items(from providers: [NSItemProvider]) async -> [ShelfItem] {
         var results: [ShelfItem] = []
 

@@ -717,6 +717,10 @@ struct NLSelect<Value: Hashable>: View {
     let options: [NLSelectOption<Value>]
     @Binding var selection: Value
     var minWidth: CGFloat = 0
+    /// Pass `false` when the labels are product names (e.g. "Apple Music")
+    /// that must render verbatim in every language. By default the label is
+    /// treated as a localized key, matching the pre-existing behavior.
+    var localizesLabel: Bool = true
 
     @State private var isHovering = false
     @State private var isPresented = false
@@ -732,10 +736,17 @@ struct NLSelect<Value: Hashable>: View {
             isPresented.toggle()
         } label: {
             HStack(spacing: NLSpace.s2) {
-                Text(LocalizedStringKey(currentLabel))
-                    .font(NLFont.body)
-                    .foregroundStyle(isEnabled ? NLColor.textPrimary : NLColor.textTertiary)
-                    .lineLimit(1)
+                if localizesLabel {
+                    Text(LocalizedStringKey(currentLabel))
+                        .font(NLFont.body)
+                        .foregroundStyle(isEnabled ? NLColor.textPrimary : NLColor.textTertiary)
+                        .lineLimit(1)
+                } else {
+                    Text(verbatim: currentLabel)
+                        .font(NLFont.body)
+                        .foregroundStyle(isEnabled ? NLColor.textPrimary : NLColor.textTertiary)
+                        .lineLimit(1)
+                }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 8, weight: .semibold))
@@ -764,7 +775,10 @@ struct NLSelect<Value: Hashable>: View {
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: NLMotion.hover), value: isHovering)
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            NLSelectList(options: options, selection: $selection) { isPresented = false }
+            NLSelectList(
+                options: options, selection: $selection,
+                dismiss: { isPresented = false }, localizesLabel: localizesLabel
+            )
         }
     }
 }
@@ -774,13 +788,17 @@ private struct NLSelectList<Value: Hashable>: View {
     let options: [NLSelectOption<Value>]
     @Binding var selection: Value
     let dismiss: () -> Void
+    var localizesLabel: Bool = true
 
     var body: some View {
         NLMenu {
             ForEach(options) { option in
                 NLMenuItem(
                     title: option.label,
-                    isSelected: option.value == selection
+                    shortcut: nil,
+                    isDanger: false,
+                    isSelected: option.value == selection,
+                    localizesTitle: localizesLabel
                 ) {
                     selection = option.value
                     dismiss()
@@ -815,6 +833,9 @@ struct NLMenuItem: View {
     var shortcut: String?
     var isDanger: Bool = false
     var isSelected: Bool = false
+    /// Pass `false` for product names that must not be run through the
+    /// localization table (see NLSelect.localizesLabel).
+    var localizesTitle: Bool = true
     let action: () -> Void
 
     @State private var isHovering = false
@@ -828,9 +849,15 @@ struct NLMenuItem: View {
                     .foregroundStyle(isHovering ? NLColor.textOnAccent : NLColor.accent)
                     .opacity(isSelected ? 1 : 0)
 
-                Text(LocalizedStringKey(title))
-                    .font(NLFont.body)
-                    .foregroundStyle(labelColor)
+                if localizesTitle {
+                    Text(LocalizedStringKey(title))
+                        .font(NLFont.body)
+                        .foregroundStyle(labelColor)
+                } else {
+                    Text(verbatim: title)
+                        .font(NLFont.body)
+                        .foregroundStyle(labelColor)
+                }
 
                 Spacer(minLength: NLSpace.s4)
 

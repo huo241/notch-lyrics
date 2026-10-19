@@ -7,6 +7,7 @@
 
 import AppKit
 import Combine
+import Defaults
 import Foundation
 
 final class NowPlayingController: ObservableObject, MediaControllerProtocol {
@@ -18,7 +19,6 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     @Published private(set) var playbackState: PlaybackState = .init(
         bundleIdentifier: "com.apple.Music"
     )
-
     var playbackStatePublisher: AnyPublisher<PlaybackState, Never> {
         $playbackState.eraseToAnyPublisher()
     }
@@ -123,8 +123,43 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     private var streamGeneration = 0
     private var isTearingDown = false
 
+    /// The app macOS currently reports as the Now Playing owner.
+    ///
+    /// Tracked separately from `playbackState.bundleIdentifier` because diff
+    /// messages only carry the fields that changed: without remembering the
+    /// owner, a later update that omits the bundle id could not be attributed to
+    /// any app, and a pin could not tell "another app took over" apart from
+    /// "this tick simply had no bundle info".
+    private var systemBundleIdentifier: String = ""
+    /// Last ignored bundle, so a stream of ticks from the same intruding app
+    /// logs once instead of filling the file.
+    private var ignoredBundleLogged: String = ""
+
+    /// When non-nil this controller is permanently pinned to one app (used by
+    /// the "NetEase Cloud Music" source, which is a Now Playing session locked
+    /// to the NetEase client). It takes precedence over the user's pin from
+    /// Settings, which only applies to the generic "Now Playing" source.
+    private let forcedPin: String?
+
+    /// The bundle id the user pinned the notch to, or `nil` when not pinned.
+    /// Read from Defaults on every update so toggling the setting takes effect
+    /// immediately without rebuilding the controller or restarting the stream.
+    private var pinnedBundleIdentifier: String? {
+        if let forcedPin { return forcedPin }
+        let pinned = Defaults[.pinnedPlayerBundle]
+        return pinned.isEmpty ? nil : pinned
+    }
+
     // MARK: - Initialization
-    init?() {
+    init?(forcedPin: String? = nil) {
+        self.forcedPin = forcedPin
+        if let forcedPin {
+            // Seed the state with the pinned bundle so isActive(),
+            // supportsFavorite and friends describe the right app even before
+            // the first snapshot arrives.
+            self.playbackState = PlaybackState(bundleIdentifier: forcedPin)
+        }
+
         guard
             let bundle = CFBundleCreate(
                 kCFAllocatorDefault,
@@ -254,6 +289,10 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     private func startStream() async {
         streamGeneration &+= 1
         let generation = streamGeneration
+        // A fresh stream re-reports the owner with its first snapshot; keeping a
+        // stale id from before a sleep/wake could pin the notch to the wrong app.
+        systemBundleIdentifier = ""
+        ignoredBundleLogged = ""
 
         // Clean up any previous stream before spawning a new one.
         streamTask?.cancel()
@@ -330,6 +369,46 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     private func handleAdapterUpdate(_ update: NowPlayingUpdate) async {
         let payload = update.payload
         let diff = update.diff ?? false
+
+        if let incoming = payload.parentApplicationBundleIdentifier ?? payload.bundleIdentifier,
+           !incoming.isEmpty {
+            systemBundleIdentifier = incoming
+        }
+
+        // Switching players is announced with a full snapshot that carries no
+        // bundle id and no title — MediaRemote clearing its slot before the next
+        // app publishes. Without this guard it falls through to the pinned
+        // branch below (the remembered owner still matches the pin), blanks the
+        // title and artwork, and the notch ends up empty: the exact opposite of
+        // what a pin promises.
+        if pinnedBundleIdentifier != nil,
+           !diff,
+           payload.parentApplicationBundleIdentifier == nil,
+           payload.bundleIdentifier == nil,
+           payload.title == nil {
+            LyricsDebug.log("pin: dropping unattributed empty snapshot")
+            markPinnedTrackStopped()
+            return
+        }
+
+        // Pinned: ignore everything that is not the chosen app.
+        //
+        // The update is dropped whole rather than field by field. A diff message
+        // for another app usually carries no bundle id, and letting even the
+        // title-less ones through would walk the pinned track's position and
+        // state forward one tick at a time until the display belonged to the
+        // other app anyway.
+        if let pinned = pinnedBundleIdentifier,
+           !systemBundleIdentifier.isEmpty,
+           systemBundleIdentifier != pinned {
+            if ignoredBundleLogged != systemBundleIdentifier {
+                ignoredBundleLogged = systemBundleIdentifier
+                LyricsDebug.log("pin: ignoring \(systemBundleIdentifier), pinned to \(pinned)")
+            }
+            markPinnedTrackStopped()
+            return
+        }
+        ignoredBundleLogged = ""
 
         var newPlaybackState = PlaybackState(bundleIdentifier: playbackState.bundleIdentifier)
         
@@ -414,6 +493,21 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         }
     }
     
+    /// Freezes the pinned track once another app takes over the system player.
+    ///
+    /// Only the playing flag is cleared. The title, artwork and lyrics stay put
+    /// so the notch keeps showing the pinned song, and the position stops
+    /// advancing instead of running off the end of the track while nothing is
+    /// actually playing. Everything is restored by the next update from the
+    /// pinned app itself, i.e. as soon as it becomes the system player again.
+    private func markPinnedTrackStopped() {
+        guard playbackState.isPlaying else { return }
+        var stopped = playbackState
+        stopped.isPlaying = false
+        stopped.playbackRate = 0
+        playbackState = stopped
+    }
+
      private func fetchFavoriteStateIfSupported() async {
          let bundleID = playbackState.bundleIdentifier
         
