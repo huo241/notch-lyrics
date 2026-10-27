@@ -20,7 +20,12 @@ enum LyricsKind {
     case none
     case synced
     case plain
+    /// The track has no vocals, so there is nothing to look for.
     case instrumental
+    /// What is playing is not music at all — a video in a browser, a podcast.
+    /// The pane keeps its place and stays empty rather than claiming that
+    /// lyrics were searched for and missed.
+    case notApplicable
 }
 
 /// Result of a lyrics lookup, independent of which provider produced it.
@@ -311,7 +316,11 @@ class MusicManager: ObservableObject {
             }
 
             // Fetch lyrics on content change
-            self.fetchLyricsIfAvailable(bundleIdentifier: state.bundleIdentifier, title: state.title, artist: state.artist)
+            self.fetchLyricsIfAvailable(
+                bundleIdentifier: state.bundleIdentifier,
+                title: state.title,
+                artist: state.artist,
+                album: state.album)
         }
 
         let timeChanged = state.currentTime != self.elapsedTime
@@ -465,7 +474,9 @@ class MusicManager: ObservableObject {
     }
 
     // MARK: - Lyrics
-    private func fetchLyricsIfAvailable(bundleIdentifier: String?, title: String, artist: String) {
+    private func fetchLyricsIfAvailable(
+        bundleIdentifier: String?, title: String, artist: String, album: String
+    ) {
         // Any real track marks the player as non-empty, even when paused.
         hasActiveTrack = !title.isEmpty
 
@@ -488,6 +499,30 @@ class MusicManager: ObservableObject {
         let key = lyricsTrackKey(artist: artist, title: title)
         guard key != loadedLyricsTrackKey else { return }
         loadedLyricsTrackKey = key
+
+        // 浏览器里放视频、播客、有声书都会走同一条 now-playing 通道，元数据长得
+        // 和一首歌没区别。这类来源既不查歌词，也不说「没找到」——右侧留空。
+        //
+        // 故意不进缓存：同一个歌名换到音乐 App 里播是另一回事，缓存会把
+        // 「不是音乐」这个结论错误地带过去。
+        guard MusicSourcePolicy.isMusicApp(bundleIdentifier) else {
+            LyricsDebug.log("not a music source (\(bundleIdentifier ?? "nil")): pane stays blank")
+            syncedLyrics = []
+            currentLyrics = ""
+            lyricsKind = .notApplicable
+            isFetchingLyrics = false
+            return
+        }
+
+        // 元数据已经说明这是纯音乐，就不必再问歌词源了。这不只是省一次请求：
+        // `Song (Instrumental)` 会被 LyricsQuery 化简成 `Song`，查回来的是原唱
+        // 的人声歌词，比空着还糟。
+        if InstrumentalDetector.matches(title: title, album: album) {
+            LyricsDebug.log("metadata says instrumental: \"\(title)\" / \"\(album)\"")
+            apply(LyricsPayload(kind: .instrumental, plain: "", synced: []), trackKey: key)
+            return
+        }
+
         LyricsDebug.log("track: \"\(title)\" | \"\(artist)\" | dur=\(songDuration) | bundle=\(bundleIdentifier ?? "nil")")
 
         // Reuse a previous lookup for this track instead of hitting the network.
@@ -606,7 +641,7 @@ class MusicManager: ObservableObject {
         case .plain:
             syncedLyrics = []
             currentLyrics = payload.plain
-        case .instrumental, .none:
+        case .instrumental, .none, .notApplicable:
             syncedLyrics = []
             currentLyrics = ""
         }
@@ -710,7 +745,10 @@ class MusicManager: ObservableObject {
             }
         }
 
-        guard let match = best else { return nil }
+        // 搜索阶段会把分数不够的候选也留在 `best` 里，所以这里必须再卡一次阈值：
+        // 否则「同名前缀的另一首歌」会被当成命中，而它的 `instrumental` 标记
+        // 更会让界面理直气壮地说「纯音乐」。
+        guard let match = best, match.score >= LyricsQuery.minimumScore else { return nil }
 
         let record = match.record
         if (record["instrumental"] as? Bool) == true {

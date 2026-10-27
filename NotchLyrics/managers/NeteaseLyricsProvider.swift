@@ -232,6 +232,13 @@ enum NeteaseLyricsProvider {
         let trimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmed.isEmpty else {
+            // `nolyric` 是网易云对「这首歌本来就没有词」的明确回答（器乐、纯音乐），
+            // 和 `uncollected`（没版权，压根没拿到）不是一回事，不能混为一谈：
+            // 前者是结论，后者是失败。
+            if (root["nolyric"] as? Bool) == true {
+                LyricsDebug.log("netease: nolyric for id=\(track.id)")
+                return LyricsPayload(kind: .instrumental, plain: "", synced: [])
+            }
             LyricsDebug.log("netease: empty lyric for id=\(track.id) uncollected=\(root["uncollected"] ?? "?")")
             return nil
         }
@@ -317,5 +324,7 @@ enum NeteaseLyricsProvider {
         return lowered.contains("纯音乐")
             || lowered.contains("instrumental")
             || lowered.contains("此歌曲为没有填词的纯音乐")
+            || lowered.contains("无歌词")
+            || lowered.contains("无人声")
     }
 }

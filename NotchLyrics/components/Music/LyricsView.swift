@@ -29,6 +29,10 @@ struct ScrollingLyricsView: View {
                 staticLyricsBody
             case .instrumental:
                 placeholder(L("Instrumental"))
+            case .notApplicable:
+                // 视频、播客之类不是歌，没有「歌词」这回事。区域照样占着，
+                // 但一个字都不写——这里显示任何提示都是在回答一个没人问的问题。
+                Color.clear
             case .none:
                 placeholder(musicManager.isFetchingLyrics ? L("Loading…") : L("No lyrics found"))
             }
