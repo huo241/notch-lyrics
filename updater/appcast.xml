@@ -23,6 +23,14 @@
         <description>Notch Lyrics release feed.</description>
         <language>en</language>
         <item>
+            <title>1.2.1</title>
+            <pubDate>Wed, 28 Oct 2026 09:31:06 +0800</pubDate>
+            <sparkle:version>284</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.2.1/NotchLyrics-1.2.1.zip" length="9946463" type="application/octet-stream" sparkle:edSignature="iEpF33rN2aTQEFyBYqBOq+dST/JWjFj/3PpUGSRJ3ixCxRIkCNiQ4XajBAM2r2Q6+S0cX1jh1/ZMRey5v70IAg=="/>
+        </item>
+        <item>
             <title>1.2.0</title>
             <pubDate>Mon, 19 Oct 2026 17:56:15 +0800</pubDate>
             <sparkle:version>283</sparkle:version>
