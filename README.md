@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/icon.png" width="128" alt="Notch Lyrics icon">
-
-# Notch Lyrics
+<img src="docs/assets/banner-en.png" width="760" alt="Notch Lyrics">
 
 **Time-synced lyrics, the weather, and a scratchpad — all in your MacBook's notch.**
 

@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/icon.png" width="128" alt="Notch Lyrics icon">
-
-# Notch Lyrics
+<img src="docs/assets/banner-zh-CN.png" width="760" alt="Notch Lyrics">
 
 **滚动的歌词、天气和速记，都放进 MacBook 的刘海。**
 
