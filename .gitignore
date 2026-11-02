@@ -56,3 +56,7 @@ build/
 # Release archives produced by scripts/release.sh. Attached to a GitHub
 # Release, never committed.
 dist/
+
+# Agent workspace: local memory, scratch files. Never committed.
+.workbuddy-ai/
+.tmp/
