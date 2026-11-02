@@ -5,7 +5,7 @@
 **这个文件夹就是唯一的工作范围。**
 
 ```
-/Users/Zhuanz/WorkBuddy/notch-lyrics/
+/Users/Zhuanz/Development/notch-lyrics/
 ```
 
 所有 Agent（包括我自己）在这个项目里干活时，必须遵守：
