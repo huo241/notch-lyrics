@@ -68,6 +68,15 @@ xcodebuild -project NotchLyrics.xcodeproj -scheme NotchLyrics -configuration Deb
 
 `.workbuddy-ai/` 不会进 git，是本机专属的。
 
-## 七、版本记录
+## 七、环境已知问题
+
+本机到 GitHub 的网络不稳定，会间歇报 `CONNECT tunnel failed, response 502` 或 `Error in the HTTP2 framing layer`。
+
+- 报错先**重试一次**，多数情况自己就好了。
+- 拉整仓可用 `codeload.github.com/<owner>/<repo>/zip/refs/heads/main` 下 zip 兜底。
+- SPM 依赖解析**慢**（`lottie-spm` 那个包尤其卡）。解析时加 `-clonedSourcePackagesDirPath .tmp/spm`，缓存落在本地 `.tmp/` 里，不污染仓库。
+- 依赖解析交给 Xcode 打开工程时自动做也行，不必在命令行硬等。
+
+## 八、版本记录
 
 当前 1.2.1。发版说明在 `docs/releases/`。
