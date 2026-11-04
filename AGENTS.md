@@ -22,7 +22,7 @@
 
 **Notch Lyrics** —— macOS 应用，把 MacBook 刘海区域当作控制面板。
 
-- 三个标签页：歌词（LRCLIB 同步滚动）、天气（Open-Meteo + Photon 地理编码）、速记（写入 Apple Notes）
+- 五个标签页：媒体（LRCLIB + 网易云同步滚动）、暂存器、便签（写入 Apple Notes）、天气（Open-Meteo + Photon 地理编码）、统计（CPU / GPU / 内存 / 磁盘 / 网络）
 - 语言 / 框架：Swift + SwiftUI
 - 最低系统：macOS 14 Sonoma；**构建需要 macOS 15.6+ / Xcode 26+**
 - 许可证：GPL-3.0
@@ -74,9 +74,9 @@ xcodebuild -project NotchLyrics.xcodeproj -scheme NotchLyrics -configuration Deb
 
 - 报错先**重试一次**，多数情况自己就好了。
 - 拉整仓可用 `codeload.github.com/<owner>/<repo>/zip/refs/heads/main` 下 zip 兜底。
-- SPM 依赖解析**慢**（`lottie-spm` 那个包尤其卡）。解析时加 `-clonedSourcePackagesDirPath .tmp/spm`，缓存落在本地 `.tmp/` 里，不污染仓库。
+- SPM 依赖解析**慢**。解析时加 `-clonedSourcePackagesDirPath .tmp/spm`，缓存落在本地 `.tmp/` 里，不污染仓库。
 - 依赖解析交给 Xcode 打开工程时自动做也行，不必在命令行硬等。
 
 ## 八、版本记录
 
-当前 1.2.1。发版说明在 `docs/releases/`。
+当前 2.0.0。发版说明在 `docs/releases/`。

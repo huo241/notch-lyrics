@@ -115,7 +115,7 @@ codesign --force --sign - "$APP"
 
 > [!IMPORTANT]
 > Signing the app without `--entitlements` **drops the sandbox and every
-> permission it declares** (camera, calendar, Apple events). Extract the
+> permission it declares** (calendar, Apple events). Extract the
 > resolved entitlements from a build product first:
 >
 > ```bash

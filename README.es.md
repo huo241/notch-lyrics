@@ -2,7 +2,7 @@
 
 <img src="docs/assets/banner-es.png" width="760" alt="Notch Lyrics">
 
-**Letras sincronizadas, el tiempo y un bloc de notas — todo en el notch de tu MacBook.**
+**Letras sincronizadas, el tiempo, un bloc de notas y estadísticas del sistema — todo en el notch de tu MacBook.**
 
 > Un proyecto independiente bajo GPL-3.0. El origen y los detalles de licencia
 > están en [NOTICE](NOTICE).
@@ -26,32 +26,22 @@
 
 ---
 
-## Novedades de la 1.1
-
-La 1.0.0 se publicó sin poder abrirse. Esta versión lo corrige y mete en un
-catálogo de traducciones cada texto que la app puede mostrar.
-Notas completas: [`docs/releases/1.1.0.md`](docs/releases/1.1.0.md). La historia
-de la 1.0 —el cambio de identidad y la reconstrucción del pipeline de letras—
-está en [`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
-
-| | |
-|---|---|
-| 🚑 **La 1.0.0 no abría** | El hardened runtime junto con una firma ad-hoc hacían que `dyld` rechazara cargar el framework multimedia incrustado: la app moría antes de dibujar una ventana. Un entitlement lo arregla; el hardened runtime se mantiene. |
-| 🌍 **405 cadenas, por fin en un catálogo** | Descripciones del tiempo, marcadores de posición de las letras, mensajes de error: mucho texto visible eran literales en chino dentro del código. Ahora todo vive en el String Catalog, con claves en inglés. |
-| 🗣 **Elige tu idioma dentro de la app** | Ajustes › General, 17 entradas, cada una con el nombre de su propio idioma. Español y chino simplificado están completos; trece idiomas más cubren algo menos de la mitad del catálogo y recurren al inglés. |
-| 🧱 **Doce páginas de ajustes, un solo juego de componentes** | Todas reconstruidas sobre una librería compartida de filas, secciones, interruptores y selectores, en lugar de las doce variantes que se habían ido separando. |
-| 🔗 **Comparte lo que suena** | Un botón de compartir en el notch: resumen de texto, carátula y un enlace a la canción cuando el reproductor lo expone. |
-
-## Tres pestañas, un notch
+## Cinco pestañas, un notch
 
 La misma caja, el mismo tamaño, sin sorpresas de diseño: el notch es una superficie
 compartida y cada pestaña es una cara distinta.
 
 | Pestaña | Qué es |
 |---|---|
-| 🎵 **Letras** | Reproductor a la izquierda, ventana de 5 líneas desplazándose a la derecha |
-| 🌤️ **Tiempo** | El cielo, dibujado en el notch, con curva horaria y franja semanal |
+| 🎵 **Medios** | Reproductor a la izquierda, ventana de 5 líneas desplazándose a la derecha |
+| 🗂️ **Estante** | Zona temporal para los archivos que arrastras, compartibles desde el notch |
 | ✍️ **Nota rápida** | Un bloc que escribe en Notas de Apple |
+| 🌤️ **Tiempo** | El cielo, dibujado en el notch, con curva horaria y franja semanal |
+| 📊 **Estadísticas** | Anillos de CPU, GPU, memoria y disco sobre una traza de red de 60 s |
+
+La pestaña que no quieras se apaga en Ajustes › Apariencia › Pestañas. La función,
+sus ajustes y sus datos se quedan donde están, así que al volver a encenderla
+recuperas lo que había.
 
 ### 🎵 Letras que de verdad se desplazan
 
@@ -165,13 +155,13 @@ Después ábrela con normalidad.
 | **Automatización** (`Notes`) | Nota rápida — escribir la nota en tu carpeta |
 | **Accesibilidad** | Sustituir el HUD del sistema |
 | **Calendario / Recordatorios** | Pestaña de calendario (opcional) |
-| **Cámara** | Espejo (opcional) |
 
 ## Uso
 
 1. Abre la aplicación: el notch se convierte en tu panel de control.
 2. Pasa el cursor por encima para expandirlo.
-3. Cambia de pestaña en la cabecera: **letras**, **tiempo**, **nota rápida**.
+3. Cambia de pestaña en la cabecera: **medios**, **estante**, **nota rápida**,
+   **tiempo**, **estadísticas**.
 4. Reproduce algo en Apple Music o Spotify: **el panel derecho muestra las
    letras**, desplazándose y resaltando mientras suena.
 
