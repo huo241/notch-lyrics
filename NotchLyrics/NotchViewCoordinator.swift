@@ -50,7 +50,9 @@ struct ExpandedItem {
 class NotchViewCoordinator: ObservableObject {
     static let shared = NotchViewCoordinator()
 
-    @Published var currentView: NotchViews = .home
+    /// The tab on screen. Seeded from the saved home page so the first expand
+    /// after launch lands where the user chose, not always on `.home`.
+    @Published var currentView: NotchViews = NotchViewCoordinator.initialView()
 
     /// Whether the quick-note editor may take the keyboard.
     ///
@@ -124,9 +126,7 @@ class NotchViewCoordinator: ObservableObject {
         didSet {
             if !alwaysShowTabs {
                 openLastTabByDefault = false
-                if ShelfStateViewModel.shared.isEmpty || !Defaults[.openShelfByDefault] {
-                    currentView = .home
-                }
+                currentView = defaultHomeView
             }
         }
     }
@@ -137,6 +137,54 @@ class NotchViewCoordinator: ObservableObject {
                 alwaysShowTabs = true
             }
         }
+    }
+
+    /// Which tab the notch opens to when `openLastTabByDefault` is off. Stored
+    /// in `UserDefaults` directly rather than `@AppStorage` so the settings
+    /// picker and the close path read and write the same `@Published` value.
+    @Published var defaultHomeView: NotchViews = NotchViewCoordinator.initialView() {
+        didSet {
+            UserDefaults.standard.set(defaultHomeView.rawValue, forKey: "defaultHomeView")
+        }
+    }
+
+    // MARK: - Visible panels
+
+    /// Panels left after the switches in Settings › Appearance › Tabs.
+    var visiblePanels: [NotchViews] {
+        NotchViews.allCases.filter { !Defaults[.hiddenTabs].contains($0.rawValue) }
+    }
+
+    func isPanelVisible(_ view: NotchViews) -> Bool {
+        !Defaults[.hiddenTabs].contains(view.rawValue)
+    }
+
+    /// Where the notch lands when nothing else decides: the chosen home page,
+    /// unless that panel is switched off — then the first panel that is left.
+    var resolvedHomeView: NotchViews {
+        isPanelVisible(defaultHomeView) ? defaultHomeView : (visiblePanels.first ?? .home)
+    }
+
+    /// Repairs the selection after the visible set changes, so a panel that was
+    /// just switched off cannot stay on screen behind a tab bar that no longer
+    /// lists it.
+    func clampToVisiblePanels() {
+        guard !isPanelVisible(currentView) else { return }
+        currentView = resolvedHomeView
+    }
+
+    /// Launch value for both `currentView` and `defaultHomeView`.
+    ///
+    /// The stored home page is honoured only while its panel is visible;
+    /// otherwise the first visible one wins, so a disabled panel can never be
+    /// the thing the notch opens to.
+    private static func initialView() -> NotchViews {
+        let stored = NotchViews(
+            rawValue: UserDefaults.standard.string(forKey: "defaultHomeView") ?? "")
+        let hidden = Defaults[.hiddenTabs]
+        let visible = NotchViews.allCases.filter { !hidden.contains($0.rawValue) }
+        if let stored, visible.contains(stored) { return stored }
+        return visible.first ?? .home
     }
     
     @Default(.hudReplacement) var hudReplacement: Bool
@@ -353,6 +401,6 @@ class NotchViewCoordinator: ObservableObject {
     }
     
     func showEmpty() {
-        currentView = .home
+        currentView = resolvedHomeView
     }
 }

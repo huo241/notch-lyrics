@@ -35,6 +35,15 @@ struct LyricsPayload {
     let synced: [(time: Double, text: String)]
 }
 
+/// State shared across one LRCLIB lookup. It lives here rather than on
+/// `MusicManager` because the lookups run off the main actor — a 503 seen by any
+/// probe has to abandon the rest of that lookup without being read back from a
+/// different executor.
+private final class LyricsLookupState {
+    /// LRCLIB answered 503 ("server overloaded").
+    var overloaded = false
+}
+
 class MusicManager: ObservableObject {
     // MARK: - Properties
     static let shared = MusicManager()
@@ -528,6 +537,7 @@ class MusicManager: ObservableObject {
         // Reuse a previous lookup for this track instead of hitting the network.
         if let cached = lyricsCache[key] {
             LyricsDebug.log("cache hit (\(cached.kind))")
+            // `.none` 从不进缓存（见 `apply`），所以缓存里都是结论，不必再兜底。
             apply(cached)
             // A plain-only result may have gained a synced version upstream.
             if cached.kind == .plain {
@@ -630,9 +640,14 @@ class MusicManager: ObservableObject {
             return
         }
         LyricsDebug.log("apply \(payload.kind)")
-        lyricsCache[trackKey] = payload
-        if lyricsCache.count > lyricsCacheLimit {
-            lyricsCache.removeAll(keepingCapacity: true)
+        // `.none` 只是「这一轮没查到」，不是结论，所以不进缓存：缓存一次超时的代价
+        // 会放大成整场会话的「未找到」——同一首歌再点开也直接命中缓存，不再重试。
+        // 只有明确的事实（时间轴 / 纯文本 / 纯音乐）才值得记住。
+        if payload.kind != .none {
+            lyricsCache[trackKey] = payload
+            if lyricsCache.count > lyricsCacheLimit {
+                lyricsCache.removeAll(keepingCapacity: true)
+            }
         }
         switch payload.kind {
         case .synced:
@@ -698,14 +713,17 @@ class MusicManager: ObservableObject {
     /// *contains* the query, so its results are ranked locally and a record
     /// that does not look like this track is dropped instead of displayed.
     /// LRCLIB 查询。返回 nil 表示没有足够可信的结果。
-    private func lrclibPayload(title: String, artist: String) async -> LyricsPayload? {
+    private func lrclibPayload(
+        title: String, artist: String, duration: Double, deadline: Date
+    ) async -> LyricsPayload? {
+        let state = LyricsLookupState()
         var best: (record: [String: Any], score: Double)?
 
         /// Keeps the highest-scoring record seen so far, and reports whether it
         /// is good enough to stop looking.
         func consider(_ record: [String: Any], via: String) -> Bool {
             let score = LyricsQuery.score(
-                record: record, title: title, artist: artist, duration: songDuration)
+                record: record, title: title, artist: artist, duration: duration)
             LyricsDebug.log("score \(score) via \(via) ← \"\(record["trackName"] ?? "")\" | \"\(record["artistName"] ?? "")\" | dur=\(record["duration"] ?? "?")")
             if best == nil || score > best!.score { best = (record, score) }
             return score >= LyricsQuery.minimumScore
@@ -714,8 +732,18 @@ class MusicManager: ObservableObject {
         // 1. Exact-signature lookups across every spelling the metadata might
         //    be a noisy variant of. Bounded, because a track nobody has
         //    transcribed would otherwise cost a request per combination.
+        //
+        //    这一段有自己更早的截止时间：整轮 3 秒里必须先扣掉 1 秒留给下面的
+        //    关键词搜索。实测本机到 lrclib.net 每次请求 0.4–0.5 秒，脏元数据能
+        //    生出 4 个候选 = 8 次请求 ≈ 4 秒——不扣这 1 秒的话，`api/get` 会
+        //    一个人把预算吃光，走到搜索那一步时 `Date() < deadline` 已经为假，
+        //    而搜索恰恰是这类脏元数据唯一的出路。
+        let searchReserve: TimeInterval = 1
+        let getDeadline = deadline.addingTimeInterval(-searchReserve)
+
         var budget = 8
         lookup: for candidate in LyricsQuery.candidates(title: title, artist: artist).prefix(6) {
+            guard !state.overloaded, Date() < getDeadline else { break }
             guard let base = lyricsQueryString(title: candidate.title, artist: candidate.artist) else { continue }
 
             // LRCLIB's `duration` filter is the sharpest signal it offers, but
@@ -723,23 +751,26 @@ class MusicManager: ObservableObject {
             // local file misses outright. The unfiltered lookup therefore goes
             // second rather than being skipped.
             var probes = [base]
-            if songDuration >= 1, songDuration <= 3600 {
-                probes.insert(base + "&duration=\(Int(songDuration.rounded()))", at: 0)
+            if duration >= 1, duration <= 3600 {
+                probes.insert(base + "&duration=\(Int(duration.rounded()))", at: 0)
             }
 
             for probe in probes {
-                guard budget > 0 else { break lookup }
+                guard budget > 0, !state.overloaded, Date() < getDeadline else { break lookup }
                 budget -= 1
-                guard let record = await fetchLyricsRecord(path: "api/get", query: probe) else { continue }
+                guard let record = await fetchLyricsRecord(
+                    path: "api/get", query: probe, deadline: getDeadline, state: state) else { continue }
                 if consider(record, via: "get") { break lookup }
             }
         }
 
         // 2. Keyword search, for tracks the exact signature cannot reach.
-        if best == nil || best!.score < LyricsQuery.minimumScore {
+        if !state.overloaded, Date() < deadline,
+           best == nil || best!.score < LyricsQuery.minimumScore {
             let seed = LyricsQuery.cleaned(title: title, artist: artist)
             if let base = lyricsQueryString(title: seed.title, artist: seed.artist) {
-                for record in await fetchLyricsRecords(path: "api/search", query: base) {
+                for record in await fetchLyricsRecords(
+                    path: "api/search", query: base, deadline: deadline, state: state) {
                     _ = consider(record, via: "search")
                 }
             }
@@ -758,6 +789,12 @@ class MusicManager: ObservableObject {
         let plain = ((record["plainLyrics"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let syncedRaw = ((record["syncedLyrics"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // A record that exists but carries no words at all is an instrumental —
+        // LRCLIB stores plenty of those without setting the `instrumental` flag.
+        if plain.isEmpty && syncedRaw.isEmpty {
+            return LyricsPayload(kind: .instrumental, plain: "", synced: [])
+        }
+
         // Synced lyrics are the entire point here, so they win when present;
         // plain text is only a fallback.
         let synced = syncedRaw.isEmpty ? [] : Self.parseLRC(syncedRaw)
@@ -771,94 +808,168 @@ class MusicManager: ObservableObject {
         return nil
     }
 
-    /// 多源编排。
+    /// 多源编排：两家源**并发**问，谁先给出结论就用谁。
     ///
-    /// 顺序不是随手定的：LRCLIB 的英文曲库全、时间轴干净；中文歌的覆盖率则要靠
-    /// 网易云（大量国语流行歌在 LRCLIB 里根本没有记录）。所以中文歌先问网易云，
-    /// 其余先问 LRCLIB，谁先给出带时间轴的结果就用谁，另一家只作为补充。
+    /// 并发是这里最关键的一处：之前是串行共享一个 6 秒预算，而单次请求的超时是
+    /// 10 秒——于是一个慢请求就能吃光整个预算，后面的候选、以及另一家源连一次机会
+    /// 都没有。日志里「network error: 请求超时 → apply none」就是这么产生的：整整
+    /// 11 秒后放弃，而网易云根本没被问到。并发之后总耗时是两者的较大值而不是和，
+    /// 两家也拿到均等的机会：LRCLIB 挂了，网易云照样能在同一个时间窗里给出结果。
     @MainActor
     private func fetchLyricsFromWeb(title: String, artist: String, trackKey: String) async {
-        LyricsDebug.log("web lookup: \"\(title)\" | \"\(artist)\" | dur=\(songDuration)")
-        // 音源选了网易云音乐时无条件网易云优先——用户明说了在用网易云，
-        // 先查它命中率最高，也省一次 LRCLIB 的往返。
-        let chinese = Self.containsCJK(title) || Self.containsCJK(artist)
-            || Defaults[.mediaController] == .neteaseCloudMusic
-        var fallback: LyricsPayload?
+        // 在 main actor 上取值，子任务里就不再读 @Published。
+        let duration = songDuration
+        LyricsDebug.log("web lookup: \"\(title)\" | \"\(artist)\" | dur=\(duration)")
 
-        if chinese {
-            if let payload = await NeteaseLyricsProvider.lookup(
-                title: title, artist: artist, duration: songDuration) {
-                guard trackKey == loadedLyricsTrackKey else { return }
-                if payload.kind == .synced || payload.kind == .instrumental {
-                    apply(payload, trackKey: trackKey)
-                    return
+        // 两家源共用一个硬上限，**3 秒**。到点就收工，绝不把「正在加载」拖长：
+        // 超过 3 秒还没拿到，说明这一轮的网络已经指望不上了，下一首再说。
+        let deadline = Date().addingTimeInterval(3)
+
+        let payload = await withTaskGroup(
+            of: LyricsPayload?.self, returning: LyricsPayload?.self
+        ) { group in
+            group.addTask {
+                await self.withDeadline(deadline) {
+                    await self.lrclibPayload(
+                        title: title, artist: artist, duration: duration, deadline: deadline)
                 }
-                fallback = payload
             }
-        }
-
-        if let payload = await lrclibPayload(title: title, artist: artist) {
-            guard trackKey == loadedLyricsTrackKey else { return }
-            if payload.kind == .synced || payload.kind == .instrumental {
-                apply(payload, trackKey: trackKey)
-                return
-            }
-            if fallback == nil { fallback = payload }
-        }
-
-        if !chinese {
-            if let payload = await NeteaseLyricsProvider.lookup(
-                title: title, artist: artist, duration: songDuration) {
-                guard trackKey == loadedLyricsTrackKey else { return }
-                if payload.kind == .synced || payload.kind == .instrumental {
-                    apply(payload, trackKey: trackKey)
-                    return
+            group.addTask {
+                await self.withDeadline(deadline) {
+                    await NeteaseLyricsProvider.lookup(
+                        title: title, artist: artist, duration: duration, deadline: deadline)
                 }
-                if fallback == nil { fallback = payload }
             }
+
+            // 只有「带时间轴」和「纯音乐」才算结论，可以立刻收工；纯文本先留作兜底，
+            // 继续等另一家能否给出更好的结果。
+            var fallback: LyricsPayload?
+            for await result in group {
+                guard let result, result.kind != .none else { continue }
+                if result.kind == .synced || result.kind == .instrumental {
+                    group.cancelAll()
+                    return result
+                }
+                if fallback == nil { fallback = result }
+            }
+            return fallback
         }
 
         // 跳过下一首之后才回来的结果没有意义。
         guard trackKey == loadedLyricsTrackKey else { return }
-        apply(fallback ?? LyricsPayload(kind: .none, plain: "", synced: []), trackKey: trackKey)
+        let resolved = await instrumentalFallback(
+            payload ?? LyricsPayload(kind: .none, plain: "", synced: []), title: title)
+        // 问流派的那一步可能又过去了几百毫秒，所以这里要再确认一次还是同一首。
+        guard trackKey == loadedLyricsTrackKey else { return }
+        apply(resolved, trackKey: trackKey)
     }
 
-    /// 歌名/歌手里是否含中日韩文字。用来决定先问哪一家。
-    private static func containsCJK(_ string: String) -> Bool {
-        string.unicodeScalars.contains { scalar in
-            switch scalar.value {
-            case 0x3400...0x4DBF,   // 扩展 A
-                 0x4E00...0x9FFF,   // 基本汉字
-                 0xF900...0xFAFF,   // 兼容汉字
-                 0x3040...0x30FF,   // 假名
-                 0xAC00...0xD7AF:   // 谚文
-                return true
-            default:
-                return false
+    /// 给一次查询套上硬上限。
+    ///
+    /// `URLRequest.timeoutInterval` 只管「连接建立之后等数据」那一段：DNS 或握手
+    /// 卡住时它形同虚设——实测 lrclib.net 能把一次设成 2.5 秒超时的请求拖到 4.5 秒
+    /// 才失败。真正保证「3 秒内一定出结果」的是这里：到点就取消，不管请求走到哪一步。
+    private func withDeadline<T: Sendable>(
+        _ deadline: Date, _ work: @escaping @Sendable () async -> T?
+    ) async -> T? {
+        await withTaskGroup(of: T?.self) { group in
+            group.addTask { await work() }
+            group.addTask {
+                let remaining = deadline.timeIntervalSinceNow
+                if remaining > 0 { try? await Task.sleep(for: .seconds(remaining)) }
+                return nil
             }
+            let result = await group.next() ?? nil
+            group.cancelAll()
+            return result
         }
+    }
+
+    /// 音源一无所获、但这首其实没有词时，给出「纯音乐」而不是「未找到歌词」。
+    /// 已经查到词（synced/plain）的结果不受影响。
+    ///
+    /// 判断分两步，先便宜后昂贵：标题/专辑里的线索（曲式、编目号）先看，看不出
+    /// 东西再花一次 AppleScript 去问流派。只有走到这一步——所有源都空了——才会
+    /// 发生，所以正常出词的歌一次都不会多花这个开销。
+    private func instrumentalFallback(_ payload: LyricsPayload, title: String) async -> LyricsPayload {
+        guard payload.kind == .none else { return payload }
+
+        if InstrumentalDetector.looksClassical(title: title, album: album) {
+            LyricsDebug.log("nothing found + classical metadata → instrumental")
+            return LyricsPayload(kind: .instrumental, plain: "", synced: [])
+        }
+
+        // 标题里既没有曲式词也没有编目号的器乐曲（`Lydian Harp`、`Für Alina`），
+        // 标题启发式永远抓不到，只能问流派。
+        if await genreSaysInstrumental() {
+            LyricsDebug.log("nothing found + instrumental genre → instrumental")
+            return LyricsPayload(kind: .instrumental, plain: "", synced: [])
+        }
+
+        return payload
+    }
+
+    /// 问一句 Apple Music 这一首的流派。
+    ///
+    /// 流派是曲库自己标的，比从标题猜可靠得多，`Classical` 直接就是「没有词」的
+    /// 结论。只对 Apple Music 有效（别的源拿不到这个字段），拿不到就当作不知道。
+    private func genreSaysInstrumental() async -> Bool {
+        guard bundleIdentifier?.contains("com.apple.Music") == true else { return false }
+        let script = """
+        tell application "Music"
+            if it is running then
+                try
+                    return genre of current track
+                on error
+                    return ""
+                end try
+            else
+                return ""
+            end if
+        end tell
+        """
+        guard let result = try? await AppleScriptHelper.execute(script),
+              let genre = result.stringValue else { return false }
+        let instrumental = InstrumentalDetector.looksInstrumentalGenre(genre)
+        LyricsDebug.log("genre \"\(genre)\" → \(instrumental ? "instrumental" : "not instrumental")")
+        return instrumental
     }
 
     /// Performs a LRCLIB request, honouring `Retry-After` on throttling.
     /// Returns nil for every non-200 outcome, including the 404 that means
     /// "no match".
-    private func lyricsRequest(url: URL, attempt: Int = 0) async -> Data? {
+    private func lyricsRequest(
+        url: URL, attempt: Int = 0, deadline: Date, state: LyricsLookupState
+    ) async -> Data? {
         var request = URLRequest(url: url)
         request.setValue(Self.lyricsUserAgent, forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 10
+        // 单次请求的超时必须落在剩余预算之内。之前是固定的 10 秒，而整轮预算只有
+        // 3 秒——第一个 probe 一慢，超时就把预算耗光，后面每条候选、另一家源都再也
+        // 没机会跑。这就是「抓不到歌词」最常见的成因。
+        request.timeoutInterval = min(2.5, max(deadline.timeIntervalSinceNow, 0.5))
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await LyricsNetwork.session().data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 LyricsDebug.log("HTTP: not an HTTP response for \(url.query ?? "")")
                 return nil
             }
-            if (http.statusCode == 429 || http.statusCode == 503), attempt < 2 {
-                LyricsDebug.log("HTTP \(http.statusCode), retrying \(attempt + 1)/2 for \(url.query ?? "")")
-                // The rate limiter sits at the network edge and does not
-                // guarantee a JSON body, so only the header is consulted.
-                let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? 1
-                try? await Task.sleep(for: .seconds(min(max(retryAfter, 0.5), 10)))
-                return await lyricsRequest(url: url, attempt: attempt + 1)
+            if http.statusCode == 429 || http.statusCode == 503 {
+                // 503 是 LRCLIB 的 "server overloaded"：这是服务端状态，不是
+                // 某条查询的问题，所以整轮放弃，而不是把每种拼写再撞一遍。
+                if http.statusCode == 503 { state.overloaded = true }
+                // Retry only when the server names a wait, and only once. The old
+                // loop slept a second per attempt on *every* probe, which is what
+                // turned an overloaded server into a 25-second "Loading…".
+                if let header = http.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init),
+                   attempt < 1, Date() < deadline {
+                    let wait = min(max(header, 0.5), 3)
+                    LyricsDebug.log("HTTP \(http.statusCode), waiting \(wait)s then one retry")
+                    try? await Task.sleep(for: .seconds(wait))
+                    return await lyricsRequest(
+                        url: url, attempt: attempt + 1, deadline: deadline, state: state)
+                }
+                LyricsDebug.log("HTTP \(http.statusCode), giving up for \(url.query ?? "")")
+                return nil
             }
             guard http.statusCode == 200 else {
                 LyricsDebug.log("HTTP \(http.statusCode) for \(url.path)?\(url.query ?? "")")
@@ -866,20 +977,28 @@ class MusicManager: ObservableObject {
             }
             return data
         } catch {
+            // 被取消（另一家源先给出结果了）不是错误，不该写进日志。
+            if (error as? URLError)?.code == .cancelled { return nil }
             LyricsDebug.log("network error: \(error.localizedDescription) for \(url.query ?? "")")
             return nil
         }
     }
 
-    private func fetchLyricsRecord(path: String, query: String) async -> [String: Any]? {
-        guard let url = URL(string: "https://lrclib.net/\(path)?\(query)"),
-              let data = await lyricsRequest(url: url) else { return nil }
+    private func fetchLyricsRecord(
+        path: String, query: String, deadline: Date, state: LyricsLookupState
+    ) async -> [String: Any]? {
+        guard let url = LyricsNetwork.url(path: path, query: query),
+              let data = await lyricsRequest(
+                url: url, deadline: deadline, state: state) else { return nil }
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
-    private func fetchLyricsRecords(path: String, query: String) async -> [[String: Any]] {
-        guard let url = URL(string: "https://lrclib.net/\(path)?\(query)"),
-              let data = await lyricsRequest(url: url) else { return [] }
+    private func fetchLyricsRecords(
+        path: String, query: String, deadline: Date, state: LyricsLookupState
+    ) async -> [[String: Any]] {
+        guard let url = LyricsNetwork.url(path: path, query: query),
+              let data = await lyricsRequest(
+                url: url, deadline: deadline, state: state) else { return [] }
         return (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] ?? []
     }
 

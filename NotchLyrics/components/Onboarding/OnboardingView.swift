@@ -6,11 +6,9 @@
 //
 
 import SwiftUI
-import AVFoundation
 
 enum OnboardingStep {
     case welcome
-    case cameraPermission
     case calendarPermission
     case remindersPermission
     case accessibilityPermission
@@ -31,31 +29,9 @@ struct OnboardingView: View {
             case .welcome:
                 WelcomeView {
                     withAnimation(.easeInOut(duration: 0.6)) {
-                        step = .cameraPermission
+                        step = .calendarPermission
                     }
                 }
-                .transition(.opacity)
-
-            case .cameraPermission:
-                PermissionRequestView(
-                    icon: Image(systemName: "camera.fill"),
-                    title: "Enable Camera Access",
-                    description: "Notch Lyrics includes a mirror feature that lets you quickly check your appearance using your camera, right from the notch. Camera access is required only to show this live preview. You can turn the mirror feature on or off at any time in the app.",
-                    privacyNote: "Your camera is never used without your consent, and nothing is recorded or stored.",
-                    onAllow: {
-                        Task {
-                            await requestCameraPermission()
-                            withAnimation(.easeInOut(duration: 0.6)) {
-                                step = .calendarPermission
-                            }
-                        }
-                    },
-                    onSkip: {
-                        withAnimation(.easeInOut(duration: 0.6)) {
-                            step = .calendarPermission
-                        }
-                    }
-                )
                 .transition(.opacity)
 
             case .calendarPermission:
@@ -143,10 +119,6 @@ struct OnboardingView: View {
     }
 
     // MARK: - Permission Request Logic
-
-    func requestCameraPermission() async {
-        await AVCaptureDevice.requestAccess(for: .video)
-    }
 
     func requestCalendarPermission() async {
         _ = try? await calendarService.requestAccess(to: .event)

@@ -139,6 +139,8 @@ enum NLFont {
     static var display: Font { .system(size: 28, weight: .semibold) }
     /// 24 / 600 — settings pane title (.pane-title).
     static var paneTitle: Font { .system(size: 24, weight: .semibold) }
+    /// 20 / 600 — the icon-and-title block at the top of a settings pane.
+    static var hero: Font { .system(size: 20, weight: .semibold) }
     /// 17 / 600 — panel headers and empty-state titles.
     static var titleLg: Font { .system(size: 17, weight: .semibold) }
     /// 13 / 600 — control labels, group headers, table headers.
@@ -218,13 +220,22 @@ struct NLDivider: View {
     }
 }
 
-/// Row divider: inset 16pt, aligned with the row label.
+/// Row divider: inset to where the row's text starts, which is what makes the
+/// hairline read as a separation between rows rather than under the whole card.
+/// The inset is 16pt on an icon-less row and 16 + 22 + 10 when an icon precedes
+/// the text, so the line always begins under the label.
 struct NLRowDivider: View {
+    var inset: CGFloat = NLSpace.rowPadding
+
+    init(inset: CGFloat = NLSpace.rowPadding) {
+        self.inset = inset
+    }
+
     var body: some View {
         Rectangle()
             .fill(NLColor.borderDivider)
             .frame(height: 1)
-            .padding(.leading, NLSpace.rowPadding)
+            .padding(.leading, inset)
     }
 }
 
@@ -324,9 +335,16 @@ struct NLFootnote: View {
     }
 }
 
-// MARK: - Settings row (44pt tall, 16pt padding, label left / control right, 1px divider)
+// MARK: - Settings row (44pt tall, 16pt padding, icon + label left / control right, 1px divider)
 
+/// One row of a settings group.
+///
+/// Apple's rows lead with a small rounded tile holding a glyph. It is not
+/// decoration: the tile anchors the eye, puts every label on one vertical axis,
+/// and gives colour somewhere to live on the few rows that have something to say
+/// (a red Apple mark, a blue AirDrop mark) without colouring the other forty.
 struct NLRow<Trailing: View>: View {
+    private let icon: String?
     private let title: String
     private let subtitle: String?
     private let badge: String?
@@ -334,7 +352,13 @@ struct NLRow<Trailing: View>: View {
     private let showsDivider: Bool
     private let trailing: Trailing
 
+    /// 22pt tile — the same column width the sidebar uses, so the two read as
+    /// one system when the window is open.
+    private let iconSize: CGFloat = 22
+    private let iconGap: CGFloat = 10
+
     init(
+        icon: String? = nil,
         title: String,
         subtitle: String? = nil,
         badge: String? = nil,
@@ -342,6 +366,7 @@ struct NLRow<Trailing: View>: View {
         showsDivider: Bool = false,
         @ViewBuilder trailing: () -> Trailing
     ) {
+        self.icon = icon
         self.title = title
         self.subtitle = subtitle
         self.badge = badge
@@ -355,26 +380,39 @@ struct NLRow<Trailing: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: NLSpace.s4) {
-                if let swatch {
-                    Circle()
-                        .fill(swatch)
-                        .frame(width: 10, height: 10)
-                }
-
-                VStack(alignment: .leading, spacing: NLSpace.s1) {
-                    HStack(spacing: NLSpace.s2) {
-                        Text(LocalizedStringKey(title))
-                            .font(NLFont.body)
-                            .foregroundStyle(isEnabled ? NLColor.textPrimary : NLColor.textTertiary)
-                        if let badge { NLBadge(text: badge) }
-                    }
-                    if let subtitle {
-                        Text(LocalizedStringKey(subtitle))
-                            .font(NLFont.caption)
-                            .foregroundStyle(
-                                isEnabled ? NLColor.textSecondary : NLColor.textTertiary
+                HStack(spacing: iconGap) {
+                    if let icon {
+                        RoundedRectangle(cornerRadius: NLRadius.control, style: .continuous)
+                            .fill(NLColor.fillNeutral.opacity(0.35))
+                            .frame(width: iconSize, height: iconSize)
+                            .overlay(
+                                Image(systemName: icon)
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundStyle(NLColor.textSecondary)
                             )
-                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if let swatch {
+                        Circle()
+                            .fill(swatch)
+                            .frame(width: 10, height: 10)
+                    }
+
+                    VStack(alignment: .leading, spacing: NLSpace.s1) {
+                        HStack(spacing: NLSpace.s2) {
+                            Text(LocalizedStringKey(title))
+                                .font(NLFont.body)
+                                .foregroundStyle(isEnabled ? NLColor.textPrimary : NLColor.textTertiary)
+                            if let badge { NLBadge(text: badge) }
+                        }
+                        if let subtitle {
+                            Text(LocalizedStringKey(subtitle))
+                                .font(NLFont.caption)
+                                .foregroundStyle(
+                                    isEnabled ? NLColor.textSecondary : NLColor.textTertiary
+                                )
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
 
@@ -385,13 +423,16 @@ struct NLRow<Trailing: View>: View {
             .padding(.horizontal, NLSpace.rowPadding)
             .frame(minHeight: NLSpace.rowHeight)
 
-            if showsDivider { NLRowDivider() }
+            if showsDivider {
+                NLRowDivider(inset: NLSpace.rowPadding + (icon == nil ? 0 : iconSize + iconGap))
+            }
         }
     }
 }
 
 extension NLRow where Trailing == EmptyView {
     init(
+        icon: String? = nil,
         title: String,
         subtitle: String? = nil,
         badge: String? = nil,
@@ -399,7 +440,7 @@ extension NLRow where Trailing == EmptyView {
         showsDivider: Bool = false
     ) {
         self.init(
-            title: title, subtitle: subtitle, badge: badge, swatch: swatch,
+            icon: icon, title: title, subtitle: subtitle, badge: badge, swatch: swatch,
             showsDivider: showsDivider
         ) {
             EmptyView()
@@ -898,47 +939,71 @@ struct NLMenuSeparator: View {
 
 // MARK: - Page shell (grey background, 24pt margins, 14pt between groups)
 
+/// The pane header, laid out the way System Settings does it: a large icon tile,
+/// the pane name, and one line of description — all centred, inside a card that
+/// sits a shade darker than the white group cards underneath. It reads as "you
+/// are here" rather than as a document title, which is why the icon leads.
 struct NLPageHeader: View {
     let title: String
     var subtitle: String?
+    var icon: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: NLSpace.s1) {
+        VStack(spacing: NLSpace.s2) {
+            if let icon {
+                RoundedRectangle(cornerRadius: NLRadius.window, style: .continuous)
+                    .fill(NLColor.elevated)
+                    .frame(width: 64, height: 64)
+                    .overlay(
+                        Image(systemName: icon)
+                            .font(.system(size: 28, weight: .regular))
+                            .foregroundStyle(NLColor.textSecondary)
+                    )
+            }
+
             Text(LocalizedStringKey(title))
-                .font(NLFont.paneTitle)
+                .font(NLFont.hero)
                 .foregroundStyle(NLColor.textPrimary)
+
             if let subtitle {
                 Text(LocalizedStringKey(subtitle))
                     .font(NLFont.caption)
                     .foregroundStyle(NLColor.textSecondary)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 420)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, NLSpace.s6)
+        .padding(.horizontal, NLSpace.s4)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .background(NLColor.panel)
+        .clipShape(RoundedRectangle(cornerRadius: NLRadius.card, style: .continuous))
     }
 }
 
 struct NLPage<Content: View>: View {
     let title: String
     var subtitle: String?
+    var icon: String?
     private let content: Content
 
-    init(_ title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) {
+    init(_ title: String, subtitle: String? = nil, icon: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.subtitle = subtitle
+        self.icon = icon
         self.content = content()
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: NLSpace.group) {
-                NLPageHeader(title: title, subtitle: subtitle)
-                    .padding(.bottom, NLSpace.s1)
+                NLPageHeader(title: title, subtitle: subtitle, icon: icon)
 
                 content
             }
             .padding(.horizontal, NLSpace.page)
-            .padding(.top, NLSpace.group)
+            .padding(.top, NLSpace.s4)
             .padding(.bottom, NLSpace.s8)
             .frame(maxWidth: 720, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)

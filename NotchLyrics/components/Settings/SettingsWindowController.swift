@@ -44,7 +44,9 @@ class SettingsWindowController: NSWindowController {
         // Window skeleton: 52pt titlebar (a .unified empty toolbar pulls it to
         // the standard height) + 232pt sidebar + content. No separator between
         // the titlebar and the content area.
-        window.title = L("Notch Lyrics Settings")
+        // Just "Settings", the way System Settings titles itself — the app's name
+        // is already on the window and in the menu, so repeating it here is noise.
+        window.title = L("Settings")
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .visible
         window.toolbarStyle = .unified

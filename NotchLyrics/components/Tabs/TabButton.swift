@@ -21,7 +21,11 @@ struct TabButton: View {
         Button(action: onClick) {
             Image(systemName: icon)
                 .fontWeight(iconWeight)
-                .padding(.horizontal, 15)
+                // 11, not 15: the tab bar only gets the left half of the notch
+                // (~225pt), and a fifth icon at 15 pushes the row past that
+                // budget and into the cut-out. Five tabs at 11 come to ~170pt,
+                // which leaves the selected capsule some breathing room.
+                .padding(.horizontal, 11)
                 .contentShape(Capsule())
         }
         .buttonStyle(PlainButtonStyle())

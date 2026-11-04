@@ -36,10 +36,6 @@ class NotchViewModel: NSObject, ObservableObject {
     @Published var notchSize: CGSize = getClosedNotchSize()
     @Published var closedNotchSize: CGSize = getClosedNotchSize()
     
-    let webcamManager = WebcamManager.shared
-    @Published var isCameraExpanded: Bool = false
-    @Published var isRequestingAuthorization: Bool = false
-    
     deinit {
         destroy()
     }
@@ -127,54 +123,6 @@ class NotchViewModel: NSObject, ObservableObject {
         return max(0, menuBarHeight - currentHeight)
     }
 
-    func toggleCameraPreview() {
-        if isRequestingAuthorization {
-            return
-        }
-
-        switch webcamManager.authorizationStatus {
-        case .authorized:
-            if webcamManager.isSessionRunning {
-                webcamManager.stopSession()
-                isCameraExpanded = false
-            } else if webcamManager.cameraAvailable {
-                webcamManager.startSession()
-                isCameraExpanded = true
-            }
-
-        case .denied, .restricted:
-            DispatchQueue.main.async {
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate(ignoringOtherApps: true)
-
-                let alert = NSAlert()
-                alert.messageText = "Camera Access Required"
-                alert.informativeText = "Please allow camera access in System Settings."
-                alert.addButton(withTitle: "Open Settings")
-                alert.addButton(withTitle: "Cancel")
-
-                if alert.runModal() == .alertFirstButtonReturn {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-
-                NSApp.setActivationPolicy(.accessory)
-                NSApp.deactivate()
-            }
-
-        case .notDetermined:
-            isRequestingAuthorization = true
-            webcamManager.checkAndRequestVideoAuthorization()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self.isRequestingAuthorization = false
-            }
-
-        default:
-            break
-        }
-    }
-    
     func isMouseHovering(position: NSPoint = NSEvent.mouseLocation) -> Bool {
         let screenFrame = getScreenFrame(screenUUID)
         if let frame = screenFrame {
@@ -208,12 +156,13 @@ class NotchViewModel: NSObject, ObservableObject {
         self.coordinator.sneakPeek.show = false
         self.edgeAutoOpenActive = false
 
-        // Set the current view to shelf if it contains files and the user enables openShelfByDefault
-        // Otherwise, if the user has not enabled openLastShelfByDefault, set the view to home
-    if !ShelfStateViewModel.shared.isEmpty && Defaults[.openShelfByDefault] {
-            coordinator.currentView = .shelf
-        } else if !coordinator.openLastTabByDefault {
-            coordinator.currentView = .home
+        // Where the panel reopens: a remembered tab wins outright; otherwise it
+        // lands on the chosen home page (Settings › General › Home page), or on
+        // the first panel that is still visible when that one is switched off.
+        // The old "open the shelf if it has files" rule is gone — the shelf is
+        // just one of the home pages now.
+        if !coordinator.openLastTabByDefault {
+            coordinator.currentView = coordinator.resolvedHomeView
         }
     }
 

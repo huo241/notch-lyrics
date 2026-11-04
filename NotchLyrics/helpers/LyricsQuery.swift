@@ -26,6 +26,16 @@ enum LyricsQuery {
     /// show nothing rather than the wrong words.
     static let minimumScore: Double = 0.6
 
+    /// The title has to clear this on its own, before artist and duration are
+    /// allowed to contribute anything.
+    ///
+    /// A veto rather than a weight, because a weight cannot veto: the title is
+    /// worth 0.5 of the total, so with a perfect artist and duration even a
+    /// title score of 0.2 still lands on 0.6 — exactly the threshold. That is
+    /// how `Mesmer` used to come back with `Mesmerizer`'s lyrics. Measured:
+    /// capping the title at the old 0.5 floor still gave 0.8.
+    static let minimumTitleScore: Double = 0.7
+
     /// Bracketed trails that describe a *release* rather than the song, and so
     /// are unlikely to appear in LRCLIB's canonical title.
     ///
@@ -199,8 +209,13 @@ enum LyricsQuery {
 
     /// Lowercased, diacritic- and punctuation-free form used for comparison.
     /// Release qualifiers are dropped first, so `Song (Live)` and `Song` meet.
+    ///
+    /// Dash qualifiers go too: `titleVariants` already strips
+    /// `Song - Remastered 2011` before asking LRCLIB, so the scorer has to
+    /// reduce the record's spelling the same way — otherwise a record stored
+    /// with the dash suffix scores as a near miss against its own title.
     static func normalize(_ string: String) -> String {
-        dropQualifierGroups(string)
+        dropDashQualifier(dropQualifierGroups(string))
             .folding(options: [.diacriticInsensitive, .widthInsensitive], locale: .current)
             .lowercased()
             .filter { $0.isLetter || $0.isNumber }
@@ -220,10 +235,11 @@ enum LyricsQuery {
         let recordTitle = (record["trackName"] as? String) ?? ""
         let recordArtist = (record["artistName"] as? String) ?? ""
 
-        let titleScore = similarity(normalize(title), normalize(recordTitle))
+        let titleScore = titleSimilarity(title, recordTitle)
         // A record about a different song is never acceptable, however well
-        // the rest of the metadata lines up.
-        guard titleScore >= 0.5 else { return 0 }
+        // the rest of the metadata lines up. This is a veto, not a weight:
+        // see `minimumTitleScore`.
+        guard titleScore >= Self.minimumTitleScore else { return 0 }
         let artistScore = similarity(normalize(artist), normalize(recordArtist))
 
         guard duration >= 1, let recordDuration = number(record["duration"]), recordDuration >= 1 else {
@@ -250,19 +266,80 @@ enum LyricsQuery {
         return nil
     }
 
+    /// 标题之间的相似度。
+    ///
+    /// 标题比歌手苛刻得多，因为「包含」在这里是个陷阱：`Mesmerizer` 只是把
+    /// `Mesmer` 用作了前缀，字符相似度（Dice 0.73）看着很高，其实是两首歌。
+    /// 所以包含关系只在短的那个是长的里面**连续的一串完整的词**时才算数；只是某个
+    /// 单词里的一段字母，就把分数压到 `minimumTitleScore` 以下。
+    private static func titleSimilarity(_ raw: String, _ otherRaw: String) -> Double {
+        let lhs = normalize(raw)
+        let rhs = normalize(otherRaw)
+        if lhs.isEmpty || rhs.isEmpty { return 0 }
+        if lhs == rhs { return 1 }
+
+        let shorter: String
+        let longer: String
+        let longerRaw: String
+        if lhs.contains(rhs) {
+            shorter = rhs; longer = lhs; longerRaw = raw
+        } else if rhs.contains(lhs) {
+            shorter = lhs; longer = rhs; longerRaw = otherRaw
+        } else {
+            return dice(lhs, rhs)
+        }
+
+        guard shorter.count >= 2, isWordRun(shorter, in: longerRaw) else {
+            // 只是词里的一段字母。0.45 不是为了「再低一点」——`score` 里标题
+            // 要自己过 0.7，这里压下去是为了排序：片段命中必须排在真正的
+            // 模糊命中之后，否则最像的那条会被它挤掉。
+            return min(dice(lhs, rhs), 0.45)
+        }
+        // 几乎一样长（≥80%）且是整词包含：同一首歌的不同写法，给高分。
+        // 已知边界：`Halo` 与 `Halo 2` 也会走这条，因为两个标题长度只差一个
+        // 字符。真机上「同名词 + 数字后缀」几乎只出现在续作上，代价可以接受。
+        return Double(shorter.count) >= Double(longer.count) * 0.8 ? 0.85 : dice(lhs, rhs)
+    }
+
+    /// 短的那个（已归一化）是不是长的那个原始写法里**连续的一串词**。
+    ///
+    /// 按词而不是按整串比，是因为两边都可能带空格：`Shape of You` 是
+    /// `Shape of You - Radio Edit` 里连续三个词，只比整串会漏掉。
+    private static func isWordRun(_ normalized: String, in raw: String) -> Bool {
+        let words = raw.components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .map(normalize)
+            .filter { !$0.isEmpty }
+        guard !words.isEmpty else { return false }
+
+        for start in words.indices {
+            var joined = ""
+            for end in start..<words.count {
+                joined += words[end]
+                if joined == normalized { return true }
+                if joined.count >= normalized.count { break }
+            }
+        }
+        return false
+    }
+
     private static func similarity(_ lhs: String, _ rhs: String) -> Double {
         if lhs.isEmpty || rhs.isEmpty { return 0 }
         if lhs == rhs { return 1 }
         if lhs.count >= 2, rhs.count >= 2, lhs.contains(rhs) || rhs.contains(lhs) { return 0.85 }
+        return dice(lhs, rhs)
+    }
 
+    /// Sørensen–Dice over character bigrams. Works for CJK, where there are no
+    /// word boundaries to split on.
+    private static func dice(_ lhs: String, _ rhs: String) -> Double {
         let left = bigrams(lhs)
         let right = bigrams(rhs)
         guard !left.isEmpty, !right.isEmpty else { return 0 }
         return 2 * Double(left.intersection(right).count) / Double(left.count + right.count)
     }
 
-    /// Character bigrams — the usual Sørensen–Dice coefficient. Works for CJK
-    /// where there are no word boundaries to split on.
+    /// Character bigrams. Works for CJK, where there are no word boundaries to
+    /// split on.
     private static func bigrams(_ string: String) -> Set<String> {
         let characters = Array(string)
         guard characters.count > 1 else { return Set([string]) }

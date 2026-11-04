@@ -25,6 +25,16 @@ struct SettingsView: View {
         self.updaterController = updaterController
     }
 
+    /// Sidebar entry for one of the notch panels.
+    ///
+    /// The name and glyph come from `NotchViews`, which is also what the tab bar
+    /// and the Tabs list read. They used to be two independent lists, which is
+    /// how this panel ended up called "Media" in the sidebar and "Music" in the
+    /// tab bar, with a different icon in each.
+    private static func panelItem(_ id: String, _ view: NotchViews) -> NLSidebarItem {
+        NLSidebarItem(id: id, label: view.panelName, icon: view.panelIcon)
+    }
+
     /// Sidebar metrics (28pt rows, radius 6, 13pt labels, 16pt icons).
     private static let sidebarGroups: [NLSidebarGroup] = [
         NLSidebarGroup(
@@ -39,13 +49,14 @@ struct SettingsView: View {
             id: "features",
             title: L("Features"),
             items: [
-                NLSidebarItem(id: "Media", label: L("Media"), icon: "play.laptopcomputer"),
+                panelItem("Media", .home),
                 NLSidebarItem(id: "Calendar", label: L("Calendar"), icon: "calendar"),
                 NLSidebarItem(id: "HUD", label: "HUD", icon: "dial.medium.fill"),
                 NLSidebarItem(id: "Battery", label: L("Battery"), icon: "battery.100.bolt"),
-                NLSidebarItem(id: "Shelf", label: L("Shelf"), icon: "books.vertical"),
-                NLSidebarItem(id: "QuickNote", label: L("Quick Note"), icon: "note.text"),
-                NLSidebarItem(id: "Weather", label: L("Weather"), icon: "cloud.sun.fill"),
+                panelItem("Shelf", .shelf),
+                panelItem("QuickNote", .quickNote),
+                panelItem("Weather", .weather),
+                panelItem("Stats", .stats),
                 NLSidebarItem(id: "Shortcuts", label: L("Shortcuts"), icon: "keyboard"),
             ]
         ),
@@ -102,10 +113,10 @@ struct SettingsView: View {
                 QuickNoteSettings()
             case "Weather":
                 WeatherSettings()
+            case "Stats":
+                StatsSettings()
             case "Shortcuts":
                 Shortcuts()
-            case "Extensions":
-                GeneralSettings()
             case "Advanced":
                 Advanced()
             case "About":
@@ -139,8 +150,8 @@ struct GeneralSettings: View {
     @EnvironmentObject var vm: NotchViewModel
     @ObservedObject var coordinator = NotchViewCoordinator.shared
 
-    @Default(.mirrorShape) var mirrorShape
     @Default(.showEmojis) var showEmojis
+    @Default(.hiddenTabs) private var hiddenTabs: [String]
     @Default(.menubarIcon) private var menubarIcon
     @Default(.showOnAllDisplays) private var showOnAllDisplays
     @Default(.automaticallySwitchDisplay) private var automaticallySwitchDisplay
@@ -191,6 +202,14 @@ struct GeneralSettings: View {
         NLSelectOption(value: .custom, label: L("Custom height")),
     ]
 
+    /// Only the panels that are switched on: offering a hidden panel as the home
+    /// page would name a destination the notch cannot reach.
+    private var homePageOptions: [NLSelectOption<NotchViews>] {
+        NotchViews.allCases
+            .filter { !hiddenTabs.contains($0.rawValue) }
+            .map { NLSelectOption(value: $0, label: $0.panelName) }
+    }
+
     private var gestureSensitivityLabel: String {
         if gestureSensitivity <= 150 { return L("High") }
         if gestureSensitivity <= 250 { return L("Medium") }
@@ -200,7 +219,8 @@ struct GeneralSettings: View {
     var body: some View {
         NLPage(
             L("General"),
-            subtitle: L("How the notch looks, which display it appears on, and how it responds to the mouse and gestures.")
+            subtitle: L("Appearance, display, hover and gestures."),
+            icon: "gear"
         ) {
             languageSection
             systemSection
@@ -215,9 +235,9 @@ struct GeneralSettings: View {
     private var languageSection: some View {
         NLSection(
             L("Language"),
-            footer: L("Applies to the whole app. Switching the language restarts Notch Lyrics.")
+            footer: L("Restarts Notch Lyrics.")
         ) {
-            NLRow(title: L("Language")) {
+            NLRow(icon: "globe", title: L("Language")) {
                 NLSelect(
                     options: languageOptions,
                     selection: $language,
@@ -237,24 +257,24 @@ struct GeneralSettings: View {
                 Button(L("Restart Now")) { ApplicationRelauncher.restart() }
                 Button(L("Later"), role: .cancel) {}
             } message: {
-                Text(L("Notch Lyrics will use the new language after it restarts."))
+                Text(L("The new language applies after a restart."))
             }
         }
     }
 
-    // MARK: - System features
+    // MARK: - System
 
     private var systemSection: some View {
-        NLSection(L("System features")) {
-            NLRow(title: L("Show menu bar icon"), showsDivider: true) {
+        NLSection(L("System")) {
+            NLRow(icon: "menubar.rectangle", title: L("Show menu bar icon"), showsDivider: true) {
                 NLSwitch(isOn: $menubarIcon, accessibilityLabel: L("Show menu bar icon"))
             }
 
-            NLRow(title: L("Launch at login"), showsDivider: true) {
+            NLRow(icon: "power", title: L("Launch at login"), showsDivider: true) {
                 NLSwitch(isOn: launchAtLoginBinding, accessibilityLabel: L("Launch at login"))
             }
 
-            NLRow(title: L("Show on all displays"), showsDivider: true) {
+            NLRow(icon: "display.2", title: L("Show on all displays"), showsDivider: true) {
                 NLSwitch(isOn: $showOnAllDisplays, accessibilityLabel: L("Show on all displays"))
             }
             .onChange(of: showOnAllDisplays) {
@@ -262,7 +282,7 @@ struct GeneralSettings: View {
                     name: Notification.Name.showOnAllDisplaysChanged, object: nil)
             }
 
-            NLRow(title: L("Preferred display"), showsDivider: true) {
+            NLRow(icon: "display", title: L("Preferred display"), showsDivider: true) {
                 NLSelect(
                     options: displayOptions,
                     selection: $coordinator.preferredScreenUUID,
@@ -271,7 +291,7 @@ struct GeneralSettings: View {
             }
             .disabled(showOnAllDisplays)
 
-            NLRow(title: L("Automatically switch displays"), subtitle: L("Moves the notch to whichever display the pointer is on.")) {
+            NLRow(icon: "arrow.left.arrow.right", title: L("Automatically switch displays"), subtitle: L("Follows the pointer.")) {
                 NLSwitch(isOn: $automaticallySwitchDisplay, accessibilityLabel: L("Automatically switch displays"))
             }
             .disabled(showOnAllDisplays)
@@ -293,9 +313,9 @@ struct GeneralSettings: View {
     private var notchSizeSection: some View {
         NLSection(
             L("Notch sizing"),
-            footer: L("“Match real notch height” and “Match menubar height” follow the system; use a custom height only when you need exact alignment.")
+            footer: L("The two match options follow the system. Custom is only for exact alignment.")
         ) {
-            NLRow(title: L("Notch height on notch displays"), showsDivider: true) {
+            NLRow(icon: "menubar.rectangle", title: L("Height on notch displays"), showsDivider: true) {
                 NLSelect(
                     options: Self.notchHeightOptions,
                     selection: $notchHeightMode,
@@ -313,7 +333,7 @@ struct GeneralSettings: View {
             }
 
             if notchHeightMode == .custom {
-                NLRow(title: L("Custom height"), showsDivider: true) {
+                NLRow(icon: "arrow.up.and.down", title: L("Custom height"), showsDivider: true) {
                     sliderRow($notchHeight.asDouble, range: 15...45, unit: "px")
                 }
                 .onChange(of: notchHeight) {
@@ -322,7 +342,7 @@ struct GeneralSettings: View {
                 }
             }
 
-            NLRow(title: L("Notch height on non-notch displays"), showsDivider: nonNotchHeightMode == .custom) {
+            NLRow(icon: "display", title: L("Height on other displays"), showsDivider: nonNotchHeightMode == .custom) {
                 NLSelect(
                     options: Self.nonNotchHeightOptions,
                     selection: $nonNotchHeightMode,
@@ -340,7 +360,7 @@ struct GeneralSettings: View {
             }
 
             if nonNotchHeightMode == .custom {
-                NLRow(title: L("Custom height")) {
+                NLRow(icon: "arrow.up.and.down", title: L("Custom height")) {
                     sliderRow($nonNotchHeight.asDouble, range: 0...40, unit: "px")
                 }
                 .onChange(of: nonNotchHeight) {
@@ -355,21 +375,33 @@ struct GeneralSettings: View {
 
     private var behaviourSection: some View {
         NLSection(L("Notch behavior")) {
-            NLRow(title: L("Open notch on hover"), showsDivider: true) {
+            NLRow(icon: "cursorarrow.rays", title: L("Open notch on hover"), showsDivider: true) {
                 NLSwitch(isOn: $openNotchOnHover, accessibilityLabel: L("Open notch on hover"))
             }
 
-            NLRow(title: L("Enable haptic feedback"), showsDivider: true) {
-                NLSwitch(isOn: $enableHaptics, accessibilityLabel: L("Enable haptic feedback"))
+            NLRow(icon: "hand.tap", title: L("Haptic feedback"), showsDivider: true) {
+                NLSwitch(isOn: $enableHaptics, accessibilityLabel: L("Haptic feedback"))
             }
 
-            NLRow(title: L("Remember last tab"), showsDivider: openNotchOnHover) {
+            NLRow(icon: "clock.arrow.circlepath", title: L("Remember last tab"), showsDivider: true) {
                 NLSwitch(
                     isOn: $coordinator.openLastTabByDefault, accessibilityLabel: L("Remember last tab"))
             }
 
+            NLRow(icon: "house", title: L("Home page"),
+                subtitle: L("The tab the notch opens to."),
+                showsDivider: openNotchOnHover
+            ) {
+                NLSelect(
+                    options: homePageOptions,
+                    selection: $coordinator.defaultHomeView,
+                    minWidth: 150
+                )
+            }
+            .disabled(coordinator.openLastTabByDefault)
+
             if openNotchOnHover {
-                NLRow(title: L("Hover delay")) {
+                NLRow(icon: "timer", title: L("Hover delay")) {
                     sliderRow($minimumHoverDuration, range: 0...1, step: 0.1, unit: L("seconds"))
                 }
                 .onChange(of: minimumHoverDuration) {
@@ -385,28 +417,23 @@ struct GeneralSettings: View {
     private var gestureSection: some View {
         NLSection(
             L("Gesture control"),
-            footer: L("When “Open notch on hover” is off: two-finger swipe up on the notch to close it, swipe down to open it. Scaling is visual feedback only — with it off, a swipe past the sensitivity threshold still closes the notch.")
+            footer: L("With hover off: swipe up on the notch to close it, swipe down to open it.")
         ) {
-            NLRow(title: L("Enable gestures"), showsDivider: enableGestures) {
+            NLRow(icon: "hand.draw", title: L("Enable gestures"), showsDivider: enableGestures) {
                 NLSwitch(isOn: $enableGestures, accessibilityLabel: L("Enable gestures"))
             }
             .disabled(!openNotchOnHover)
 
             if enableGestures {
-                NLRow(title: L("Change media with horizontal gestures"), subtitle: L("Not implemented yet."), showsDivider: true) {
-                    NLSwitch(isOn: .constant(false), accessibilityLabel: L("Change media with horizontal gestures"))
-                }
-                .disabled(true)
-
-                NLRow(title: L("Close gesture"), showsDivider: true) {
+                NLRow(icon: "hand.point.up.left", title: L("Close gesture"), showsDivider: true) {
                     NLSwitch(isOn: $closeGestureEnabled, accessibilityLabel: L("Close gesture"))
                 }
 
-                NLRow(title: L("Scale the notch while swiping"), showsDivider: true) {
+                NLRow(icon: "arrow.up.left.and.arrow.down.right", title: L("Scale the notch while swiping"), showsDivider: true) {
                     NLSwitch(isOn: $swipeScalesNotch, accessibilityLabel: L("Scale the notch while swiping"))
                 }
 
-                NLRow(title: L("Gesture sensitivity")) {
+                NLRow(icon: "dial.medium", title: L("Gesture sensitivity")) {
                     sliderRow(
                         $gestureSensitivity.asDouble, range: 100...300, step: 100,
                         overrideText: gestureSensitivityLabel)
@@ -449,22 +476,22 @@ struct Charge: View {
     @Default(.showPowerStatusIcons) private var showPowerStatusIcons
 
     var body: some View {
-        NLPage(L("Battery"), subtitle: L("The battery indicator in the notch, plus status alerts when power is connected or disconnected.")) {
+        NLPage(L("Battery"), subtitle: L("The battery indicator and power alerts."), icon: "battery.100.bolt") {
             NLSection(L("General")) {
-                NLRow(title: L("Show battery indicator"), showsDivider: true) {
+                NLRow(icon: "battery.100", title: L("Show battery indicator"), showsDivider: true) {
                     NLSwitch(isOn: $showBatteryIndicator, accessibilityLabel: L("Show battery indicator"))
                 }
-                NLRow(title: L("Show power status notifications")) {
+                NLRow(icon: "bell", title: L("Show power status notifications")) {
                     NLSwitch(
                         isOn: $showPowerStatusNotifications, accessibilityLabel: L("Show power status notifications"))
                 }
             }
 
-            NLSection(L("Battery Information")) {
-                NLRow(title: L("Show battery percentage"), showsDivider: true) {
+            NLSection(L("Display")) {
+                NLRow(icon: "percent", title: L("Show battery percentage"), showsDivider: true) {
                     NLSwitch(isOn: $showBatteryPercentage, accessibilityLabel: L("Show battery percentage"))
                 }
-                NLRow(title: L("Show power status icons")) {
+                NLRow(icon: "bolt", title: L("Show power status icons")) {
                     NLSwitch(isOn: $showPowerStatusIcons, accessibilityLabel: L("Show power status icons"))
                 }
             }
@@ -497,7 +524,8 @@ struct HUD: View {
     var body: some View {
         NLPage(
             "HUD",
-            subtitle: L("Replacing the system HUD for volume, brightness and keyboard backlight, plus the progress display in the open and closed notch.")
+            subtitle: L("Volume, brightness and backlight overlays, in the notch."),
+            icon: "dial.medium.fill"
         ) {
             replacementSection
             generalSection
@@ -526,9 +554,8 @@ struct HUD: View {
 
     private var replacementSection: some View {
         NLSection(L("System HUD")) {
-            NLRow(
-                title: L("Replace system HUD"),
-                subtitle: L("Replace the native macOS HUD for volume, brightness and keyboard backlight with a custom style."),
+            NLRow(icon: "slider.horizontal.3", title: L("Replace system HUD"),
+                subtitle: L("Replaces the macOS volume, brightness and backlight overlay."),
                 showsDivider: !accessibilityAuthorized
             ) {
                 NLSwitch(isOn: $hudReplacement, accessibilityLabel: L("Replace system HUD"))
@@ -546,11 +573,11 @@ struct HUD: View {
                         Text(L("Accessibility permission required"))
                             .font(NLFont.bodyStrong)
                             .foregroundStyle(NLColor.textPrimary)
-                        Text(L("Replacing the system HUD requires Accessibility permission. Grant it to turn this on."))
+                        Text(L("Needs Accessibility permission. Grant it, then turn this on."))
                             .font(NLFont.caption)
                             .foregroundStyle(NLColor.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Button(L("Request Accessibility Permission")) {
+                        Button(L("Grant permission")) {
                             XPCHelperClient.shared.requestAccessibilityAuthorization()
                         }
                         .buttonStyle(NLButtonStyle(variant: .secondary))
@@ -568,11 +595,11 @@ struct HUD: View {
 
     private var generalSection: some View {
         NLSection(L("General")) {
-            NLRow(title: L("Option key behaviour"), showsDivider: true) {
+            NLRow(icon: "option", title: L("Option key behavior"), showsDivider: true) {
                 NLSelect(options: Self.optionKeyOptions, selection: $optionKeyAction, minWidth: 140)
             }
 
-            NLRow(title: L("Progress bar style"), showsDivider: true) {
+            NLRow(icon: "chart.bar", title: L("Progress bar style"), showsDivider: true) {
                 NLSegmented(
                     options: [
                         NLSegmentedOption(value: false, label: L("Hierarchical")),
@@ -582,12 +609,12 @@ struct HUD: View {
                 )
             }
 
-            NLRow(title: L("Enable glowing effect"), showsDivider: true) {
-                NLSwitch(isOn: $systemEventIndicatorShadow, accessibilityLabel: L("Enable glowing effect"))
+            NLRow(icon: "sparkles", title: L("Glow effect"), showsDivider: true) {
+                NLSwitch(isOn: $systemEventIndicatorShadow, accessibilityLabel: L("Glow effect"))
             }
 
-            NLRow(title: L("Tint progress bar with accent color")) {
-                NLSwitch(isOn: $systemEventIndicatorUseAccent, accessibilityLabel: L("Tint progress bar with accent color"))
+            NLRow(icon: "paintpalette", title: L("Accent-colored progress bar")) {
+                NLSwitch(isOn: $systemEventIndicatorUseAccent, accessibilityLabel: L("Accent-colored progress bar"))
             }
         }
         .disabled(!hudReplacement)
@@ -597,10 +624,10 @@ struct HUD: View {
 
     private var openNotchSection: some View {
         NLSection(L("Open Notch")) {
-            NLRow(title: L("Show HUD in open notch"), showsDivider: true) {
+            NLRow(icon: "rectangle.expand.vertical", title: L("Show HUD in open notch"), showsDivider: true) {
                 NLSwitch(isOn: $showOpenNotchHUD, accessibilityLabel: L("Show HUD in open notch"))
             }
-            NLRow(title: L("Show percentage")) {
+            NLRow(icon: "percent", title: L("Show percentage")) {
                 NLSwitch(isOn: $showOpenNotchHUDPercentage, accessibilityLabel: L("Show percentage"))
             }
             .disabled(!showOpenNotchHUD)
@@ -612,7 +639,7 @@ struct HUD: View {
 
     private var closedNotchSection: some View {
         NLSection(L("Closed Notch")) {
-            NLRow(title: L("HUD style"), showsDivider: true) {
+            NLRow(icon: "square.on.square", title: L("HUD style"), showsDivider: true) {
                 NLSegmented(
                     options: [
                         NLSegmentedOption(value: false, label: L("Default")),
@@ -630,7 +657,7 @@ struct HUD: View {
                 }
             }
 
-            NLRow(title: L("Show percentage")) {
+            NLRow(icon: "percent", title: L("Show percentage")) {
                 NLSwitch(isOn: $showClosedNotchHUDPercentage, accessibilityLabel: L("Show percentage"))
             }
         }
@@ -647,6 +674,8 @@ struct Media: View {
     @Default(.sneakPeekStyles) var sneakPeekStyles
 
     @Default(.enableLyrics) var enableLyrics
+    @Default(.lyricsEndpoint) var lyricsEndpoint
+    @Default(.lyricsProxy) var lyricsProxy
     @Default(.keepMusicOpen) var keepMusicOpen
     @Default(.pinnedPlayerBundle) var pinnedPlayerBundle
 
@@ -656,23 +685,24 @@ struct Media: View {
 
     var body: some View {
         NLPage(
-            L("Media"),
-            subtitle: L("Beyond the microphone: this page decides how the music player looks in the notch and when it appears.")
+            NotchViews.home.panelName,
+            subtitle: L("The player in the notch: what it shows and when it appears."),
+            icon: NotchViews.home.panelIcon
         ) {
             mediaSourceSection
 
-            NLSection(L("Media playback live activity")) {
-                NLRow(title: L("Show music live activity"), showsDivider: true) {
+            NLSection(L("Playback")) {
+                NLRow(icon: "play.rectangle", title: L("Show what's playing"), showsDivider: true) {
                     NLSwitch(
                         isOn: $coordinator.musicLiveActivityEnabled.animation(),
-                        accessibilityLabel: L("Show music live activity"))
+                        accessibilityLabel: L("Show what's playing"))
                 }
 
-                NLRow(title: L("Show sneak peek on playback changes"), showsDivider: true) {
+                NLRow(icon: "eye", title: L("Show sneak peek on playback changes"), showsDivider: true) {
                     NLSwitch(isOn: $enableSneakPeek, accessibilityLabel: L("Show sneak peek on playback changes"))
                 }
 
-                NLRow(title: L("Sneak Peek Style"), showsDivider: true) {
+                NLRow(icon: "square.on.square", title: L("Sneak peek style"), showsDivider: true) {
                     NLSelect(
                         options: SneakPeekStyle.allCases.map {
                             NLSelectOption(value: $0, label: $0.displayName)
@@ -682,7 +712,7 @@ struct Media: View {
                     )
                 }
 
-                NLRow(title: L("Media inactivity timeout"), showsDivider: true) {
+                NLRow(icon: "clock", title: L("Hide after inactivity"), showsDivider: true) {
                     HStack(spacing: NLSpace.s2) {
                         Text("\(Defaults[.waitInterval], specifier: "%.0f") seconds")
                             .font(NLFont.mono)
@@ -698,12 +728,12 @@ struct Media: View {
                     }
                 }
 
-                NLRow(title: L("Full screen behavior")) {
+                NLRow(icon: "arrow.up.left.and.arrow.down.right", title: L("In full screen")) {
                     NLSelect(
                         options: [
                             NLSelectOption(value: HideNotchOption.always, label: L("Hide for all apps")),
                             NLSelectOption(
-                                value: HideNotchOption.nowPlayingOnly, label: L("Hide for media app only")),
+                                value: HideNotchOption.nowPlayingOnly, label: L("Hide for the media app")),
                             NLSelectOption(value: HideNotchOption.never, label: L("Never hide")),
                         ],
                         selection: $hideNotchOption,
@@ -713,27 +743,58 @@ struct Media: View {
             }
 
             NLSection(
-                L("Media controls"),
-                footer: L("Choose which controls appear in the music player. The volume control expands to the right when active.")
+                L("Controls"),
+                footer: L("Which controls appear in the player.")
             ) {
                 MusicSlotConfigurationView()
                 NLDivider()
-                NLRow(title: L("Show lyrics in the notch")) {
-                    NLSwitch(isOn: $enableLyrics, accessibilityLabel: L("Show lyrics in the notch"))
+                NLRow(icon: "text.quote", title: L("Show lyrics")) {
+                    NLSwitch(isOn: $enableLyrics, accessibilityLabel: L("Show lyrics"))
                 }
 
-                NLRow(title: L("Keep lyrics on screen while playing"), showsDivider: true) {
+                NLRow(icon: "pin", title: L("Keep lyrics visible"), showsDivider: true) {
                     NLSwitch(
                         isOn: $keepMusicOpen,
-                        accessibilityLabel: L("Keep lyrics on screen while playing"))
+                        accessibilityLabel: L("Keep lyrics visible"))
                 }
+            }
+
+            if enableLyrics {
+                lyricsServiceSection
+            }
+        }
+    }
+
+    /// 歌词服务地址与代理。
+    ///
+    /// 默认值（官方域名 + 系统代理）对大多数人就是对的，所以这一节只在歌词打开时才
+    /// 出现。官方域名不可达时可以指到一个能用的镜像；代理则留给「系统没配、但自己
+    /// 知道该走哪里」的情况——系统代理默认就会生效，不需要在这里再填一遍。
+    private var lyricsServiceSection: some View {
+        NLSection(
+            L("Lyrics service"),
+            footer: L("Empty uses lrclib.net. Use a mirror if it does not respond. Proxy is host:port; empty follows the system.")
+        ) {
+            NLRow(icon: "network", title: L("Server address"), showsDivider: true) {
+                NLTextField(
+                    placeholder: LyricsNetwork.official.absoluteString,
+                    text: $lyricsEndpoint,
+                    width: 220
+                )
+            }
+            NLRow(icon: "arrow.triangle.branch", title: L("Proxy")) {
+                NLTextField(
+                    placeholder: L("System proxy"),
+                    text: $lyricsProxy,
+                    width: 220
+                )
             }
         }
     }
 
     private var mediaSourceSection: some View {
-        NLSection(L("Media Source")) {
-            NLRow(title: L("Music Source")) {
+        NLSection(L("Playback source")) {
+            NLRow(icon: "music.note", title: L("Music source")) {
                 NLSelect(
                     options: availableMediaControllers.map {
                         NLSelectOption(value: $0, label: $0.displayName)
@@ -758,7 +819,7 @@ struct Media: View {
             }
             if mediaController == .nowPlaying, !MusicManager.shared.isNowPlayingDeprecated {
                 NLDivider()
-                NLRow(title: L("Pin to one app"), subtitle: pinSubtitle) {
+                NLRow(icon: "pin", title: L("Pin to one app"), subtitle: pinSubtitle) {
                     NLSwitch(isOn: pinBinding, accessibilityLabel: L("Pin to one app"))
                 }
                 NLDivider()
@@ -766,7 +827,7 @@ struct Media: View {
             }
             if mediaController == .neteaseCloudMusic {
                 NLDivider()
-                NLFootnote(L("Only tracks the NetEase Cloud Music desktop app. Playback in other apps no longer replaces what the notch shows, and lyrics are looked up on NetEase first."))
+                NLFootnote(L("Tracks the NetEase Cloud Music app only. Lyrics are looked up on NetEase first."))
             }
             if MusicManager.shared.isNowPlayingDeprecated {
                 NLDivider()
@@ -779,7 +840,7 @@ struct Media: View {
                 )
             } else if mediaController == .nowPlaying {
                 NLDivider()
-                NLFootnote(L("“Now Playing” was the only option in previous versions and works with every media app."))
+                NLFootnote(L("Works with every media app."))
             }
         }
     }
@@ -820,7 +881,7 @@ struct Media: View {
     /// so no optional needed here.
     private var pinHint: String {
         if pinnedPlayerBundle.isEmpty {
-            return L("Turn this on while the app you want is playing. From then on only that app is tracked — starting playback in another app leaves the notch untouched. This is separate from keeping lyrics on screen.")
+            return L("Turn this on while the app you want is playing. Only that app is tracked afterwards.")
         }
         return String(
             format: L("Locked to %@. Playback in other apps no longer replaces what the notch shows."),
@@ -828,7 +889,7 @@ struct Media: View {
     }
 
     /// Human name for a bundle id. Known music apps use their English product
-    /// names so the wording matches the Music Source picker; anything else
+    /// names so the wording matches the Music source picker; anything else
     /// falls back to Launch Services (which localizes, e.g. 音乐 for Music).
     private func appDisplayName(for bundle: String) -> String {
         switch bundle {
@@ -950,23 +1011,23 @@ struct QuickNoteSettings: View {
 
     var body: some View {
         NLPage(
-            L("Quick Note"),
-            subtitle: L("Where quick notes are saved. Switching destinations keeps the other side's settings, so you can switch back anytime.")
+            NotchViews.quickNote.panelName,
+            subtitle: L("Where quick notes are saved."),
+            icon: NotchViews.quickNote.panelIcon
         ) {
-            NLSection(L("Quick Note storage")) {
-                NLRow(title: L("Save to")) {
+            NLSection(L("Storage")) {
+                NLRow(icon: "tray.and.arrow.down", title: L("Save to")) {
                     NLSegmented(options: targetOptions, selection: targetSelection)
                 }
             }
 
             if target == .notes {
-                NLSection(L("Notes"), footer: L("Every save creates a new note in the selected folder and never changes existing ones.")) {
-                    NLRow(title: L("Default folder"), showsDivider: true) {
+                NLSection(L("Notes"), footer: L("Each save creates a new note; existing notes are never changed.")) {
+                    NLRow(icon: "folder", title: L("Default folder"), showsDivider: true) {
                         NLSelect(options: folderOptions, selection: folderSelection, minWidth: 180)
                     }
 
-                    NLRow(
-                        title: L("Folders"),
+                    NLRow(icon: "folder.badge.gearshape", title: L("Folders"),
                         subtitle: statusMessage
                             ?? (folders.isEmpty
                                 ? L("No folders loaded yet.")
@@ -982,9 +1043,8 @@ struct QuickNoteSettings: View {
                     }
                 }
             } else {
-                NLSection("Obsidian", footer: L("Quick notes are saved as a new .md file in the selected folder, named after the first line.")) {
-                    NLRow(
-                        title: L("Folder"),
+                NLSection("Obsidian", footer: L("Saved as a .md file, named after the first line.")) {
+                    NLRow(icon: "folder", title: L("Folder"),
                         subtitle: vaultLabel.isEmpty ? L("Not selected") : vaultLabel
                     ) {
                         HStack(spacing: NLSpace.s3) {
@@ -1035,21 +1095,21 @@ struct CalendarSettings: View {
     @Default(.showFullEventTitles) private var showFullEventTitles
 
     var body: some View {
-        NLPage(L("Calendar"), subtitle: L("The calendar and reminders in the notch: what to show and what to hide.")) {
-            NLSection(L("Display options")) {
-                NLRow(title: L("Show calendar"), showsDivider: true) {
+        NLPage(L("Calendar"), subtitle: L("Calendar and reminders in the notch."), icon: "calendar") {
+            NLSection(L("Display")) {
+                NLRow(icon: "calendar", title: L("Show calendar"), showsDivider: true) {
                     NLSwitch(isOn: $showCalendar, accessibilityLabel: L("Show calendar"))
                 }
-                NLRow(title: L("Hide completed reminders"), showsDivider: true) {
+                NLRow(icon: "checkmark.circle", title: L("Hide completed reminders"), showsDivider: true) {
                     NLSwitch(isOn: $hideCompletedReminders, accessibilityLabel: L("Hide completed reminders"))
                 }
-                NLRow(title: L("Hide all-day events"), showsDivider: true) {
+                NLRow(icon: "calendar.badge.clock", title: L("Hide all-day events"), showsDivider: true) {
                     NLSwitch(isOn: $hideAllDayEvents, accessibilityLabel: L("Hide all-day events"))
                 }
-                NLRow(title: L("Auto-scroll to next event"), showsDivider: true) {
+                NLRow(icon: "arrow.down.to.line", title: L("Auto-scroll to next event"), showsDivider: true) {
                     NLSwitch(isOn: $autoScrollToNextEvent, accessibilityLabel: L("Auto-scroll to next event"))
                 }
-                NLRow(title: L("Always show full event titles")) {
+                NLRow(icon: "text.alignleft", title: L("Always show full event titles")) {
                     NLSwitch(isOn: $showFullEventTitles, accessibilityLabel: L("Always show full event titles"))
                 }
             }
@@ -1061,7 +1121,7 @@ struct CalendarSettings: View {
                 settingsURL:
                     "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars",
                 items: calendarManager.eventCalendars,
-                emptyMessage: L("There are no calendars in the system Calendar app yet.")
+                emptyMessage: L("No calendars in the Calendar app yet.")
             )
 
             listSection(
@@ -1071,7 +1131,7 @@ struct CalendarSettings: View {
                 settingsURL:
                     "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders",
                 items: calendarManager.reminderLists,
-                emptyMessage: L("There are no lists in the system Reminders app yet.")
+                emptyMessage: L("No lists in the Reminders app yet.")
             )
         }
         .onAppear {
@@ -1181,11 +1241,10 @@ struct About: View {
     @Environment(\.openWindow) var openWindow
 
     var body: some View {
-        NLPage(L("About"), subtitle: L("Version info, update settings and the project home page.")) {
+        NLPage(L("About"), subtitle: L("Version, updates and source code."), icon: "info.circle") {
             NLSection(L("Version")) {
-                NLRow(
-                    title: L("Version"),
-                    subtitle: showBuildNumber ? nil : L("Click to show build number")
+                NLRow(icon: "info.circle", title: L("Version"),
+                    subtitle: showBuildNumber ? nil : L("Show build number")
                 ) {
                     HStack(spacing: NLSpace.s2) {
                         if showBuildNumber {
@@ -1207,7 +1266,7 @@ struct About: View {
             UpdaterSettingsView(updater: updaterController.updater)
 
             NLSection(L("Project"), footer: L("Notch Lyrics is an independent GPL-3.0 project.")) {
-                NLRow(title: L("Source code"), subtitle: "github.com/huo241/notch-lyrics") {
+                NLRow(icon: "chevron.left.forwardslash.chevron.right", title: L("Source code"), subtitle: "github.com/huo241/notch-lyrics") {
                     Button(L("Open GitHub")) {
                         if let url = URL(string: "https://github.com/huo241/notch-lyrics") {
                             NSWorkspace.shared.open(url)
@@ -1228,7 +1287,6 @@ struct Shelf: View {
     @Default(.quickShareProvider) private var quickShareProvider
     @Default(.expandedDragDetection) private var expandedDragDetection: Bool
     @Default(.notchShelf) private var notchShelf
-    @Default(.openShelfByDefault) private var openShelfByDefault
     @Default(.copyOnDrag) private var copyOnDrag
     @Default(.autoRemoveShelfItems) private var autoRemoveShelfItems
     @StateObject private var quickShareService = QuickShareService.shared
@@ -1249,16 +1307,13 @@ struct Shelf: View {
     }
 
     var body: some View {
-        NLPage(L("Shelf"), subtitle: L("A temporary file shelf in the notch, plus the system service used to share files.")) {
+        NLPage(NotchViews.shelf.panelName, subtitle: L("A temporary file shelf, and sharing from it."), icon: NotchViews.shelf.panelIcon) {
             NLSection(L("General")) {
-                NLRow(title: L("Enable shelf"), showsDivider: true) {
+                NLRow(icon: "tray.full", title: L("Enable shelf"), showsDivider: true) {
                     NLSwitch(isOn: $notchShelf, accessibilityLabel: L("Enable shelf"))
                 }
-                NLRow(title: L("Open shelf by default if items are present"), showsDivider: true) {
-                    NLSwitch(isOn: $openShelfByDefault, accessibilityLabel: L("Open shelf by default if items are present"))
-                }
-                NLRow(title: L("Expanded drag detection area"), showsDivider: true) {
-                    NLSwitch(isOn: $expandedDragDetection, accessibilityLabel: L("Expanded drag detection area"))
+                NLRow(icon: "arrow.down.doc", title: L("Larger drop area for dragging"), showsDivider: true) {
+                    NLSwitch(isOn: $expandedDragDetection, accessibilityLabel: L("Larger drop area for dragging"))
                 }
                 .onChange(of: expandedDragDetection) {
                     NotificationCenter.default.post(
@@ -1266,19 +1321,19 @@ struct Shelf: View {
                         object: nil
                     )
                 }
-                NLRow(title: L("Copy items on drag"), showsDivider: true) {
-                    NLSwitch(isOn: $copyOnDrag, accessibilityLabel: L("Copy items on drag"))
+                NLRow(icon: "doc.on.doc", title: L("Copy instead of move on drag"), showsDivider: true) {
+                    NLSwitch(isOn: $copyOnDrag, accessibilityLabel: L("Copy instead of move on drag"))
                 }
-                NLRow(title: L("Remove from shelf after dragging")) {
-                    NLSwitch(isOn: $autoRemoveShelfItems, accessibilityLabel: L("Remove from shelf after dragging"))
+                NLRow(icon: "trash", title: L("Remove after dragging")) {
+                    NLSwitch(isOn: $autoRemoveShelfItems, accessibilityLabel: L("Remove after dragging"))
                 }
             }
 
             NLSection(
                 L("Quick Share"),
-                footer: L("Choose the service used to share files from the shelf. Click the shelf button to pick files, or drop files on it to share right away.")
+                footer: L("Which service shares files from the shelf.")
             ) {
-                NLRow(title: L("Quick Share Service"), showsDivider: selectedProvider != nil) {
+                NLRow(icon: "square.and.arrow.up", title: L("Service"), showsDivider: selectedProvider != nil) {
                     NLSelect(
                         options: quickShareService.availableProviders.map {
                             NLSelectOption(value: $0.id, label: displayProviderName($0.id))
@@ -1289,7 +1344,7 @@ struct Shelf: View {
                 }
 
                 if let selectedProvider {
-                    NLRow(title: L("Current selection"), subtitle: L("Files dropped on the shelf will be shared via this service")) {
+                    NLRow(icon: "checkmark.circle", title: L("Current selection"), subtitle: L("Files dropped on the shelf use this service.")) {
                         HStack(spacing: NLSpace.s2) {
                             providerIcon(selectedProvider)
                             Text(displayProviderName(selectedProvider.id))
@@ -1322,53 +1377,83 @@ struct Shelf: View {
 
 struct Appearance: View {
     @ObservedObject var coordinator = NotchViewCoordinator.shared
-    @Default(.mirrorShape) private var mirrorShape
     @Default(.sliderColor) private var sliderColor
-    @Default(.useMusicVisualizer) private var useMusicVisualizer
-    @Default(.customVisualizers) private var customVisualizers
-    @Default(.selectedVisualizer) private var selectedVisualizer
     @Default(.settingsIconInNotch) private var settingsIconInNotch
     @Default(.coloredSpectrogram) private var coloredSpectrogram
     @Default(.playerColorTinting) private var playerColorTinting
     @Default(.lightingEffect) private var lightingEffect
-    @Default(.showMirror) private var showMirror
-    @Default(.showNotHumanFace) private var showNotHumanFace
-
-    @State private var selectedListVisualizer: CustomVisualizer? = nil
-    @State private var isPresented: Bool = false
-    @State private var name: String = ""
-    @State private var url: String = ""
-    @State private var speed: CGFloat = 1.0
-
-    private static let mirrorShapeOptions: [NLSelectOption<MirrorShapeEnum>] = [
-        NLSelectOption(value: .circle, label: L("Circle")),
-        NLSelectOption(value: .rectangle, label: L("Square")),
-    ]
+    @Default(.hiddenTabs) private var hiddenTabs: [String]
 
     var body: some View {
-        NLPage(L("Appearance"), subtitle: L("Tabs, player tinting, visualizers and the notch mirror.")) {
+        NLPage(L("Appearance"), subtitle: L("Tabs and player tinting."), icon: "eye") {
             generalSection
+            tabsSection
             mediaSection
-            visualizerAnimationSection
-            visualizerListSection
-            extrasSection
         }
-        .onAppear {
-            // While the music visualizer is off, snap the selected animation to the first entry so nothing dangles.
-            if selectedVisualizer == nil, let first = customVisualizers.first {
-                selectedVisualizer = first
+    }
+
+    // MARK: - Tabs
+
+    /// Which panels the notch offers.
+    ///
+    /// Switching one off takes it out of the tab bar and out of the home-page
+    /// rotation. Nothing else happens to it: the feature, its settings and its
+    /// data stay exactly where they were, so turning it back on restores what was
+    /// there instead of starting over.
+    private var tabsSection: some View {
+        NLSection(L("Tabs"), footer: L("At least one tab always stays visible.")) {
+            ForEach(NotchViews.allCases, id: \.self) { view in
+                NLRow(
+                    icon: view.panelIcon,
+                    title: view.panelName,
+                    showsDivider: view != NotchViews.allCases.last
+                ) {
+                    NLSwitch(isOn: visibility(for: view), accessibilityLabel: view.panelName)
+                        .disabled(isLastVisible(view))
+                }
             }
         }
+    }
+
+    /// Reads as "this panel is shown"; writes by adding or removing it from the
+    /// hidden list. Hiding the panel that is currently the home page moves the
+    /// home page to the first panel still visible, and a panel that disappears
+    /// while it is on screen hands the screen to that same fallback.
+    private func visibility(for view: NotchViews) -> Binding<Bool> {
+        Binding(
+            get: { !hiddenTabs.contains(view.rawValue) },
+            set: { shown in
+                var hidden = hiddenTabs
+                if shown {
+                    hidden.removeAll { $0 == view.rawValue }
+                } else {
+                    hidden.append(view.rawValue)
+                }
+                // Never let the bar empty out — there would be nothing to show.
+                guard hidden.count < NotchViews.allCases.count else { return }
+                hiddenTabs = hidden
+                if hidden.contains(coordinator.defaultHomeView.rawValue) {
+                    coordinator.defaultHomeView = coordinator.resolvedHomeView
+                }
+                coordinator.clampToVisiblePanels()
+            }
+        )
+    }
+
+    /// The switch that would empty the bar is the one that cannot be turned off.
+    private func isLastVisible(_ view: NotchViews) -> Bool {
+        !hiddenTabs.contains(view.rawValue)
+            && hiddenTabs.count == NotchViews.allCases.count - 1
     }
 
     // MARK: - General
 
     private var generalSection: some View {
         NLSection(L("General")) {
-            NLRow(title: L("Always show tabs"), showsDivider: true) {
+            NLRow(icon: "menubar.rectangle", title: L("Always show tabs"), showsDivider: true) {
                 NLSwitch(isOn: $coordinator.alwaysShowTabs, accessibilityLabel: L("Always show tabs"))
             }
-            NLRow(title: L("Show settings icon in notch")) {
+            NLRow(icon: "gearshape", title: L("Show settings icon in notch")) {
                 NLSwitch(isOn: $settingsIconInNotch, accessibilityLabel: L("Show settings icon in notch"))
             }
         }
@@ -1377,17 +1462,17 @@ struct Appearance: View {
     // MARK: - Media
 
     private var mediaSection: some View {
-        NLSection(L("Media")) {
-            NLRow(title: L("Colored spectrogram"), showsDivider: true) {
+        NLSection(L("Player")) {
+            NLRow(icon: "waveform", title: L("Colored spectrogram"), showsDivider: true) {
                 NLSwitch(isOn: $coloredSpectrogram, accessibilityLabel: L("Colored spectrogram"))
             }
-            NLRow(title: L("Tint player with album art"), showsDivider: true) {
+            NLRow(icon: "eyedropper", title: L("Tint player with album art"), showsDivider: true) {
                 NLSwitch(isOn: $playerColorTinting, accessibilityLabel: L("Tint player with album art"))
             }
-            NLRow(title: L("Enable blur effect behind album art"), showsDivider: true) {
+            NLRow(icon: "sparkles", title: L("Enable blur effect behind album art"), showsDivider: true) {
                 NLSwitch(isOn: $lightingEffect, accessibilityLabel: L("Enable blur effect behind album art"))
             }
-            NLRow(title: L("Slider color")) {
+            NLRow(icon: "paintpalette", title: L("Slider color")) {
                 NLSelect(
                     options: SliderColorEnum.allCases.map {
                         NLSelectOption(value: $0, label: $0.displayName)
@@ -1398,255 +1483,11 @@ struct Appearance: View {
             }
         }
     }
-
-    // MARK: - Custom animations
-
-    private var visualizerAnimationSection: some View {
-        NLSection(L("Custom music live activity animation")) {
-            NLRow(title: L("Use music visualizer spectrogram"), showsDivider: !useMusicVisualizer) {
-                NLSwitch(
-                    isOn: $useMusicVisualizer.animation(),
-                    accessibilityLabel: L("Use music visualizer spectrogram"))
-            }
-            .disabled(true)
-
-            if !useMusicVisualizer {
-                NLRow(title: L("Selected animation")) {
-                    if customVisualizers.isEmpty {
-                        Text(L("No custom animation available"))
-                            .font(NLFont.body)
-                            .foregroundStyle(NLColor.textTertiary)
-                    } else {
-                        NLSelect(
-                            options: customVisualizers.map {
-                                NLSelectOption(value: $0, label: $0.name)
-                            },
-                            selection: $selectedVisualizer,
-                            minWidth: 160
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Visualizer list
-
-    private var visualizerListSection: some View {
-        NLSection(L("Custom vizualizers (Lottie)"), badge: countBadge) {
-            if customVisualizers.isEmpty {
-                NLEmptyState(
-                    icon: "sparkles",
-                    title: L("No custom visualizer"),
-                    message: L("Use the ＋ below to add a Lottie JSON URL.")
-                )
-            } else {
-                ForEach(Array(customVisualizers.enumerated()), id: \.element) { index, visualizer in
-                    VisualizerRow(
-                        visualizer: visualizer,
-                        isSelected: selectedListVisualizer == visualizer,
-                        isActive: selectedVisualizer == visualizer,
-                        showsDivider: index < customVisualizers.count - 1
-                    ) {
-                        toggleSelection(visualizer)
-                    }
-                }
-            }
-
-            NLDivider()
-
-            HStack(spacing: NLSpace.s1) {
-                NLIconButton(systemName: "plus", help: L("Add new visualizer")) {
-                    name = ""
-                    url = ""
-                    speed = 1.0
-                    isPresented = true
-                }
-                NLIconButton(
-                    systemName: "minus",
-                    help: L("Remove selected visualizer"),
-                    isEnabled: selectedListVisualizer != nil
-                ) {
-                    removeSelectedVisualizer()
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, NLSpace.s3)
-            .padding(.vertical, NLSpace.s1)
-        }
-        .sheet(isPresented: $isPresented) { addVisualizerSheet }
-    }
-
-    private var countBadge: String? {
-        customVisualizers.isEmpty ? nil : "\(customVisualizers.count)"
-    }
-
-    // MARK: - Add visualizer
-
-    private var addVisualizerSheet: some View {
-        VStack(alignment: .leading, spacing: NLSpace.s6) {
-            VStack(alignment: .leading, spacing: NLSpace.s1) {
-                Text(L("Add new visualizer"))
-                    .font(NLFont.titleLg)
-                    .foregroundStyle(NLColor.textPrimary)
-                Text(L("Paste a direct link to a Lottie JSON file."))
-                    .font(NLFont.caption)
-                    .foregroundStyle(NLColor.textSecondary)
-            }
-
-            VStack(alignment: .leading, spacing: NLSpace.s4) {
-                sheetField(L("Name"), text: $name, placeholder: L("e.g. Bouncing notes"))
-                sheetField(L("Lottie JSON URL"), text: $url, placeholder: "https://…/animation.json")
-
-                HStack(spacing: NLSpace.s3) {
-                    Text(L("Speed"))
-                        .font(NLFont.body)
-                        .foregroundStyle(NLColor.textPrimary)
-                        .frame(width: 110, alignment: .leading)
-                    Spacer(minLength: 0)
-                    Text(String(format: "%.1f×", speed))
-                        .font(NLFont.mono)
-                        .foregroundStyle(NLColor.textSecondary)
-                        .frame(minWidth: 40, alignment: .trailing)
-                    NLSlider(value: $speed.asDouble, range: 0...2, step: 0.1, width: 160)
-                }
-            }
-
-            HStack(spacing: NLSpace.s3) {
-                Spacer(minLength: 0)
-                Button(L("Cancel")) { isPresented = false }
-                    .buttonStyle(NLButtonStyle(variant: .secondary))
-                Button(L("Add")) { addVisualizer() }
-                    .buttonStyle(NLButtonStyle(variant: .primary))
-                    .disabled(!canAddVisualizer)
-            }
-        }
-        .padding(NLSpace.s6)
-        .frame(width: 460)
-        .background(NLColor.canvas)
-    }
-
-    @ViewBuilder
-    private func sheetField(
-        _ label: String, text: Binding<String>, placeholder: String
-    ) -> some View {
-        HStack(spacing: NLSpace.s3) {
-            Text(label)
-                .font(NLFont.body)
-                .foregroundStyle(NLColor.textPrimary)
-                .frame(width: 110, alignment: .leading)
-            NLTextField(placeholder: placeholder, text: text)
-        }
-    }
-
-    private var canAddVisualizer: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && URL(string: url) != nil
-    }
-
-    private func addVisualizer() {
-        guard let parsedURL = URL(string: url) else { return }
-        let visualizer = CustomVisualizer(UUID: UUID(), name: name, url: parsedURL, speed: speed)
-        if !customVisualizers.contains(visualizer) {
-            customVisualizers.append(visualizer)
-        }
-        isPresented = false
-    }
-
-    private func removeSelectedVisualizer() {
-        guard let visualizer = selectedListVisualizer else { return }
-        selectedListVisualizer = nil
-        if let index = customVisualizers.firstIndex(of: visualizer) {
-            customVisualizers.remove(at: index)
-        }
-        if visualizer == selectedVisualizer, let first = customVisualizers.first {
-            selectedVisualizer = first
-        }
-    }
-
-    private func toggleSelection(_ visualizer: CustomVisualizer) {
-        selectedListVisualizer = selectedListVisualizer == visualizer ? nil : visualizer
-    }
-
-    // MARK: - Extras
-
-    private var extrasSection: some View {
-        NLSection(L("Additional features")) {
-            NLRow(
-                title: L("Enable mirror"),
-                subtitle: checkVideoInput() ? nil : L("No camera detected."),
-                showsDivider: true
-            ) {
-                NLSwitch(isOn: $showMirror, accessibilityLabel: L("Enable mirror"))
-            }
-            .disabled(!checkVideoInput())
-
-            NLRow(title: L("Mirror shape"), showsDivider: true) {
-                NLSelect(options: Self.mirrorShapeOptions, selection: $mirrorShape, minWidth: 120)
-            }
-
-            NLRow(title: L("Show cool face animation while inactive")) {
-                NLSwitch(isOn: $showNotHumanFace, accessibilityLabel: L("Show cool face animation while inactive"))
-            }
-        }
-    }
-
-    func checkVideoInput() -> Bool {
-        AVCaptureDevice.default(for: .video) != nil
-    }
-}
-
-/// Visualizer list row: a Lottie preview on the left. Taller than a normal settings row to fit the 30pt preview.
-private struct VisualizerRow: View {
-    let visualizer: CustomVisualizer
-    let isSelected: Bool
-    let isActive: Bool
-    let showsDivider: Bool
-    let action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: NLSpace.s3) {
-                LottieView(url: visualizer.url, speed: visualizer.speed, loopMode: .loop)
-                    .frame(width: 30, height: 30, alignment: .center)
-
-                Text(visualizer.name)
-                    .font(NLFont.body)
-                    .foregroundStyle(isSelected ? NLColor.textOnAccent : NLColor.textPrimary)
-                    .lineLimit(1)
-
-                Spacer(minLength: NLSpace.s3)
-
-                if isActive {
-                    Text(L("Selected"))
-                        .font(NLFont.caption)
-                        .foregroundStyle(
-                            isSelected
-                                ? NLColor.textOnAccent.opacity(0.8) : NLColor.textSecondary)
-                }
-            }
-            .padding(.horizontal, NLSpace.s4)
-            .padding(.vertical, NLSpace.s1)
-            .frame(minHeight: 40)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                isSelected
-                    ? NLColor.accent : (isHovering ? NLColor.fillSelectionHover : Color.clear)
-            )
-            .contentShape(Rectangle())
-            .onTapGesture(perform: action)
-            .onHover { isHovering = $0 }
-
-            if showsDivider { NLDivider() }
-        }
-    }
 }
 
 struct Advanced: View {
     @Default(.useCustomAccentColor) private var useCustomAccentColor
     @Default(.customAccentColorData) private var customAccentColorData
-    @Default(.extendHoverArea) private var extendHoverArea
     @Default(.showOnLockScreen) private var showOnLockScreen
     @Default(.hideFromScreenRecording) private var hideFromScreenRecording
     @Default(.cornerRadiusScaling) private var cornerRadiusScaling
@@ -1698,7 +1539,7 @@ struct Advanced: View {
     }
 
     var body: some View {
-        NLPage(L("Advanced"), subtitle: L("Accent color, window appearance and behavior, plus a few experimental options.")) {
+        NLPage(L("Advanced"), subtitle: L("Accent color, window behavior and app icon."), icon: "gearshape.2") {
             accentSection
             windowAppearanceSection
             iconSection
@@ -1712,8 +1553,8 @@ struct Advanced: View {
     // MARK: - Accent color
 
     private var accentSection: some View {
-        NLSection(L("Accent color"), footer: L("Follow the system accent color or pick your own; a custom color only affects this app's interactive elements.")) {
-            NLRow(title: L("Accent color"), showsDivider: true) {
+        NLSection(L("Accent color"), footer: L("A custom color only affects this app's controls.")) {
+            NLRow(icon: "paintpalette", title: L("Accent color"), showsDivider: true) {
                 NLSegmented(
                     options: [
                         NLSegmentedOption(value: false, label: L("Use System")),
@@ -1726,7 +1567,7 @@ struct Advanced: View {
             if useCustomAccentColor {
                 VStack(alignment: .leading, spacing: NLSpace.s4) {
                     VStack(alignment: .leading, spacing: NLSpace.s2) {
-                        Text(L("Color Presets"))
+                        Text(L("Presets"))
                             .font(NLFont.caption)
                             .foregroundStyle(NLColor.textSecondary)
 
@@ -1750,10 +1591,10 @@ struct Advanced: View {
 
                     HStack(spacing: NLSpace.s3) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(L("Pick a Color"))
+                            Text(L("Custom color"))
                                 .font(NLFont.body)
                                 .foregroundStyle(NLColor.textPrimary)
-                            Text(L("Choose any color"))
+                            Text(L("Pick any color."))
                                 .font(NLFont.caption)
                                 .foregroundStyle(NLColor.textSecondary)
                         }
@@ -1778,7 +1619,7 @@ struct Advanced: View {
                 .padding(.horizontal, NLSpace.s4)
                 .padding(.vertical, NLSpace.s3)
             } else {
-                NLRow(title: L("Using System Accent"), subtitle: L("Your macOS system accent color")) {
+                NLRow(icon: "paintpalette", title: L("System accent color")) {
                     Circle()
                         .fill(Color.accentColor)
                         .frame(width: 24, height: 24)
@@ -1794,9 +1635,9 @@ struct Advanced: View {
     // MARK: - Window appearance
 
     private var windowAppearanceSection: some View {
-        NLSection(L("Window Appearance")) {
-            NLRow(title: L("Corner radius scaling")) {
-                NLSwitch(isOn: $cornerRadiusScaling, accessibilityLabel: L("Corner radius scaling"))
+        NLSection(L("Window")) {
+            NLRow(icon: "square.dashed", title: L("Scale corner radius")) {
+                NLSwitch(isOn: $cornerRadiusScaling, accessibilityLabel: L("Scale corner radius"))
             }
         }
     }
@@ -1831,17 +1672,14 @@ struct Advanced: View {
     // MARK: - Window behaviour
 
     private var windowBehaviourSection: some View {
-        NLSection(L("Window Behavior")) {
-            NLRow(title: L("Extend hover area"), showsDivider: true) {
-                NLSwitch(isOn: $extendHoverArea, accessibilityLabel: L("Extend hover area"))
-            }
-            NLRow(title: L("Hide title bar"), showsDivider: true) {
+        NLSection(L("Behavior")) {
+            NLRow(icon: "rectangle", title: L("Hide title bar"), showsDivider: true) {
                 NLSwitch(isOn: $hideTitleBar, accessibilityLabel: L("Hide title bar"))
             }
-            NLRow(title: L("Show notch on lock screen"), showsDivider: true) {
+            NLRow(icon: "lock", title: L("Show notch on lock screen"), showsDivider: true) {
                 NLSwitch(isOn: $showOnLockScreen, accessibilityLabel: L("Show notch on lock screen"))
             }
-            NLRow(title: L("Hide from screen recording")) {
+            NLRow(icon: "video.slash", title: L("Hide from screen recording")) {
                 NLSwitch(isOn: $hideFromScreenRecording, accessibilityLabel: L("Hide from screen recording"))
             }
         }
@@ -1941,16 +1779,16 @@ struct AccentCircleButton: View {
 
 struct Shortcuts: View {
     var body: some View {
-        NLPage(L("Shortcuts"), subtitle: L("Global shortcuts that work without opening the notch.")) {
-            NLSection(L("Media"), footer: L("Sneak Peek shows the media title and artist below the notch for a few seconds.")) {
-                NLRow(title: L("Toggle Sneak Peek")) {
+        NLPage(L("Shortcuts"), subtitle: L("Global shortcuts."), icon: "keyboard") {
+            NLSection(L("Sneak peek"), footer: L("Shows the title and artist below the notch.")) {
+                NLRow(icon: "eye", title: L("Toggle Sneak Peek")) {
                     KeyboardShortcuts.Recorder<EmptyView>(for: .toggleSneakPeek)
                         .frame(width: 150)
                 }
             }
 
             NLSection(L("Notch")) {
-                NLRow(title: L("Toggle Notch Open")) {
+                NLRow(icon: "menubar.rectangle", title: L("Toggle Notch Open")) {
                     KeyboardShortcuts.Recorder<EmptyView>(for: .toggleNotchOpen)
                         .frame(width: 150)
                 }
@@ -1960,6 +1798,70 @@ struct Shortcuts: View {
 }
 #Preview {
     HUD()
+}
+
+// MARK: - Stats
+
+/// Stats settings — the colour scheme the four rings use, plus the two
+/// thresholds that decide when the alert colour appears. The gauges themselves
+/// are self-explanatory in the notch.
+struct StatsSettings: View {
+    @AppStorage(StatsPalette.storageKey) private var paletteRaw: String = StatsPalette.mono.rawValue
+    @AppStorage(StatsTuning.hotTemperatureKey) private var hotTemperature: Double = StatsTuning.defaultHotTemperature
+    @AppStorage(StatsTuning.lowDiskKey) private var lowDiskGB: Double = StatsTuning.defaultLowDiskGB
+
+    private var palette: Binding<StatsPalette> {
+        Binding(
+            get: { StatsPalette(rawValue: paletteRaw) ?? .mono },
+            set: { paletteRaw = $0.rawValue }
+        )
+    }
+
+    var body: some View {
+        NLPage(
+            NotchViews.stats.panelName,
+            subtitle: L("CPU, GPU, memory and disk, in the notch."),
+            icon: NotchViews.stats.panelIcon
+        ) {
+            NLSection(L("Appearance")) {
+                NLRow(icon: "paintpalette", title: L("Color scheme")) {
+                    NLSegmented(
+                        options: StatsPalette.allCases.map {
+                            NLSegmentedOption(value: $0, label: $0.label)
+                        },
+                        selection: palette
+                    )
+                }
+            }
+
+            NLSection(
+                L("Alerts"),
+                footer: L("Red appears only when the temperature is high or disk space is low.")
+            ) {
+                NLRow(icon: "thermometer.high", title: L("High temperature"), showsDivider: true) {
+                    sliderRow($hotTemperature, range: 60...100, step: 1, unit: "°C")
+                }
+                NLRow(icon: "internaldrive", title: L("Low disk space")) {
+                    sliderRow($lowDiskGB, range: 5...50, step: 1, unit: "GB")
+                }
+            }
+        }
+    }
+
+    private func sliderRow(
+        _ value: Binding<Double>,
+        range: ClosedRange<Double>,
+        step: Double,
+        unit: String
+    ) -> some View {
+        HStack(spacing: NLSpace.s3) {
+            Text("\(String(format: "%.0f", value.wrappedValue)) \(unit)")
+                .font(NLFont.mono)
+                .foregroundStyle(NLColor.textSecondary)
+                .frame(minWidth: 48, alignment: .trailing)
+            NLSlider(value: value, range: range, step: step, width: 150)
+        }
+    }
 }
 
 // MARK: - Weather
@@ -1993,7 +1895,7 @@ struct WeatherSettings: View {
     }
 
     var body: some View {
-        NLPage(L("Weather"), subtitle: L("The weather card in the notch: how it locates you, display options and current data.")) {
+        NLPage(NotchViews.weather.panelName, subtitle: L("The weather card: location, display and current data."), icon: NotchViews.weather.panelIcon) {
             locationSection
             displaySection
             statusSection
@@ -2007,10 +1909,10 @@ struct WeatherSettings: View {
         NLSection(
             L("Location"),
             footer: autoLocate
-                ? L("Infers your location from your network exit point, with no permissions needed. If you use a proxy or the result lands in a nearby city, turn it off and search for your city.")
-                : L("Type a city name and press Return, or use Search. Results come from OpenStreetMap and accept Chinese, pinyin or English.")
+                ? L("Uses your network address, so no permission is needed. Turn it off if it picks the wrong city.")
+                : L("Search by Chinese, pinyin or English name. Results come from OpenStreetMap.")
         ) {
-            NLRow(title: L("Automatic location"), showsDivider: !autoLocate) {
+            NLRow(icon: "location", title: L("Automatic location"), showsDivider: !autoLocate) {
                 NLSwitch(isOn: $autoLocate, accessibilityLabel: L("Automatic location"))
             }
             .onChange(of: autoLocate) { _, isOn in
@@ -2027,8 +1929,7 @@ struct WeatherSettings: View {
             }
 
             if !autoLocate {
-                NLRow(
-                    title: L("Selected city"),
+                NLRow(icon: "mappin", title: L("Selected city"),
                     subtitle: manager.manualPlace?.subtitle.isEmpty == false
                         ? manager.manualPlace?.subtitle : nil,
                     showsDivider: true
@@ -2038,7 +1939,7 @@ struct WeatherSettings: View {
                         .foregroundStyle(NLColor.textSecondary)
                 }
 
-                NLRow(title: L("Search city"), subtitle: searchMessage, showsDivider: true) {
+                NLRow(icon: "magnifyingglass", title: L("Search city"), subtitle: searchMessage, showsDivider: true) {
                     HStack(spacing: NLSpace.s3) {
                         if isSearching {
                             ProgressView().controlSize(.small)
@@ -2074,7 +1975,7 @@ struct WeatherSettings: View {
                     }
                 }
 
-                NLRow(title: L("Popular cities"), showsDivider: !results.isEmpty) {
+                NLRow(icon: "building.2", title: L("Popular cities"), showsDivider: !results.isEmpty) {
                     NLSelect(
                         options: WeatherManager.builtInPlaces.map {
                             NLSelectOption(value: $0, label: $0.name)
@@ -2105,11 +2006,11 @@ struct WeatherSettings: View {
     // MARK: - Display
 
     private var displaySection: some View {
-        NLSection(L("Display"), footer: L("The background color follows the weather and time of day; the animated background accounts for most of this feature's battery use.")) {
-            NLRow(title: L("Animated sky background"), showsDivider: true) {
+        NLSection(L("Display"), footer: L("The background follows the weather and time of day; animating it costs the most battery.")) {
+            NLRow(icon: "cloud.sun", title: L("Animated sky background"), showsDivider: true) {
                 NLSwitch(isOn: $animated, accessibilityLabel: L("Animated sky background"))
             }
-            NLRow(title: L("Show week view")) {
+            NLRow(icon: "calendar.day.timeline.left", title: L("Show week view")) {
                 NLSwitch(isOn: $showWeek, accessibilityLabel: L("Show week view"))
             }
         }
@@ -2118,9 +2019,9 @@ struct WeatherSettings: View {
     // MARK: - State
 
     private var statusSection: some View {
-        NLSection(L("Status"), footer: L("Weather data comes from Open-Meteo — free, with no sign-up or key required.")) {
+        NLSection(L("Status"), footer: L("Data from Open-Meteo; no key needed.")) {
             if let snapshot = manager.snapshot {
-                NLRow(title: L("Current city"), showsDivider: true) {
+                NLRow(icon: "mappin.and.ellipse", title: L("Current city"), showsDivider: true) {
                     HStack(spacing: NLSpace.s2) {
                         Text(manager.resolvedPlace?.name ?? snapshot.placeName)
                             .font(NLFont.body)
@@ -2131,19 +2032,18 @@ struct WeatherSettings: View {
                     }
                 }
 
-                NLRow(
-                    title: L("Current conditions"),
+                NLRow(icon: "cloud.sun", title: L("Current conditions"),
                     subtitle: "\(Int(snapshot.temperature.rounded()))° · \(WeatherCode.label(snapshot.code))",
                     showsDivider: true
                 )
 
-                NLRow(title: L("Updated"), showsDivider: true) {
+                NLRow(icon: "clock.arrow.circlepath", title: L("Updated"), showsDivider: true) {
                     Text(snapshot.fetchedAt, style: .time)
                         .font(NLFont.body)
                         .foregroundStyle(NLColor.textSecondary)
                 }
 
-                NLRow(title: L("Refresh")) {
+                NLRow(icon: "arrow.clockwise", title: L("Refresh")) {
                     HStack(spacing: NLSpace.s3) {
                         if let error = manager.errorMessage {
                             Text(error)
@@ -2157,11 +2057,11 @@ struct WeatherSettings: View {
                     }
                 }
             } else if manager.isLoading {
-                NLRow(title: L("Fetching…")) {
+                NLRow(icon: "arrow.clockwise", title: L("Fetching…")) {
                     ProgressView().controlSize(.small)
                 }
             } else {
-                NLRow(title: manager.errorMessage ?? L("No data")) {
+                NLRow(icon: "exclamationmark.triangle", title: manager.errorMessage ?? L("No data")) {
                     Button(L("Try Again")) { Task { await manager.refresh(force: true) } }
                         .buttonStyle(NLButtonStyle(variant: .secondary))
                 }

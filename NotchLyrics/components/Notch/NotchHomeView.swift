@@ -113,7 +113,6 @@ struct AlbumArtView: View {
 struct MusicControlsView: View {
     @ObservedObject var musicManager = MusicManager.shared
         @EnvironmentObject var vm: NotchViewModel
-        @ObservedObject var webcamManager = WebcamManager.shared
     @State private var sliderValue: Double = 0
     @State private var dragging: Bool = false
     @State private var lastDragged: Date = .distantPast
@@ -182,7 +181,7 @@ struct MusicControlsView: View {
         }
         .opacity(musicManager.hasActiveTrack ? 1 : 0.3)
         .disabled(!musicManager.hasActiveTrack)
-        .help(L("Keep lyrics on screen while playing"))
+        .help(L("Keep lyrics visible"))
     }
 
     private var musicSlider: some View {
@@ -235,14 +234,7 @@ struct MusicControlsView: View {
             ? slotConfig
             : slotConfig.filter { $0 != .favorite }
         let padded = configuredSlots.padded(to: sanitizedLimit, filler: .none)
-        let result = Array(padded.prefix(sanitizedLimit))
-        // If calendar and camera are both visible alongside music, hide the edge slots
-        let shouldHideEdges = Defaults[.showCalendar] && Defaults[.showMirror] && webcamManager.cameraAvailable && vm.isCameraExpanded
-        if shouldHideEdges && result.count >= 5 {
-            return Array(result.dropFirst().dropLast())
-        }
-
-        return result
+        return Array(padded.prefix(sanitizedLimit))
     }
 
     @ViewBuilder
@@ -437,7 +429,6 @@ struct VolumeControlView: View {
 
 struct NotchHomeView: View {
     @EnvironmentObject var vm: NotchViewModel
-    @ObservedObject var webcamManager = WebcamManager.shared
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var coordinator = NotchViewCoordinator.shared
     @ObservedObject var musicManager = MusicManager.shared
@@ -453,12 +444,8 @@ struct NotchHomeView: View {
         .transition(.opacity)
     }
 
-    private var shouldShowCamera: Bool {
-        Defaults[.showMirror] && webcamManager.cameraAvailable && vm.isCameraExpanded
-    }
-
     /// Lyrics claim the right-hand pane whenever the feature is on and a track
-    /// is loaded; calendar and camera fall back into that space otherwise.
+    /// is loaded; the calendar falls back into that space otherwise.
     /// Keyed on `hasActiveTrack` rather than `isPlayerIdle` so that pausing does
     /// not make the lyrics disappear.
     private var isShowingLyrics: Bool {
@@ -476,9 +463,8 @@ struct NotchHomeView: View {
         .blur(radius: vm.notchState == .closed ? 30 : 0)
     }
 
-    /// Right-hand pane: lyrics, else calendar, else camera. When none of them
-    /// apply the pane is omitted entirely, so the notch does not carry an empty
-    /// gap on the right.
+    /// Right-hand pane: lyrics, else the calendar. When neither applies the pane
+    /// is omitted entirely, so the notch does not carry an empty gap on the right.
     @ViewBuilder
     private var secondaryPane: some View {
         if isShowingLyrics {
@@ -493,13 +479,6 @@ struct NotchHomeView: View {
                 .environmentObject(vm)
                 .frame(width: secondaryPaneWidth)
                 .transition(.opacity)
-        } else if shouldShowCamera {
-            CameraPreviewView(webcamManager: webcamManager)
-                .scaledToFit()
-                .frame(width: secondaryPaneWidth)
-                .opacity(vm.notchState == .closed ? 0 : 1)
-                .blur(radius: vm.notchState == .closed ? 20 : 0)
-                .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.76, blendDuration: 0), value: shouldShowCamera)
         }
     }
 }

@@ -35,13 +35,6 @@ enum NeteaseLyricsProvider {
         (KHTML, like Gecko) Version/17.0 Safari/605.1.15
         """
 
-    private static let session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 10
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
-        return URLSession(configuration: config)
-    }()
-
     /// 网易云对同一 IP 有明显的频率限制，超过就往回丢 `{"code":405,"msg":"操作频繁"}`
     /// （HTTP 状态仍是 200，只能从 body 里认）。连续切歌时很容易撞上，所以：
     /// 请求之间留最小间隔，撞上之后整体冷却一段时间，期间直接走别的源，
@@ -70,16 +63,20 @@ enum NeteaseLyricsProvider {
     }
 
     /// 网易云对没有 Referer 的请求一律返回空 JSON，这一步不能省。
-    private static func request(_ url: URL) async -> Data? {
+    private static func request(_ url: URL, deadline: Date) async -> Data? {
+        // 到点就不要再发请求了：整轮查询有硬上限，这一家不该把它耗光。
+        guard Date() < deadline else { return nil }
         guard await Gate.shared.acquire() else { return nil }
 
         var request = URLRequest(url: url)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("https://music.163.com/", forHTTPHeaderField: "Referer")
         request.setValue("application/json, text/plain, */*", forHTTPHeaderField: "Accept")
+        // 单次请求的超时不能超过剩余预算，否则一个慢请求就能顶掉整轮查询。
+        request.timeoutInterval = min(2.5, max(deadline.timeIntervalSinceNow, 0.5))
 
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await LyricsNetwork.session().data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 LyricsDebug.log("netease: not an HTTP response")
                 return nil
@@ -96,6 +93,8 @@ enum NeteaseLyricsProvider {
             }
             return data
         } catch {
+            // 被取消（另一家源先给出结果）不是错误，不必写进日志。
+            if (error as? URLError)?.code == .cancelled { return nil }
             LyricsDebug.log("netease network: \(error.localizedDescription)")
             return nil
         }
@@ -105,13 +104,16 @@ enum NeteaseLyricsProvider {
 
     /// 返回可直接应用的歌词，找不到时返回 nil（调用方继续试别的源）。
     @MainActor
-    static func lookup(title: String, artist: String, duration: Double) async -> LyricsPayload? {
+    static func lookup(
+        title: String, artist: String, duration: Double, deadline: Date
+    ) async -> LyricsPayload? {
         // 关键：不能用「有返回就停」作为收敛条件。带 `(Live)`、`feat.` 这类噪声的
         // 查询往往能搜到一堆东西，但全都对不上；只有搜出真正过线的候选才值得停。
         var tracks: [Track] = []
         var ranked: [(track: Track, score: Double)] = []
         for query in searchQueries(title: title, artist: artist) {
-            tracks += await search(query)
+            guard Date() < deadline else { break }
+            tracks += await search(query, deadline: deadline)
             ranked = rank(tracks, title: title, artist: artist, duration: duration)
             if !ranked.isEmpty { break }
         }
@@ -127,10 +129,11 @@ enum NeteaseLyricsProvider {
         // 前几名都试一遍：正版可能被「uncollected」（无版权）挡住，而紧随其后的
         // 翻唱/现场版往往有完整时间轴，总比没有强。
         for item in ranked.prefix(3) {
+            guard Date() < deadline else { break }
             LyricsDebug.log(
                 "netease try id=\(item.track.id) score=\(String(format: "%.2f", item.score)) "
                     + "← \"\(item.track.title)\" | \"\(item.track.artist)\"")
-            if let payload = await lyric(for: item.track) {
+            if let payload = await lyric(for: item.track, deadline: deadline) {
                 LyricsDebug.log("netease hit id=\(item.track.id) kind=\(payload.kind)")
                 return payload
             }
@@ -185,7 +188,7 @@ enum NeteaseLyricsProvider {
             .filter { !$0.isEmpty && seen.insert($0).inserted }
     }
 
-    private static func search(_ keyword: String) async -> [Track] {
+    private static func search(_ keyword: String, deadline: Date) async -> [Track] {
         // 用 `/api/search/get`，不要用它旁边那个 `/api/search/get/web`：
         // 后者被限得很死，几十次请求之后整条路径直接回 `操作频繁`，
         // 而同样的查询走前者一直正常。
@@ -196,7 +199,7 @@ enum NeteaseLyricsProvider {
             URLQueryItem(name: "limit", value: "10"),
             URLQueryItem(name: "offset", value: "0"),
         ]
-        guard let url = components?.url, let data = await request(url) else { return [] }
+        guard let url = components?.url, let data = await request(url, deadline: deadline) else { return [] }
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let result = root["result"] as? [String: Any],
               let songs = result["songs"] as? [[String: Any]]
@@ -215,7 +218,7 @@ enum NeteaseLyricsProvider {
         }
     }
 
-    private static func lyric(for track: Track) async -> LyricsPayload? {
+    private static func lyric(for track: Track, deadline: Date) async -> LyricsPayload? {
         var components = URLComponents(string: "https://music.163.com/api/song/lyric")
         components?.queryItems = [
             URLQueryItem(name: "os", value: "pc"),
@@ -224,25 +227,25 @@ enum NeteaseLyricsProvider {
             URLQueryItem(name: "kv", value: "-1"),
             URLQueryItem(name: "tv", value: "-1"),
         ]
-        guard let url = components?.url, let data = await request(url) else { return nil }
+        guard let url = components?.url, let data = await request(url, deadline: deadline) else { return nil }
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
 
         let raw = ((root["lrc"] as? [String: Any])?["lyric"] as? String) ?? ""
         let cleaned = stripCredits(raw)
-        let trimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        let plain = plainText(from: cleaned)
 
-        guard !trimmed.isEmpty else {
-            // `nolyric` 是网易云对「这首歌本来就没有词」的明确回答（器乐、纯音乐），
-            // 和 `uncollected`（没版权，压根没拿到）不是一回事，不能混为一谈：
-            // 前者是结论，后者是失败。
+        guard !plain.isEmpty else {
+            // 只有制作信息、没有正文时，当成「没拿到词」处理：`nolyric` 是网易云
+            // 对「这首歌本来就没有词」的明确回答（器乐、纯音乐），而 `uncollected`
+            // 是没版权、压根没拿到——前者是结论，后者是失败。
             if (root["nolyric"] as? Bool) == true {
                 LyricsDebug.log("netease: nolyric for id=\(track.id)")
                 return LyricsPayload(kind: .instrumental, plain: "", synced: [])
             }
-            LyricsDebug.log("netease: empty lyric for id=\(track.id) uncollected=\(root["uncollected"] ?? "?")")
+            LyricsDebug.log("netease: no usable lyric for id=\(track.id) uncollected=\(root["uncollected"] ?? "?")")
             return nil
         }
-        if isInstrumentalMarker(trimmed) {
+        if isInstrumentalMarker(plain) {
             return LyricsPayload(kind: .instrumental, plain: "", synced: [])
         }
 
@@ -254,7 +257,22 @@ enum NeteaseLyricsProvider {
                 synced: lines)
         }
         // 少数条目只有纯文本（没有时间标签），仍然比空白强。
-        return LyricsPayload(kind: .plain, plain: trimmed, synced: [])
+        return LyricsPayload(kind: .plain, plain: plain, synced: [])
+    }
+
+    /// 纯文本兜底要用「读起来像歌词」的文本，而不是原始 LRC：去掉每一行的
+    /// `[..]` 标签（含 `[00:00.00-1]` 这种带后缀的），并丢掉同样是制作信息的行。
+    /// 否则 `[00:00.00-1] 作曲 : X` 会被当成歌词显示出来。
+    private static func plainText(from lrc: String) -> String {
+        lrc.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { rawLine in
+                let line = String(rawLine)
+                let stripped = anyTagRegex.stringByReplacingMatches(
+                    in: line, range: NSRange(line.startIndex..., in: line), withTemplate: "")
+                return stripped.trimmingCharacters(in: .whitespaces)
+            }
+            .filter { !$0.isEmpty && !looksLikeCredit($0) }
+            .joined(separator: "\n")
     }
 
     // MARK: - Cleanup
@@ -274,7 +292,10 @@ enum NeteaseLyricsProvider {
     ]
 
     private static let timeTagRegex = try! NSRegularExpression(
-        pattern: #"\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]"#)
+        pattern: #"\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?(?:-\d+)?\]"#)
+
+    /// 任意 `[..]` 标签，用来把纯文本里的时间戳／offset 头整体清掉。
+    private static let anyTagRegex = try! NSRegularExpression(pattern: #"\[[^\]]*\]"#)
 
     private static func stripCredits(_ lrc: String) -> String {
         lrc
