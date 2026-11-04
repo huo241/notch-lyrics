@@ -165,12 +165,12 @@ struct ScrollingLyricsView: View {
                             Text(lines[index])
                                 .font(.system(size: 11))
                                 .foregroundStyle(.gray)
-                                .frame(width: width, alignment: .leading)
                         }
                     }
                 }
             }
         }
+        .padding(.leading, 6)
         .frame(width: width, alignment: .leading)
     }
 

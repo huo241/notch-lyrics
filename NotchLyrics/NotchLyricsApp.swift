@@ -339,6 +339,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Same idea as the weather self-test: open the notch straight on the
+        // stats tab so the readings can be compared against Activity Monitor
+        // without clicking through the header first.
+        if ProcessInfo.processInfo.arguments.contains("-stats-selftest") {
+            QuickNoteSelfTest.log("stats selftest: scheduled")
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(1.5))
+                NotchViewCoordinator.shared.currentView = .stats
+                self?.vm.open()
+                QuickNoteSelfTest.log("stats selftest: open() done, state=\(self?.vm.notchState == .open ? "open" : "closed")")
+            }
+        }
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screenConfigurationDidChange),

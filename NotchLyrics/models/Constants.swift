@@ -18,13 +18,6 @@ let appVersion = "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as
 let temporaryDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
 let spacing: CGFloat = 16
 
-struct CustomVisualizer: Codable, Hashable, Equatable, Defaults.Serializable {
-    let UUID: UUID
-    var name: String
-    var url: URL
-    var speed: CGFloat = 1.0
-}
-
 enum CalendarSelectionState: Codable, Defaults.Serializable {
     case all
     case selected(Set<String>)
@@ -96,7 +89,6 @@ extension Defaults.Keys {
     static let minimumHoverDuration = Key<TimeInterval>("minimumHoverDuration", default: 0.3)
     static let enableHaptics = Key<Bool>("enableHaptics", default: true)
     static let openNotchOnHover = Key<Bool>("openNotchOnHover", default: true)
-    static let extendHoverArea = Key<Bool>("extendHoverArea", default: false)
     static let notchHeightMode = Key<WindowHeightMode>(
         "notchHeightMode",
         default: WindowHeightMode.matchRealNotchSize
@@ -114,13 +106,14 @@ extension Defaults.Keys {
     // MARK: Appearance
     static let showEmojis = Key<Bool>("showEmojis", default: false)
     //static let alwaysShowTabs = Key<Bool>("alwaysShowTabs", default: true)
-    static let showMirror = Key<Bool>("showMirror", default: false)
-    static let mirrorShape = Key<MirrorShapeEnum>("mirrorShape", default: MirrorShapeEnum.rectangle)
     static let settingsIconInNotch = Key<Bool>("settingsIconInNotch", default: true)
     static let lightingEffect = Key<Bool>("lightingEffect", default: true)
     static let cornerRadiusScaling = Key<Bool>("cornerRadiusScaling", default: true)
+    /// Panels the user switched off (raw values of `NotchViews`). Stored as what
+    /// is *hidden* rather than what is shown, so a panel added in a later version
+    /// starts out visible instead of silently missing from the notch.
+    static let hiddenTabs = Key<[String]>("hiddenTabs", default: [])
 
-    static let showNotHumanFace = Key<Bool>("showNotHumanFace", default: false)
     static let tileShowLabels = Key<Bool>("tileShowLabels", default: false)
     static let showCalendar = Key<Bool>("showCalendar", default: false)
     static let hideCompletedReminders = Key<Bool>("hideCompletedReminders", default: true)
@@ -129,9 +122,6 @@ extension Defaults.Keys {
         default: SliderColorEnum.white
     )
     static let playerColorTinting = Key<Bool>("playerColorTinting", default: true)
-    static let useMusicVisualizer = Key<Bool>("useMusicVisualizer", default: true)
-    static let customVisualizers = Key<[CustomVisualizer]>("customVisualizers", default: [])
-    static let selectedVisualizer = Key<CustomVisualizer?>("selectedVisualizer", default: nil)
     
     // MARK: Gestures
     static let enableGestures = Key<Bool>("enableGestures", default: true)
@@ -150,6 +140,10 @@ extension Defaults.Keys {
     static let waitInterval = Key<Double>("waitInterval", default: 3)
     static let showShuffleAndRepeat = Key<Bool>("showShuffleAndRepeat", default: false)
     static let enableLyrics = Key<Bool>("enableLyrics", default: false)
+    /// 歌词源端点。留空表示官方 `lrclib.net`；填了就用它（可达的镜像）。
+    static let lyricsEndpoint = Key<String>("lyricsEndpoint", default: "")
+    /// 歌词请求走的代理，`host:port`。留空表示沿用系统代理。
+    static let lyricsProxy = Key<String>("lyricsProxy", default: "")
     /// When on, the notch stays expanded and shows the music/lyrics while a
     /// track is playing, instead of collapsing on mouse-leave or when another
     /// app is clicked. Solves the "lyrics only show on touch / get hidden behind
@@ -193,7 +187,6 @@ extension Defaults.Keys {
     
     // MARK: Shelf
     static let notchShelf = Key<Bool>("notchShelf", default: true)
-    static let openShelfByDefault = Key<Bool>("openShelfByDefault", default: true)
     static let shelfTapToOpen = Key<Bool>("shelfTapToOpen", default: true)
     static let quickShareProvider = Key<String>("quickShareProvider", default: QuickShareProvider.defaultProvider.id)
     static let copyOnDrag = Key<Bool>("copyOnDrag", default: false)

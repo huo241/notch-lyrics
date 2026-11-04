@@ -48,7 +48,7 @@ struct UpdaterSettingsView: View {
 
     var body: some View {
         NLSection(L("Software updates")) {
-            NLRow(title: L("Automatically check for updates"), showsDivider: true) {
+            NLRow(icon: "arrow.triangle.2.circlepath", title: L("Automatically check for updates"), showsDivider: true) {
                 NLSwitch(
                     isOn: $automaticallyChecksForUpdates, accessibilityLabel: L("Automatically check for updates")
                 )
@@ -57,7 +57,7 @@ struct UpdaterSettingsView: View {
                 updater.automaticallyChecksForUpdates = newValue
             }
 
-            NLRow(title: L("Automatically download updates")) {
+            NLRow(icon: "arrow.down.circle", title: L("Automatically download updates")) {
                 NLSwitch(
                     isOn: $automaticallyDownloadsUpdates, accessibilityLabel: L("Automatically download updates")
                 )

@@ -47,10 +47,10 @@ struct MusicSlotConfigurationView: View {
     private var previewBlock: some View {
         VStack(alignment: .leading, spacing: NLSpace.s3) {
             HStack(alignment: .firstTextBaseline, spacing: NLSpace.s3) {
-                Text(L("Layout Preview"))
+                Text(L("Preview"))
                     .font(NLFont.title)
                     .foregroundStyle(NLColor.textPrimary)
-                Text(L("Drag items in the preview to reorder or drop from the palette"))
+                Text(L("Drag to reorder, or drop from the list below."))
                     .font(NLFont.caption)
                     .foregroundStyle(NLColor.textTertiary)
                 Spacer(minLength: 0)
