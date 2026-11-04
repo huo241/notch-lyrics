@@ -26,21 +26,6 @@
 
 ---
 
-## What's new in 2.0.0
-
-The number jumps this far because this release **takes things away**, and because the
-**settings window was rebuilt from scratch**. Full notes:
-[`docs/releases/2.0.0.release-notes.md`](docs/releases/2.0.0.release-notes.md).
-
-| | |
-|---|---|
-| 🎛 **Stats, in the notch** | Four rings — CPU, GPU, memory, disk — over a 60-second network trace. Sampling only runs while you are looking at it. |
-| ⚡ **Lyrics: faster when they exist, honest when they don't** | Both sources race, a hard 3-second ceiling, failures no longer cached, and a full second kept aside for keyword search. |
-| 🎯 **No more someone else's lyrics** | "Mesmer" used to score 0.85 against "Mesmerizer". The title now has to pass on its own, and a fragment of a word no longer counts. |
-| 🎹 **Instrumentals, decided harder** | Catalogue numbers (`Op. 72`, `BWV 846`) and genre as two extra signals, so piano pieces with no clue in the title still land right. |
-| 🖥 **A rebuilt settings window** | Rebuilt page by page on the macOS System Settings grammar, with three switches that did nothing removed. |
-| 🧹 **Camera mirror and Lottie removed** | Along with the permission request, the dependencies and the docs. The camera mirror is gone — the one thing to know before upgrading. |
-
 ## Five tabs, one notch
 
 Same box, same size, no layout surprises — the notch is one shared surface and
