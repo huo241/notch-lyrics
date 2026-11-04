@@ -26,6 +26,21 @@
 
 ---
 
+## Novedades de 2.0.0
+
+El número salta tanto porque esta versión **quita cosas** y porque la **ventana de ajustes
+se rehízo entera**. Notas completas:
+[`docs/releases/2.0.0.release-notes.md`](docs/releases/2.0.0.release-notes.md).
+
+| | |
+|---|---|
+| 🎛 **Estadísticas, en el notch** | Cuatro anillos — CPU, GPU, memoria, disco — sobre una traza de red de 60 segundos. El muestreo solo corre mientras lo miras. |
+| ⚡ **Letras: más rápidas cuando existen, honestas cuando no** | Las dos fuentes compiten, tope duro de 3 segundos, los fallos ya no se cachean y se reserva un segundo entero para la búsqueda por palabra clave. |
+| 🎯 **Se acabaron las letras de otra canción** | «Mesmer» puntuaba 0.85 contra «Mesmerizer». Ahora el título tiene que pasar por su cuenta y un trozo de palabra ya no cuenta. |
+| 🎹 **Instrumentales, con más criterio** | Números de catálogo (`Op. 72`, `BWV 846`) y género como dos señales extra. |
+| 🖥 **Ventana de ajustes rehecha** | Rehecha página por página con la gramática de Ajustes del Sistema, y tres interruptores que no hacían nada, eliminados. |
+| 🧹 **Fuera el espejo de cámara y Lottie** | Con el permiso, las dependencias y la documentación. El espejo de cámara ya no está: lo que hay que saber antes de actualizar. |
+
 ## Cinco pestañas, un notch
 
 La misma caja, el mismo tamaño, sin sorpresas de diseño: el notch es una superficie
