@@ -2,7 +2,7 @@
 
 <img src="docs/assets/banner-en.png" width="760" alt="Notch Lyrics">
 
-**Time-synced lyrics, the weather, and a scratchpad — all in your MacBook's notch.**
+**Time-synced lyrics, the weather, a scratchpad and system stats — all in your MacBook's notch.**
 
 > An independent, GPL-3.0-licensed project. Provenance and licensing details
 > are in [NOTICE](NOTICE).
@@ -26,32 +26,22 @@
 
 ---
 
-## What's new in 1.1
-
-1.0.0 shipped unable to open. This release fixes that, and puts every string the
-app can show behind a translation catalogue.
-Full notes: [`docs/releases/1.1.0.md`](docs/releases/1.1.0.md). The 1.0 story —
-the identity change and the rebuilt lyric pipeline — is in
-[`docs/releases/1.0.0.md`](docs/releases/1.0.0.md).
-
-| | |
-|---|---|
-| 🚑 **1.0.0 would not open** | A hardened runtime plus an ad-hoc signature meant `dyld` refused to load the embedded media framework, so the app died before drawing a window. One entitlement fixes it; the hardened runtime stays on. |
-| 🌍 **405 strings, finally in a catalogue** | Weather descriptions, lyric placeholders, error messages — a lot of visible text was Chinese literals sitting in the source. All of it now lives in the String Catalog, keyed by English. |
-| 🗣 **Pick your language inside the app** | Settings › General, 17 entries, each labelled in its own language. Spanish and Simplified Chinese are complete; thirteen more languages cover just under half the catalogue and fall back to English. |
-| 🧱 **Twelve settings pages, one component set** | Every page rebuilt on a shared library of rows, sections, switches and pickers, instead of the twelve variants that had drifted apart. |
-| 🔗 **Share what is playing** | A share button in the notch: text summary, album art, and a link to the song where the player exposes one. |
-
-## Three tabs, one notch
+## Five tabs, one notch
 
 Same box, same size, no layout surprises — the notch is one shared surface and
 each tab is a different face of it.
 
 | Tab | What it is |
 |---|---|
-| 🎵 **Lyrics** | Player on the left, a 5-line scrolling lyrics window on the right |
-| 🌤️ **Weather** | The sky, drawn in the notch, with an hourly curve and a week strip |
+| 🎵 **Media** | Player on the left, a 5-line scrolling lyrics window on the right |
+| 🗂️ **Shelf** | A staging area for files you drag in, shareable straight from the notch |
 | ✍️ **Quick note** | A scratchpad that writes to Apple Notes |
+| 🌤️ **Weather** | The sky, drawn in the notch, with an hourly curve and a week strip |
+| 📊 **Stats** | CPU, GPU, memory and disk rings over a 60-second network trace |
+
+Any panel you don't want can be switched off in Settings › Appearance › Tabs. The
+feature, its settings and its data stay put, so switching it back on restores what
+was there.
 
 ### 🎵 Lyrics that actually scroll
 
@@ -162,13 +152,13 @@ Then open it normally.
 | **Automation** (`Notes`) | Quick note — writing the note into your folder |
 | **Accessibility** | System HUD replacement |
 | **Calendar / Reminders** | Calendar tab (optional) |
-| **Camera** | Mirror (optional) |
 
 ## Usage
 
 1. Launch the app — your notch becomes the control surface.
 2. Hover the notch to expand it.
-3. Switch tabs in the header: **lyrics**, **weather**, **quick note**.
+3. Switch tabs in the header: **media**, **shelf**, **quick note**, **weather**,
+   **stats**.
 4. Play something in Apple Music or Spotify — **the right-hand pane shows the
    lyrics**, scrolling and highlighting as the song plays.
 
