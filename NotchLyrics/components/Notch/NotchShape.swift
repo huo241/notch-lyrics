@@ -98,28 +98,27 @@ struct NotchShape: Shape {
         // nothing at the screen's top edge. Cutting the same amount *inward*
         // (what an inward chamfer does) reads as a chewed corner instead.
         //
-        // Each sweep is a cubic with a horizontal tangent at the top edge and a
-        // vertical one at the body edge, so neither end kinks: curvature ramps
-        // up from zero and back down, which is what makes a long shoulder read
-        // as silky rather than as a straight chamfer. Bottom corners stay true
-        // circular arcs (absolutely round).
+        // Each sweep is a true quarter ellipse: horizontal tangent at the top
+        // edge, vertical tangent at the body edge, nothing in between but one
+        // steady bend. With the flare and the drop equal it degenerates into a
+        // plain quarter circle — constant curvature, so there is no point along
+        // it where the eye can catch a change of direction. Bottom corners stay
+        // true circular arcs (absolutely round).
         let flare = min(f, max(0, rect.width / 2 - 1))
-        // The sweep needs vertical room: a shoulder drop much shorter than the
-        // flare forces the curve to whip around where it meets the body edge.
-        let d = shoulderDrop > 0 ? min(shoulderDrop, flare) : flare * 0.55
+        // Vertical run of the sweep. Equal to the flare by default, which is
+        // what makes the shoulder a circle; anything much shorter squeezes the
+        // 90° turn into a corner tighter than the one it is supposed to soften.
+        let d = shoulderDrop > 0 ? min(shoulderDrop, flare) : flare
         let bodyMinX = minX + flare
         let bodyMaxX = maxX - flare
-        // Tangent lengths. The curvature at a cubic's endpoint is
-        // (2/3) · (opposite control length) / (adjacent control length)², so
-        // giving the vertical control a small fraction of the horizontal one
-        // multiplies the curvature at the body junction by a large factor: with
-        // the old 0.45·flare / 0.45·d pair the shoulder finished on a ~11 pt
-        // radius while starting on a ~245 pt one — a visible whip exactly where
-        // the eye expects a smooth hand-off. Keeping the two within a factor of
-        // two leaves both ends in the 45–70 pt range, which reads as one
-        // continuous roll instead of a taper that suddenly hooks.
-        let tangentOut = flare * 0.58
-        let tangentDown = d * 0.32
+        // Cubic approximation of a quarter ellipse: the control points sit
+        // 0.5523 · radius along each tangent from the endpoints, which is the
+        // standard kappa circle approximation (max error ~0.02%). Measured from
+        // each end separately so the curve stays a circle even when the flare
+        // and the drop differ.
+        let kappa: CGFloat = 0.5523
+        let tangentOut = flare * kappa
+        let tangentDown = d * kappa
 
         path.move(to: CGPoint(x: minX, y: minY))
         path.addLine(to: CGPoint(x: maxX, y: minY))
@@ -127,7 +126,7 @@ struct NotchShape: Shape {
         path.addCurve(
             to: CGPoint(x: bodyMaxX, y: minY + d),
             control1: CGPoint(x: maxX - tangentOut, y: minY),
-            control2: CGPoint(x: bodyMaxX, y: minY + tangentDown)
+            control2: CGPoint(x: bodyMaxX, y: minY + d - tangentDown)
         )
         // right body edge
         path.addLine(to: CGPoint(x: bodyMaxX, y: maxY - bottom))
@@ -150,7 +149,7 @@ struct NotchShape: Shape {
         // top-left shoulder
         path.addCurve(
             to: CGPoint(x: minX, y: minY),
-            control1: CGPoint(x: bodyMinX, y: minY + tangentDown),
+            control1: CGPoint(x: bodyMinX, y: minY + d - tangentDown),
             control2: CGPoint(x: minX + tangentOut, y: minY)
         )
         path.closeSubpath()
