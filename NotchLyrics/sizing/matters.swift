@@ -34,7 +34,10 @@ let openNotchShoulderFlare: CGFloat = 120
 /// How far below the screen's top edge the shoulder finishes its sweep and
 /// hands over to the straight body edge. Keep it well under the flare: a long,
 /// shallow shoulder is what reads as silky; a 1:1 sweep reads as a chamfer.
-let openNotchShoulderDrop: CGFloat = 40
+/// It also has to stay tall enough for the cubic's tangents: the vertical run
+/// is what the curve spends turning, so at 40 pt the last few points of the
+/// sweep collapsed onto a ~11 pt radius and showed up as a hook.
+let openNotchShoulderDrop: CGFloat = 68
 
 /// The slab's full footprint: body plus the flare on both sides. This is what
 /// the window and the clipped backdrop use, so the shoulders have room to exist.

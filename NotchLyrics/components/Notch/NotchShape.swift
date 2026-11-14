@@ -104,17 +104,30 @@ struct NotchShape: Shape {
         // as silky rather than as a straight chamfer. Bottom corners stay true
         // circular arcs (absolutely round).
         let flare = min(f, max(0, rect.width / 2 - 1))
-        let d = shoulderDrop > 0 ? min(shoulderDrop, flare) : flare / 3
+        // The sweep needs vertical room: a shoulder drop much shorter than the
+        // flare forces the curve to whip around where it meets the body edge.
+        let d = shoulderDrop > 0 ? min(shoulderDrop, flare) : flare * 0.55
         let bodyMinX = minX + flare
         let bodyMaxX = maxX - flare
+        // Tangent lengths. The curvature at a cubic's endpoint is
+        // (2/3) · (opposite control length) / (adjacent control length)², so
+        // giving the vertical control a small fraction of the horizontal one
+        // multiplies the curvature at the body junction by a large factor: with
+        // the old 0.45·flare / 0.45·d pair the shoulder finished on a ~11 pt
+        // radius while starting on a ~245 pt one — a visible whip exactly where
+        // the eye expects a smooth hand-off. Keeping the two within a factor of
+        // two leaves both ends in the 45–70 pt range, which reads as one
+        // continuous roll instead of a taper that suddenly hooks.
+        let tangentOut = flare * 0.58
+        let tangentDown = d * 0.32
 
         path.move(to: CGPoint(x: minX, y: minY))
         path.addLine(to: CGPoint(x: maxX, y: minY))
         // top-right shoulder: out at the top edge, down into the body
         path.addCurve(
             to: CGPoint(x: bodyMaxX, y: minY + d),
-            control1: CGPoint(x: maxX - flare * 0.45, y: minY),
-            control2: CGPoint(x: bodyMaxX, y: minY + d * 0.45)
+            control1: CGPoint(x: maxX - tangentOut, y: minY),
+            control2: CGPoint(x: bodyMaxX, y: minY + tangentDown)
         )
         // right body edge
         path.addLine(to: CGPoint(x: bodyMaxX, y: maxY - bottom))
@@ -137,8 +150,8 @@ struct NotchShape: Shape {
         // top-left shoulder
         path.addCurve(
             to: CGPoint(x: minX, y: minY),
-            control1: CGPoint(x: bodyMinX, y: minY + d * 0.45),
-            control2: CGPoint(x: minX + flare * 0.45, y: minY)
+            control1: CGPoint(x: bodyMinX, y: minY + tangentDown),
+            control2: CGPoint(x: minX + tangentOut, y: minY)
         )
         path.closeSubpath()
 
