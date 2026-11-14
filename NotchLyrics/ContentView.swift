@@ -134,9 +134,13 @@ struct ContentView: View {
                         Rectangle()
                             .fill(.black)
                             .frame(height: 1)
-                            // Open, the top edge is the flare's full span, so
-                            // the seam-hiding line has to reach the edges too.
-                            .padding(.horizontal, vm.notchState == .open ? 0 : topCornerRadius)
+                            // Open, the top edge is inset from the slab's
+                            // edges by the head inset, so the seam-hiding line
+                            // has to start where that edge starts.
+                            .padding(
+                                .horizontal,
+                                vm.notchState == .open ? openNotchHeadInset : topCornerRadius
+                            )
                     }
                     .padding(
                         .bottom,

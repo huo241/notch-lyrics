@@ -11,12 +11,11 @@ import SwiftUI
 struct NotchShape: Shape {
     private var topCornerRadius: CGFloat
     private var bottomCornerRadius: CGFloat
-    /// How far the top edge shoulders outward past the body on each side, in
-    /// points. 0 keeps the classic inward-rounded top corners; a positive value
-    /// makes the top span the full width and flare out into a rounded "ear" on
-    /// each side, so the window reads as wider at the very top than just below.
-    /// The body narrows by this amount below the shoulders, but it stays inside
-    /// the content's own horizontal padding, so nothing gets clipped.
+    /// How far the top edge is inset from the slab's full width on each side,
+    /// in points. 0 keeps the classic inward-rounded top corners; a positive
+    /// value shortens the top edge and lets the slab spread outward as it
+    /// descends, so the opening sits in the notch's gap instead of running
+    /// across the menu bar and clipping status items.
     private var topFlare: CGFloat
     /// Vertical run of the shoulder sweep, in points. 0 derives it from
     /// `topFlare` so the two never drift apart.
@@ -90,67 +89,59 @@ struct NotchShape: Shape {
             return path
         }
 
-        // Flared top (open state). The top edge spans the slab's full
-        // footprint — body plus the flare on both sides — and each shoulder
-        // sweeps *outward and down* from it into the narrower body. Outward is
-        // the whole point: this is the Dynamic Island treatment, where the
-        // panel looks like material growing out of the bezel and thinning to
-        // nothing at the screen's top edge. Cutting the same amount *inward*
-        // (what an inward chamfer does) reads as a chewed corner instead.
+        // Narrow-topped slab (open state). The top edge is *inset* by `f` on
+        // each side, so the silhouette spreads outward as it descends: a short
+        // head sits at the screen's top edge and the slab only reaches its full
+        // width below the menu bar, where the status items live. That is what
+        // keeps the open panel off the menu bar's icons — a top edge at full
+        // width runs straight through them, because the notch's own gap is
+        // narrower than the panel.
         //
-        // Each sweep is a true quarter ellipse: horizontal tangent at the top
-        // edge, vertical tangent at the body edge, nothing in between but one
-        // steady bend. With the flare and the drop equal it degenerates into a
-        // plain quarter circle — constant curvature, so there is no point along
-        // it where the eye can catch a change of direction. Bottom corners stay
-        // true circular arcs (absolutely round).
-        let flare = min(f, max(0, rect.width / 2 - 1))
-        // Vertical run of the sweep. Equal to the flare by default, which is
-        // what makes the shoulder a circle; anything much shorter squeezes the
-        // 90° turn into a corner tighter than the one it is supposed to soften.
-        let d = shoulderDrop > 0 ? min(shoulderDrop, flare) : flare
-        let bodyMinX = minX + flare
-        let bodyMaxX = maxX - flare
-        // Cubic approximation of a quarter ellipse: the control points sit
-        // 0.5523 · radius along each tangent from the endpoints, which is the
-        // standard kappa circle approximation (max error ~0.02%). Measured from
-        // each end separately so the curve stays a circle even when the flare
-        // and the drop differ.
+        // Each side is a quarter ellipse: horizontal tangent where it leaves the
+        // head, vertical tangent where it joins the body edge, and nothing in
+        // between but one steady bend. Bottom corners stay true circular arcs.
+        let inset = min(f, max(0, rect.width / 2 - 1))
+        // Vertical run of the sweep. Equal to the inset by default: that makes
+        // it a quarter circle, i.e. constant curvature with no visible kink.
+        let d = shoulderDrop > 0 ? shoulderDrop : inset
+        // Cubic approximation of a quarter ellipse — control points sit
+        // 0.5523 · radius along each tangent from the endpoints (kappa circle,
+        // max error ~0.02%).
         let kappa: CGFloat = 0.5523
-        let tangentOut = flare * kappa
+        let tangentOut = inset * kappa
         let tangentDown = d * kappa
 
-        path.move(to: CGPoint(x: minX, y: minY))
-        path.addLine(to: CGPoint(x: maxX, y: minY))
-        // top-right shoulder: out at the top edge, down into the body
+        path.move(to: CGPoint(x: minX + inset, y: minY))
+        path.addLine(to: CGPoint(x: maxX - inset, y: minY))
+        // top-right: out and down from the head into the full-width body
         path.addCurve(
-            to: CGPoint(x: bodyMaxX, y: minY + d),
-            control1: CGPoint(x: maxX - tangentOut, y: minY),
-            control2: CGPoint(x: bodyMaxX, y: minY + d - tangentDown)
+            to: CGPoint(x: maxX, y: minY + d),
+            control1: CGPoint(x: maxX - inset + tangentOut, y: minY),
+            control2: CGPoint(x: maxX, y: minY + d - tangentDown)
         )
         // right body edge
-        path.addLine(to: CGPoint(x: bodyMaxX, y: maxY - bottom))
+        path.addLine(to: CGPoint(x: maxX, y: maxY - bottom))
         // bottom-right corner
         path.addArc(
-            tangent1End: CGPoint(x: bodyMaxX, y: maxY),
-            tangent2End: CGPoint(x: bodyMaxX - bottom, y: maxY),
+            tangent1End: CGPoint(x: maxX, y: maxY),
+            tangent2End: CGPoint(x: maxX - bottom, y: maxY),
             radius: bottom
         )
         // bottom edge
-        path.addLine(to: CGPoint(x: bodyMinX + bottom, y: maxY))
+        path.addLine(to: CGPoint(x: minX + bottom, y: maxY))
         // bottom-left corner
         path.addArc(
-            tangent1End: CGPoint(x: bodyMinX, y: maxY),
-            tangent2End: CGPoint(x: bodyMinX, y: maxY - bottom),
+            tangent1End: CGPoint(x: minX, y: maxY),
+            tangent2End: CGPoint(x: minX, y: maxY - bottom),
             radius: bottom
         )
         // left body edge
-        path.addLine(to: CGPoint(x: bodyMinX, y: minY + d))
-        // top-left shoulder
+        path.addLine(to: CGPoint(x: minX, y: minY + d))
+        // top-left: out and down from the head into the body
         path.addCurve(
-            to: CGPoint(x: minX, y: minY),
-            control1: CGPoint(x: bodyMinX, y: minY + d - tangentDown),
-            control2: CGPoint(x: minX + tangentOut, y: minY)
+            to: CGPoint(x: minX + inset, y: minY),
+            control1: CGPoint(x: minX, y: minY + d - tangentDown),
+            control2: CGPoint(x: minX + inset - tangentOut, y: minY)
         )
         path.closeSubpath()
 

@@ -24,27 +24,29 @@ let shadowPadding: CGFloat = 20
 /// `openNotchSize` because the flare lives outside this box, not inside it.
 let openNotchBodyWidth: CGFloat = 640
 
-/// How far the open panel's shoulders spread past the body on each side, in
-/// points. This is the Real Notch / Dynamic Island treatment: the slab grows
-/// *outward* along the screen's top edge and thins to nothing at the edge, so
-/// it reads as material growing out of the bezel. It must never be spent inward
-/// — cutting the corners into the body is what makes a panel look chewed.
+/// How far the open panel's top edge is inset from its full width on each
+/// side, in points. The slab keeps `openNotchBodyWidth` everywhere below that
+/// short head, so the silhouette spreads outward as it descends.
 ///
-/// Keep it close to the shoulder drop: the sweep is a quarter ellipse, and the
-/// eye only reads it as *round* when the two axes are equal. A long flare over
-/// a short drop is not a rounder shoulder, it is a whisker.
-let openNotchShoulderFlare: CGFloat = 40
+/// This exists to keep the panel off the menu bar: the notch's own gap is
+/// narrower than the slab, so a full-width top edge runs straight across the
+/// status items and clips them. Insetting the top edge by this much leaves the
+/// opening inside the gap.
+///
+/// Keep it equal to the shoulder drop: the sweep is then a quarter circle, and
+/// the eye only reads it as *round* when the two axes match.
+let openNotchHeadInset: CGFloat = 26
 
-/// How far below the screen's top edge the shoulder finishes its sweep and
-/// hands over to the straight body edge. Equal to the flare, which turns the
-/// quarter ellipse into a quarter circle — one steady bend, no visible kink at
-/// either end. Raise both together for a rounder top, or neither.
-let openNotchShoulderDrop: CGFloat = 40
+/// Vertical run of that sweep, in points — how far below the screen's top edge
+/// the slab reaches its full width. Equal to the inset turns the quarter
+/// ellipse into a quarter circle: one steady bend with no visible kink.
+let openNotchShoulderDrop: CGFloat = 26
 
-/// The slab's full footprint: body plus the flare on both sides. This is what
-/// the window and the clipped backdrop use, so the shoulders have room to exist.
+/// The slab's footprint: the body alone. The head is carved out of it, not
+/// added to it, so widening this is the only way to make the panel wider on
+/// screen — which is exactly the knob to leave alone if the menu bar is tight.
 let openNotchSize: CGSize = .init(
-    width: openNotchBodyWidth + openNotchShoulderFlare * 2,
+    width: openNotchBodyWidth,
     height: 190
 )
 let windowSize: CGSize = .init(
@@ -69,11 +71,11 @@ let openNotchPaneSpacing: CGFloat = 12
 
 let cornerRadiusInsets: (opened: (top: CGFloat, bottom: CGFloat), closed: (top: CGFloat, bottom: CGFloat)) = (opened: (top: 19, bottom: 32), closed: (top: 6, bottom: 14))
 
-/// Top-corner outward flare, in points — the rounded "ear" at the open
-/// window's top corners. Closed state uses 0 so the tiny pill keeps its plain
+/// Top-corner inset, in points — how much the open panel's top edge is
+/// shortened on each side. Closed state uses 0 so the tiny pill keeps its plain
 /// rounded top, and the notch housing block masks with the same plain shape.
 let topFlareInsets: (opened: CGFloat, closed: CGFloat) = (
-    opened: openNotchShoulderFlare,
+    opened: openNotchHeadInset,
     closed: 0
 )
 
