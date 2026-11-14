@@ -20,12 +20,14 @@ struct TabButton: View {
     var body: some View {
         Button(action: onClick) {
             Image(systemName: icon)
-                .fontWeight(iconWeight)
-                // 11, not 15: the tab bar only gets the left half of the notch
-                // (~225pt), and a fifth icon at 15 pushes the row past that
-                // budget and into the cut-out. Five tabs at 11 come to ~170pt,
-                // which leaves the selected capsule some breathing room.
-                .padding(.horizontal, 11)
+                // 13 pt with a 7 pt gutter: the bar owns only the strip between
+                // the slab's left edge and the notch cut-out, which is about
+                // (560 − notch) / 2 minus the content inset — ~148 pt. Five tabs
+                // have to fit inside that, or the row centres itself and the
+                // last icon slides *under* the black cut-out. 13 + 14 of gutter
+                // puts each tab at ~30 pt and the row at ~150 pt.
+                .font(.system(size: 13, weight: iconWeight))
+                .padding(.horizontal, 7)
                 .contentShape(Capsule())
         }
         .buttonStyle(PlainButtonStyle())

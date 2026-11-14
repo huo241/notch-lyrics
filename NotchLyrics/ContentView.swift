@@ -51,9 +51,7 @@ struct ContentView: View {
             topCornerRadius: topCornerRadius,
             bottomCornerRadius: ((vm.notchState == .open) && Defaults[.cornerRadiusScaling])
                 ? cornerRadiusInsets.opened.bottom
-                : cornerRadiusInsets.closed.bottom,
-            topFlare: (vm.notchState == .open) ? topFlareInsets.opened : topFlareInsets.closed,
-            shoulderDrop: openNotchShoulderDrop
+                : cornerRadiusInsets.closed.bottom
         )
     }
 
@@ -103,15 +101,6 @@ struct ContentView: View {
                         : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], vm.notchState == .open ? 12 : 0)
-                    // The slab is wider than the content box when open: the
-                    // surplus is the shoulder flare, which lives *outside* the
-                    // body. Pin the content to the body width so the tab strip
-                    // and the two panes keep the 640-pt layout they were
-                    // measured against instead of stretching across the flare.
-                    .frame(
-                        maxWidth: vm.notchState == .open ? openNotchBodyWidth : nil,
-                        alignment: .top
-                    )
                     // The backdrop always spans the full window width when
                     // open; without this it hugs its content and leaves two
                     // see-through gutters at its sides, through which the dark
@@ -134,13 +123,7 @@ struct ContentView: View {
                         Rectangle()
                             .fill(.black)
                             .frame(height: 1)
-                            // Open, the top edge is inset from the slab's
-                            // edges by the head inset, so the seam-hiding line
-                            // has to start where that edge starts.
-                            .padding(
-                                .horizontal,
-                                vm.notchState == .open ? openNotchHeadInset : topCornerRadius
-                            )
+                            .padding(.horizontal, topCornerRadius)
                     }
                     .padding(
                         .bottom,
@@ -155,8 +138,8 @@ struct ContentView: View {
                     // making every panel look like a different window shape and
                     // cancelling the bottom-rounding on e.g. the media page. Clip
                     // this copy to the same shape so all panels share one uniform
-                    // silhouette. Content has enough horizontal padding that the
-                    // top flare never cuts into it.
+                    // silhouette. Content sits inside the shape's own corner
+                    // insets, so nothing gets clipped by it.
                     .clipShape(currentNotchShape)
                     .contentShape(Rectangle())
                     .onHover { hovering in

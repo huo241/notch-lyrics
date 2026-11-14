@@ -19,36 +19,12 @@ let batterySneakSize: CGSize = .init(width: 160, height: 1)
 // flicker. The strip is only headroom for the closed-state chin.
 let shadowPadding: CGFloat = 20
 
-/// Width the panel's *body* keeps when open — the surface that holds the
-/// player, the tab strip and the secondary pane. Kept separate from
-/// `openNotchSize` because the flare lives outside this box, not inside it.
-let openNotchBodyWidth: CGFloat = 640
-
-/// How far the open panel's top edge is inset from its full width on each
-/// side, in points. The slab keeps `openNotchBodyWidth` everywhere below that
-/// short head, so the silhouette spreads outward as it descends.
-///
-/// This exists to keep the panel off the menu bar: the notch's own gap is
-/// narrower than the slab, so a full-width top edge runs straight across the
-/// status items and clips them. Insetting the top edge by this much leaves the
-/// opening inside the gap.
-///
-/// Keep it equal to the shoulder drop: the sweep is then a quarter circle, and
-/// the eye only reads it as *round* when the two axes match.
-let openNotchHeadInset: CGFloat = 26
-
-/// Vertical run of that sweep, in points — how far below the screen's top edge
-/// the slab reaches its full width. Equal to the inset turns the quarter
-/// ellipse into a quarter circle: one steady bend with no visible kink.
-let openNotchShoulderDrop: CGFloat = 26
-
-/// The slab's footprint: the body alone. The head is carved out of it, not
-/// added to it, so widening this is the only way to make the panel wider on
-/// screen — which is exactly the knob to leave alone if the menu bar is tight.
-let openNotchSize: CGSize = .init(
-    width: openNotchBodyWidth,
-    height: 190
-)
+/// Size of the open slab, measured on screen — it is also the window's width,
+/// so this single number decides how much of the menu bar the open panel
+/// covers. The notch's own gap is only ~200 pt wide, and the status items sit
+/// just outside it, so every point added here eats into them. Widening this is
+/// the one change that cannot be compensated for anywhere else.
+let openNotchSize: CGSize = .init(width: 560, height: 190)
 let windowSize: CGSize = .init(
     width: openNotchSize.width,
     height: openNotchSize.height + shadowPadding
@@ -63,21 +39,13 @@ let windowSize: CGSize = .init(
 /// side. Adding up to more than that does not make the panes overlap or shrink
 /// — the row simply centres and overflows, and the window clips the excess, so
 /// the tab strip and the lyrics pane lose their outer few points. With the
-/// defaults that leaves 640 − 2 × 31 = 578 pt for 358 + 12 + 208.
-let musicPaneWidth: CGFloat = 358
-let secondaryPaneWidth: CGFloat = 208
+/// defaults that leaves 560 − 2 × 31 = 498 pt for 310 + 12 + 176.
+let musicPaneWidth: CGFloat = 310
+let secondaryPaneWidth: CGFloat = 176
 /// Horizontal gap between the two panes.
 let openNotchPaneSpacing: CGFloat = 12
 
 let cornerRadiusInsets: (opened: (top: CGFloat, bottom: CGFloat), closed: (top: CGFloat, bottom: CGFloat)) = (opened: (top: 19, bottom: 32), closed: (top: 6, bottom: 14))
-
-/// Top-corner inset, in points — how much the open panel's top edge is
-/// shortened on each side. Closed state uses 0 so the tiny pill keeps its plain
-/// rounded top, and the notch housing block masks with the same plain shape.
-let topFlareInsets: (opened: CGFloat, closed: CGFloat) = (
-    opened: openNotchHeadInset,
-    closed: 0
-)
 
 enum MusicPlayerImageSizes {
     static let cornerRadiusInset: (opened: CGFloat, closed: CGFloat) = (opened: 13.0, closed: 4.0)
