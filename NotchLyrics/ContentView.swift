@@ -33,10 +33,9 @@ struct ContentView: View {
 
     @State private var haptics: Bool = false
 
-    @Namespace var albumArtNamespace
+    @Default(.notchBackground) private var background
 
-    // Shared interactive spring for movement/resizing to avoid conflicting animations
-    private let animationSpring = Animation.interactiveSpring(response: 0.38, dampingFraction: 0.8, blendDuration: 0)
+    @Namespace var albumArtNamespace
 
     private let extendedHoverPadding: CGFloat = 30
     private let zeroHeightHoverPadding: CGFloat = 10
@@ -52,7 +51,9 @@ struct ContentView: View {
             topCornerRadius: topCornerRadius,
             bottomCornerRadius: ((vm.notchState == .open) && Defaults[.cornerRadiusScaling])
                 ? cornerRadiusInsets.opened.bottom
-                : cornerRadiusInsets.closed.bottom
+                : cornerRadiusInsets.closed.bottom,
+            topFlare: (vm.notchState == .open) ? topFlareInsets.opened : topFlareInsets.closed,
+            shoulderDrop: openNotchShoulderDrop
         )
     }
 
@@ -87,9 +88,9 @@ struct ContentView: View {
 
         // No shadow anywhere. The slab is clipped to its own window, so a
         // SwiftUI shadow could never wrap it — it only reached the bottom strip
-        // and read as a black smudge under the notch. Worse, `compositingGroup`
-        // had to re-rasterise that offscreen layer on every animated frame
-        // (e.g. the weather sky ticking at 24 fps), which made the strip flicker.
+        // and read as a black smudge under the notch. The root is also left
+        // ungrouped: compositing the whole tree offscreen on every frame of the
+        // expand animation costs more than it buys.
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 let mainLayout = NotchLayout()
@@ -102,7 +103,16 @@ struct ContentView: View {
                         : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], vm.notchState == .open ? 12 : 0)
-                    // The black slab always spans the full window width when
+                    // The slab is wider than the content box when open: the
+                    // surplus is the shoulder flare, which lives *outside* the
+                    // body. Pin the content to the body width so the tab strip
+                    // and the two panes keep the 640-pt layout they were
+                    // measured against instead of stretching across the flare.
+                    .frame(
+                        maxWidth: vm.notchState == .open ? openNotchBodyWidth : nil,
+                        alignment: .top
+                    )
+                    // The backdrop always spans the full window width when
                     // open; without this it hugs its content and leaves two
                     // see-through gutters at its sides, through which the dark
                     // menu bar shows as ugly black bars flanking the notch.
@@ -110,13 +120,23 @@ struct ContentView: View {
                         maxWidth: vm.notchState == .open ? .infinity : nil,
                         alignment: .top
                     )
-                    .background(.black)
+                    // One system material, three surfaces chosen in Appearance.
+                    // The light is the current cover's own palette, scattered.
+                    .background(
+                        NotchBackdrop(
+                            style: background,
+                            isOpen: vm.notchState == .open,
+                            palette: musicManager.coverPalette
+                        )
+                    )
                     .clipShape(currentNotchShape)
                     .overlay(alignment: .top) {
                         Rectangle()
                             .fill(.black)
                             .frame(height: 1)
-                            .padding(.horizontal, topCornerRadius)
+                            // Open, the top edge is the flare's full span, so
+                            // the seam-hiding line has to reach the edges too.
+                            .padding(.horizontal, vm.notchState == .open ? 0 : topCornerRadius)
                     }
                     .padding(
                         .bottom,
@@ -125,14 +145,15 @@ struct ContentView: View {
                 
                 mainLayout
                     .frame(height: vm.notchState == .open ? vm.notchSize.height : nil)
-                    .conditionalModifier(true) { view in
-                        let openAnimation = Animation.spring(response: 0.42, dampingFraction: 0.8, blendDuration: 0)
-                        let closeAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0, blendDuration: 0)
-                        
-                        return view
-                            .animation(vm.notchState == .open ? openAnimation : closeAnimation, value: vm.notchState)
-                            .animation(.smooth, value: gestureProgress)
-                    }
+                    // The visual copy above is clipped to `currentNotchShape`, but
+                    // this interactive copy was not — so each panel's own
+                    // background drew square corners over the rounded backdrop,
+                    // making every panel look like a different window shape and
+                    // cancelling the bottom-rounding on e.g. the media page. Clip
+                    // this copy to the same shape so all panels share one uniform
+                    // silhouette. Content has enough horizontal padding that the
+                    // top flare never cuts into it.
+                    .clipShape(currentNotchShape)
                     .contentShape(Rectangle())
                     .onHover { hovering in
                         handleHover(hovering)
@@ -159,7 +180,7 @@ struct ContentView: View {
                     }
                     .onChange(of: vm.notchState) { _, newState in
                         if newState == .closed && isHovering {
-                            withAnimation {
+                            withAnimation(NotchAnimations.openClose) {
                                 isHovering = false
                             }
                         }
@@ -208,16 +229,19 @@ struct ContentView: View {
                         .frame(width: computedChinWidth, height: vm.chinHeight)
                 }
             }
+            // Width lives in the backdrop layer and height in the content layer.
+            // Binding the curve to their common parent puts both — and the
+            // corner radius — on one timeline, and also covers callers that
+            // change the state outside a withAnimation block.
+            .animation(NotchAnimations.openClose, value: vm.notchState)
         }
         .padding(.bottom, 8)
         .frame(maxWidth: windowSize.width, maxHeight: windowSize.height, alignment: .top)
-        .compositingGroup()
         .scaleEffect(
             x: gestureScale,
             y: gestureScale,
             anchor: .top
         )
-        .animation(.smooth, value: gestureProgress)
         .preferredColorScheme(.dark)
         .environmentObject(vm)
         .onChange(of: coordinator.pendingShelfReveal) { _, reveal in
@@ -348,11 +372,7 @@ struct ContentView: View {
                         StatsView()
                     }
                 }
-                .transition(
-                    .scale(scale: 0.8, anchor: .top)
-                    .combined(with: .opacity)
-                    .animation(.smooth(duration: 0.35))
-                )
+                .transition(.opacity.animation(NotchAnimations.panelSwitch))
                 .zIndex(1)
                 .allowsHitTesting(vm.notchState == .open)
                 .opacity(gestureProgress != 0 ? 1.0 - min(abs(gestureProgress) * 0.1, 0.3) : 1.0)
@@ -468,7 +488,7 @@ struct ContentView: View {
     // conditional `.onDrop` on NotchLayout's outer VStack above.
 
     private func doOpen() {
-        withAnimation(animationSpring) {
+        withAnimation(NotchAnimations.openClose) {
             vm.open()
         }
     }
@@ -504,7 +524,7 @@ struct ContentView: View {
                 return
             }
 
-            withAnimation(animationSpring) {
+            withAnimation(NotchAnimations.openClose) {
                 self.isHovering = false
             }
 
@@ -538,7 +558,7 @@ struct ContentView: View {
         hoverTask?.cancel()
         
         if hovering {
-            withAnimation(animationSpring) {
+            withAnimation(NotchAnimations.openClose) {
                 isHovering = true
             }
             
@@ -573,19 +593,20 @@ struct ContentView: View {
         guard vm.notchState == .closed else { return }
 
         if phase == .ended {
-            withAnimation(animationSpring) { gestureProgress = .zero }
+            withAnimation(NotchAnimations.gestureRelease) { gestureProgress = .zero }
             return
         }
 
-        withAnimation(animationSpring) {
-            gestureProgress = (translation / Defaults[.gestureSensitivity]) * 20
-        }
+        // No animation while the pointer is still moving. Wrapping every frame
+        // in a spring restarts it continuously, so the panel lags behind the
+        // finger instead of following it.
+        gestureProgress = (translation / Defaults[.gestureSensitivity]) * 20
 
         if translation > Defaults[.gestureSensitivity] {
             if Defaults[.enableHaptics] {
                 haptics.toggle()
             }
-            withAnimation(animationSpring) {
+            withAnimation(NotchAnimations.gestureRelease) {
                 gestureProgress = .zero
             }
             doOpen()
@@ -595,18 +616,16 @@ struct ContentView: View {
     private func handleUpGesture(translation: CGFloat, phase: NSEvent.Phase) {
         guard vm.notchState == .open && !vm.isHoveringCalendar else { return }
 
-        withAnimation(animationSpring) {
-            gestureProgress = (translation / Defaults[.gestureSensitivity]) * -20
-        }
+        gestureProgress = (translation / Defaults[.gestureSensitivity]) * -20
 
         if phase == .ended {
-            withAnimation(animationSpring) {
+            withAnimation(NotchAnimations.gestureRelease) {
                 gestureProgress = .zero
             }
         }
 
         if translation > Defaults[.gestureSensitivity] {
-            withAnimation(animationSpring) {
+            withAnimation(NotchAnimations.openClose) {
                 isHovering = false
             }
             if !SharingStateManager.shared.preventNotchClose { 

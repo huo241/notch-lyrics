@@ -18,7 +18,30 @@ let batterySneakSize: CGSize = .init(width: 160, height: 1)
 // under the notch, and re-rasterising it every animated frame made that band
 // flicker. The strip is only headroom for the closed-state chin.
 let shadowPadding: CGFloat = 20
-let openNotchSize: CGSize = .init(width: 640, height: 190)
+
+/// Width the panel's *body* keeps when open — the surface that holds the
+/// player, the tab strip and the secondary pane. Kept separate from
+/// `openNotchSize` because the flare lives outside this box, not inside it.
+let openNotchBodyWidth: CGFloat = 640
+
+/// How far the open panel's shoulders spread past the body on each side, in
+/// points. This is the Real Notch / Dynamic Island treatment: the slab grows
+/// *outward* along the screen's top edge and thins to nothing at the edge, so
+/// it reads as material growing out of the bezel. It must never be spent inward
+/// — cutting the corners into the body is what makes a panel look chewed.
+let openNotchShoulderFlare: CGFloat = 120
+
+/// How far below the screen's top edge the shoulder finishes its sweep and
+/// hands over to the straight body edge. Keep it well under the flare: a long,
+/// shallow shoulder is what reads as silky; a 1:1 sweep reads as a chamfer.
+let openNotchShoulderDrop: CGFloat = 40
+
+/// The slab's full footprint: body plus the flare on both sides. This is what
+/// the window and the clipped backdrop use, so the shoulders have room to exist.
+let openNotchSize: CGSize = .init(
+    width: openNotchBodyWidth + openNotchShoulderFlare * 2,
+    height: 190
+)
 let windowSize: CGSize = .init(
     width: openNotchSize.width,
     height: openNotchSize.height + shadowPadding
@@ -26,14 +49,28 @@ let windowSize: CGSize = .init(
 
 /// Width split of the open notch between the music player (left) and the
 /// secondary pane holding lyrics / calendar / camera (right).
-/// Kept next to `openNotchSize` so a change to the notch width cannot silently
-/// break the horizontal layout.
-let musicPaneWidth: CGFloat = 380
-let secondaryPaneWidth: CGFloat = 230
+///
+/// The two panes plus `openNotchPaneSpacing` must fit the slab's **inner**
+/// width, not `openNotchSize.width`: the content carries a horizontal inset of
+/// `cornerRadiusInsets.opened.top` (19) plus the shared 12 pt padding on each
+/// side. Adding up to more than that does not make the panes overlap or shrink
+/// — the row simply centres and overflows, and the window clips the excess, so
+/// the tab strip and the lyrics pane lose their outer few points. With the
+/// defaults that leaves 640 − 2 × 31 = 578 pt for 358 + 12 + 208.
+let musicPaneWidth: CGFloat = 358
+let secondaryPaneWidth: CGFloat = 208
 /// Horizontal gap between the two panes.
 let openNotchPaneSpacing: CGFloat = 12
 
-let cornerRadiusInsets: (opened: (top: CGFloat, bottom: CGFloat), closed: (top: CGFloat, bottom: CGFloat)) = (opened: (top: 19, bottom: 24), closed: (top: 6, bottom: 14))
+let cornerRadiusInsets: (opened: (top: CGFloat, bottom: CGFloat), closed: (top: CGFloat, bottom: CGFloat)) = (opened: (top: 19, bottom: 32), closed: (top: 6, bottom: 14))
+
+/// Top-corner outward flare, in points — the rounded "ear" at the open
+/// window's top corners. Closed state uses 0 so the tiny pill keeps its plain
+/// rounded top, and the notch housing block masks with the same plain shape.
+let topFlareInsets: (opened: CGFloat, closed: CGFloat) = (
+    opened: openNotchShoulderFlare,
+    closed: 0
+)
 
 enum MusicPlayerImageSizes {
     static let cornerRadiusInset: (opened: CGFloat, closed: CGFloat) = (opened: 13.0, closed: 4.0)
