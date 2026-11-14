@@ -20,14 +20,11 @@ struct TabButton: View {
     var body: some View {
         Button(action: onClick) {
             Image(systemName: icon)
-                // 13 pt with a 7 pt gutter: the bar owns only the strip between
-                // the slab's left edge and the notch cut-out, which is about
-                // (560 − notch) / 2 minus the content inset — ~148 pt. Five tabs
-                // have to fit inside that, or the row centres itself and the
-                // last icon slides *under* the black cut-out. 13 + 14 of gutter
-                // puts each tab at ~30 pt and the row at ~150 pt.
-                .font(.system(size: 13, weight: iconWeight))
-                .padding(.horizontal, 7)
+                // 12 pt with no fixed gutter: the tab no longer sizes itself,
+                // the bar splits its own width evenly between the five, so the
+                // gap between icons is whatever is left over instead of a
+                // constant that has to be squeezed to fit.
+                .font(.system(size: 12, weight: iconWeight))
                 .contentShape(Capsule())
         }
         .buttonStyle(PlainButtonStyle())

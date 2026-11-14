@@ -44,11 +44,17 @@ struct TabSelectionView: View {
         HStack(spacing: 0) {
             ForEach(visibleTabs) { tab in
                     TabButton(label: tab.label, icon: tab.icon, selected: coordinator.currentView == tab.view, iconWeight: tab.iconWeight) {
-                        withAnimation(.smooth) {
+                        withAnimation(NotchAnimations.panelSwitch) {
                             coordinator.currentView = tab.view
                         }
                     }
                     .frame(height: 26)
+                    // The bar only ever gets the strip between the slab's left
+                    // edge and the notch cut-out (~168 pt). Letting each tab
+                    // grow into an equal share of it means the icons keep a
+                    // constant, comfortable gap no matter how wide the notch
+                    // is, and the row can never overflow into the cut-out.
+                    .frame(maxWidth: .infinity)
                     .foregroundStyle(tab.view == coordinator.currentView ? .white : .gray)
                     .background {
                         if tab.view == coordinator.currentView {
@@ -64,6 +70,7 @@ struct TabSelectionView: View {
                     }
             }
         }
+        .frame(maxWidth: .infinity)
         .clipShape(Capsule())
     }
 }
