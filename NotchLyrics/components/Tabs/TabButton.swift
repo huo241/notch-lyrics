@@ -20,11 +20,13 @@ struct TabButton: View {
     var body: some View {
         Button(action: onClick) {
             Image(systemName: icon)
-                // 12 pt with no fixed gutter: the tab no longer sizes itself,
+                // 11 pt with no fixed gutter: the tab no longer sizes itself,
                 // the bar splits its own width evenly between the five, so the
                 // gap between icons is whatever is left over instead of a
-                // constant that has to be squeezed to fit.
-                .font(.system(size: 12, weight: iconWeight))
+                // constant that has to be squeezed to fit. Dropping to 11 is
+                // what buys the extra air between the marks; the row's total
+                // width does not change with it.
+                .font(.system(size: 11, weight: iconWeight))
                 .contentShape(Capsule())
         }
         .buttonStyle(PlainButtonStyle())

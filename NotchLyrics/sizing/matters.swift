@@ -24,7 +24,7 @@ let shadowPadding: CGFloat = 20
 /// covers. The notch's own gap is only ~200 pt wide, and the status items sit
 /// just outside it, so every point added here eats into them. Widening this is
 /// the one change that cannot be compensated for anywhere else.
-let openNotchSize: CGSize = .init(width: 560, height: 190)
+let openNotchSize: CGSize = .init(width: 580, height: 190)
 let windowSize: CGSize = .init(
     width: openNotchSize.width,
     height: openNotchSize.height + shadowPadding
@@ -39,9 +39,9 @@ let windowSize: CGSize = .init(
 /// side. Adding up to more than that does not make the panes overlap or shrink
 /// — the row simply centres and overflows, and the window clips the excess, so
 /// the tab strip and the lyrics pane lose their outer few points. With the
-/// defaults that leaves 560 − 2 × 31 = 498 pt for 310 + 12 + 176.
-let musicPaneWidth: CGFloat = 310
-let secondaryPaneWidth: CGFloat = 176
+/// defaults that leaves 580 − 2 × 31 = 518 pt for 320 + 12 + 186.
+let musicPaneWidth: CGFloat = 320
+let secondaryPaneWidth: CGFloat = 186
 /// Horizontal gap between the two panes.
 let openNotchPaneSpacing: CGFloat = 12
 
