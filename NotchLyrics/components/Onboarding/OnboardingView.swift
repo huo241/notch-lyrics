@@ -29,7 +29,11 @@ struct OnboardingView: View {
             case .welcome:
                 WelcomeView {
                     withAnimation(.easeInOut(duration: 0.6)) {
-                        step = .calendarPermission
+                        // 日历 / 提醒暂时不上线,这两步权限申请直接跳过(分支
+                        // 和 `requestCalendarPermission()` 都留着,恢复时把这里
+                        // 改回 `.calendarPermission` 即可)。对一个没入口的功能
+                        // 要系统权限,用户只会觉得这软件乱要权限。
+                        step = .accessibilityPermission
                     }
                 }
                 .transition(.opacity)

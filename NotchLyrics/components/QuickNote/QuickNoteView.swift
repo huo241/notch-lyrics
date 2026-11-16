@@ -143,15 +143,15 @@ struct QuickNoteView: View {
     private var permissionPrompt: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "lock.fill").font(.system(size: 11))
+                Image(systemName: "lock.fill").font(NLQuickNote.glyphSmall)
                 Text(L("Notes access required"))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(NLQuickNote.title)
             }
             .foregroundStyle(.white)
 
             Text(L("Allow Notch Lyrics to control Notes in System Settings › Privacy & Security › Automation, then come back here."))
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.6))
+                .font(NLQuickNote.body)
+                .foregroundStyle(NLQuickNote.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
@@ -168,12 +168,12 @@ struct QuickNoteView: View {
     private func failurePrompt(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 11))
+                Image(systemName: "exclamationmark.triangle.fill").font(NLQuickNote.glyphSmall)
                 Text(message)
-                    .font(.system(size: 12))
+                    .font(NLQuickNote.caption12)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(NLQuickNote.inkStrong)
 
             chipButton(L("Try Again")) { Task { await fetchFolders() } }
         }
@@ -182,7 +182,7 @@ struct QuickNoteView: View {
     private func folderPicker(_ folders: [NoteFolder]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(L("Choose a Notes folder"))
-                .font(.system(size: 12, weight: .semibold))
+                .font(NLQuickNote.title)
                 .foregroundStyle(.white)
 
             ScrollView {
@@ -194,9 +194,9 @@ struct QuickNoteView: View {
                             phase = .ready
                         } label: {
                             HStack(spacing: 6) {
-                                Image(systemName: "folder").font(.system(size: 10))
+                                Image(systemName: "folder").font(NLQuickNote.glyphMini)
                                 Text(folder.displayName)
-                                    .font(.system(size: 12))
+                                    .font(NLQuickNote.caption12)
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
                             }
@@ -205,10 +205,10 @@ struct QuickNoteView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(NLQuickNote.inkStrong)
                         .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(Color.white.opacity(0.06))
+                            RoundedRectangle(cornerRadius: NLQuickNote.folderRowRadius)
+                                .fill(NLQuickNote.rowFill)
                         )
                     }
                 }
@@ -220,15 +220,15 @@ struct QuickNoteView: View {
     private var vaultPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "folder.badge.plus").font(.system(size: 11))
+                Image(systemName: "folder.badge.plus").font(NLQuickNote.body)
                 Text(L("Choose an Obsidian folder"))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(NLQuickNote.title)
             }
             .foregroundStyle(.white)
 
             Text(L("Quick notes are saved as .md files in the folder you pick — the vault root or any folder inside it. You can also create a new folder here."))
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.6))
+                .font(NLQuickNote.body)
+                .foregroundStyle(NLQuickNote.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
@@ -245,11 +245,11 @@ struct QuickNoteView: View {
 
                 Divider()
                     .frame(height: 10)
-                    .overlay { Color.white.opacity(0.15) }
+                    .overlay { NLQuickNote.divider }
 
-                Image(systemName: target.icon).font(.system(size: 10))
+                Image(systemName: target.icon).font(NLQuickNote.glyphMini)
                 Text(destinationLabel)
-                    .font(.system(size: 11))
+                    .font(NLQuickNote.body)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .layoutPriority(1)
@@ -260,7 +260,7 @@ struct QuickNoteView: View {
 
                 if let flash {
                     Text(flash.message)
-                        .font(.system(size: 10))
+                        .font(NLQuickNote.fine)
                         .foregroundStyle(flash.isError ? Color.orange : Color.green)
                         .lineLimit(1)
                 }
@@ -274,7 +274,7 @@ struct QuickNoteView: View {
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!canSave)
             }
-            .foregroundStyle(.white.opacity(0.55))
+            .foregroundStyle(NLQuickNote.inkDim)
 
             formatBar
 
@@ -379,18 +379,18 @@ struct QuickNoteView: View {
                     switchTo(option)
                 } label: {
                     Text(option.label)
-                        .font(.system(size: 10, weight: active ? .semibold : .regular))
+                        .font(active ? NLQuickNote.tabEmph : NLQuickNote.tab)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
                         .background(
                             Capsule().fill(
-                                Color.white.opacity(active ? 0.22 : 0.07)
+                                active ? NLQuickNote.tabOn : NLQuickNote.tabOff
                             )
                         )
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.white.opacity(active ? 0.95 : 0.5))
+                .foregroundStyle(active ? NLQuickNote.inkTop : NLQuickNote.inkFaint)
             }
         }
     }
@@ -455,18 +455,18 @@ struct QuickNoteView: View {
             action()
         } label: {
             Text(title)
-                .font(.system(size: small ? 10 : 11, weight: .medium))
+                .font(small ? NLQuickNote.chipSmall : NLQuickNote.chip)
                 .padding(.horizontal, small ? 7 : 9)
                 .padding(.vertical, small ? 2 : 4)
                 .background(
                     Capsule().fill(
-                        prominent ? Color.accentColor.opacity(0.8) : Color.white.opacity(0.14)
+                        prominent ? Color.accentColor.opacity(0.8) : NLQuickNote.chipFill
                     )
                 )
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(prominent ? 1 : 0.8))
+        .foregroundStyle(prominent ? Color.white : NLQuickNote.inkSoft)
     }
 
     private func formatButton(_ icon: String, _ name: String, _ kind: FormatKind) -> some View {
@@ -475,16 +475,16 @@ struct QuickNoteView: View {
             applyFormatting(kind)
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(NLQuickNote.formatGlyph)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 3)
                 .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(active ? Color.accentColor : Color.white.opacity(0.08))
+                    RoundedRectangle(cornerRadius: NLQuickNote.formatButtonRadius)
+                        .fill(active ? Color.accentColor : NLQuickNote.formatOff)
                 )
         }
         .buttonStyle(.plain)
-        .foregroundStyle(active ? Color.white : Color.white.opacity(0.75))
+        .foregroundStyle(active ? Color.white : NLQuickNote.inkMid)
         .help(name)
     }
 
@@ -495,14 +495,14 @@ struct QuickNoteView: View {
             coordinator.quickNoteIsEditing = focused
         }
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white.opacity(0.08))
+            RoundedRectangle(cornerRadius: NLQuickNote.editorRadius)
+                .fill(NLQuickNote.editorFill)
         )
         .overlay(alignment: .topLeading) {
             if draft.attributedText.length == 0 {
                 Text(L("Jot something down…"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .font(NLQuickNote.caption12)
+                    .foregroundStyle(NLQuickNote.inkWhisper)
                     // Matches the editor's textContainerInset (6, 5) so the
                     // placeholder sits exactly where the first typed glyph
                     // will land instead of floating off grid.

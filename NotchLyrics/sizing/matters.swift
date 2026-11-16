@@ -45,6 +45,12 @@ let secondaryPaneWidth: CGFloat = 186
 /// Horizontal gap between the two panes.
 let openNotchPaneSpacing: CGFloat = 12
 
+/// Height of both open-state cards. The slab gives the row ~149 pt below the
+/// header; 142 leaves a 7 pt breathe around the cards so the hairline stroke
+/// does not sit flush against the panel edge. Both panes read this one number
+/// so the music card and the lyrics card can never drift out of alignment.
+let openPaneCardHeight: CGFloat = 142
+
 let cornerRadiusInsets: (opened: (top: CGFloat, bottom: CGFloat), closed: (top: CGFloat, bottom: CGFloat)) = (opened: (top: 19, bottom: 32), closed: (top: 6, bottom: 14))
 
 enum MusicPlayerImageSizes {

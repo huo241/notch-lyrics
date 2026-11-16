@@ -1,6 +1,153 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Vivid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vívido"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "鲜艳"
+          }
+        }
+      }
+    },
+    "Standard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estándar"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标准"
+          }
+        }
+      }
+    },
+    "Notch color" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color del notch"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刘海配色"
+          }
+        }
+      }
+    },
+    "Theme" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主题"
+          }
+        }
+      }
+    },
+    "Vivid uses a cool tinted slab and saturated metric colours. Standard keeps the original black slab and muted accents." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vívido usa un panel de tono frío y colores saturados. Estándar conserva el panel negro original y los colores atenuados."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "鲜艳使用冷调渐变板与高饱和指标色；标准保留原来的纯黑板与低饱和配色。"
+          }
+        }
+      }
+    },
+    "Capsules" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cápsulas"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "胶囊"
+          }
+        }
+      }
+    },
+    "Rings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anillos"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "环形"
+          }
+        }
+      }
+    },
+    "Style" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "样式"
+          }
+        }
+      }
+    },
+    "Capsules give each reading its own colour. The colour names the metric, not how busy it is." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "胶囊为每项读数配一种颜色。颜色代表指标，不代表负载高低。"
+          }
+        }
+      }
+    },
     "" : {
       "localizations" : {
         "ar" : {
@@ -14532,16 +14679,22 @@
     "Toggle Notch Open" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expand Notch"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir o cerrar el notch"
+            "value" : "Expandir notch"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "切换刘海展开"
+            "value" : "展开刘海"
           }
         }
       }
@@ -14549,16 +14702,22 @@
     "Toggle Sneak Peek" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch Tabs"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Activar el vistazo rápido"
+            "value" : "Cambiar de pestaña"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "切换速览"
+            "value" : "切换标签页"
           }
         }
       }
@@ -17503,6 +17662,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "对所有媒体 App 都有效。"
+          }
+        }
+      }
+    },
+    "Animated cover art" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portada animada"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "动态封面"
+          }
+        }
+      }
+    },
+    "Only some Apple Music albums ship an animated cover; every other track keeps the still artwork." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo algunos álbumes de Apple Music traen portada animada; los demás mantienen la portada fija."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅部分 Apple Music 专辑带动画封面,其余保持静态封面。"
           }
         }
       }

@@ -110,8 +110,10 @@ struct HelloAnimation: View {
             shape: { HelloShape() }
         )
         .task {
-            // Wait for the "opening" animation (notch expansion) to complete before starting the snake
-            try? await Task.sleep(for: .seconds(0.6))
+            // Let the notch finish expanding before the snake starts. The
+            // open/close curve is 0.30 s; the old 0.6 s wait was tuned to the
+            // previous spring and left a visible idle gap.
+            try? await Task.sleep(for: .seconds(0.36))
             
             withAnimation(
                 .easeInOut(duration: 4.0)

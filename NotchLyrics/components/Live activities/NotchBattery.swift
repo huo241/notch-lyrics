@@ -46,7 +46,7 @@ struct BatteryView: View {
                 .resizable()
                 .fontWeight(.thin)
                 .aspectRatio(contentMode: .fit)
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(NLNotch.hudBattery)
                 .frame(
                     width: batteryWidth + 1
                 )

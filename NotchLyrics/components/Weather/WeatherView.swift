@@ -93,12 +93,12 @@ struct WeatherView: View {
                     withAnimation(.smooth(duration: 0.22)) { mode = candidate }
                 } label: {
                     Text(L(candidate.rawValue))
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(mode == candidate ? .white : .white.opacity(0.6))
+                        .font(NLWeather.toolbar)
+                        .foregroundStyle(mode == candidate ? .white : NLWeather.inkMute)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 3)
                         .background(
-                            Capsule().fill(.white.opacity(mode == candidate ? 0.22 : 0.08))
+                            Capsule().fill(mode == candidate ? NLWeather.toolbarOn : NLWeather.toolbarOff)
                         )
                 }
                 .buttonStyle(.plain)
@@ -107,8 +107,8 @@ struct WeatherView: View {
             Spacer(minLength: 0)
 
             Text(Self.updatedLabel(snapshot.fetchedAt))
-                .font(.system(size: 9))
-                .foregroundStyle(.white.opacity(0.5))
+                .font(NLWeather.updated)
+                .foregroundStyle(NLWeather.inkWhisper)
                 .monospacedDigit()
 
             Button {
@@ -119,8 +119,8 @@ struct WeatherView: View {
                 }
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(NLWeather.refresh)
+                    .foregroundStyle(NLWeather.inkLow)
                     .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                     .animation(
                         isRefreshing
@@ -212,7 +212,7 @@ struct SkyBackdrop: View {
         }
         // A dark scrim keeps white text legible over a bright midday sky.
         .overlay(
-            LinearGradient(colors: [.black.opacity(0.18), .black.opacity(0.34)],
+            LinearGradient(colors: [NLWeather.skyScrimTop, NLWeather.skyScrimBottom],
                            startPoint: .top, endPoint: .bottom)
         )
     }
@@ -273,41 +273,41 @@ struct WeatherNowPane: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
                 Text(snapshot.placeName)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .font(NLWeather.place)
+                    .foregroundStyle(NLWeather.inkHigh)
                     .lineLimit(1)
 
                 if WeatherManager.shared.resolvedFromIP {
                     Image(systemName: "location.fill")
-                        .font(.system(size: 7))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .font(NLWeather.pin)
+                        .foregroundStyle(NLWeather.inkPin)
                         .help(L("Inferred from network location"))
                 }
             }
 
             HStack(alignment: .center, spacing: 8) {
                 Image(systemName: WeatherCode.symbol(snapshot.code, isDay: snapshot.isDay))
-                    .font(.system(size: 30))
+                    .font(NLWeather.nowGlyph)
                     .symbolRenderingMode(.multicolor)
                     .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
 
                 Text("\(Int(snapshot.temperature.rounded()))°")
-                    .font(.system(size: 36, weight: .thin))
+                    .font(NLWeather.heroTemp)
                     .foregroundStyle(.white)
                     .monospacedDigit()
             }
             .padding(.top, 2)
 
             Text(WeatherCode.label(snapshot.code))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.88))
+                .font(NLWeather.condition)
+                .foregroundStyle(NLWeather.ink)
 
             HStack(spacing: 4) {
                 Text("H:\(Int(snapshot.high.rounded()))°")
                 Text("L:\(Int(snapshot.low.rounded()))°")
             }
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.white.opacity(0.65))
+            .font(NLWeather.range)
+            .foregroundStyle(NLWeather.inkDim)
 
             Spacer(minLength: 4)
 
@@ -321,16 +321,16 @@ struct WeatherNowPane: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background {
-            SkyBackdrop(code: snapshot.code, isDay: snapshot.isDay, animated: animated)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-        )
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background {
+                SkyBackdrop(code: snapshot.code, isDay: snapshot.isDay, animated: animated)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(NLWeather.cardStroke, lineWidth: 0.5)
+            )
     }
 }
 
@@ -343,17 +343,17 @@ struct WeatherStatChip: View {
     var body: some View {
         HStack(spacing: 2) {
             Image(systemName: icon)
-                .font(.system(size: 8, weight: .medium))
-                .foregroundStyle(.white.opacity(0.55))
+                .font(NLWeather.chipIcon)
+                .foregroundStyle(NLWeather.inkFaint)
             Text(text)
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.88))
+                .font(NLWeather.chipText)
+                .foregroundStyle(NLWeather.ink)
                 .monospacedDigit()
                 .fixedSize()
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 3)
-        .background(.white.opacity(0.12))
+        .background(NLWeather.chipFill)
         .clipShape(Capsule())
     }
 }
@@ -372,16 +372,16 @@ struct WeatherHourlyCard: View {
                 ForEach(Array(hours.enumerated()), id: \.element.id) { index, hour in
                     VStack(spacing: 3) {
                         Text(index == 0 ? L("Now") : Self.hourLabel(hour.date))
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.white.opacity(index == 0 ? 0.95 : 0.7))
+                            .font(NLWeather.hourLabel)
+                            .foregroundStyle(index == 0 ? NLWeather.inkTop : NLWeather.inkLow)
 
                         Image(systemName: WeatherCode.symbol(hour.code, isDay: hour.isDay))
-                            .font(.system(size: 14))
+                            .font(NLWeather.hourGlyph)
                             .symbolRenderingMode(.multicolor)
                             .frame(height: 17)
 
                         Text("\(Int(hour.temperature.rounded()))°")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(NLWeather.hourTemp)
                             .foregroundStyle(.white)
                             .monospacedDigit()
                     }
@@ -398,11 +398,11 @@ struct WeatherHourlyCard: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(.white.opacity(0.13))
+        .background(NLWeather.cardFill)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
+                .strokeBorder(NLWeather.cardStroke, lineWidth: 0.5)
         )
     }
 
@@ -434,8 +434,8 @@ struct WeatherHourlyCard: View {
 
                 if index == 0 || index == points.count - 1 {
                     Text("\(Int(hours[index].temperature.rounded()))°")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .font(NLWeather.curveTemp)
+                        .foregroundStyle(NLWeather.inkHigh)
                         .position(x: point.x, y: max(point.y - 11, 7))
                         .monospacedDigit()
                 }
@@ -502,7 +502,7 @@ struct WeatherHourlyCard: View {
             let probability = hours[index].precipitationProbability
             if probability > 0 {
                 RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color(red: 0.45, green: 0.82, blue: 1.0).opacity(0.65))
+                    .fill(NLWeather.precip.opacity(0.65))
                     .frame(width: 3, height: max(2, maxHeight * CGFloat(probability) / 100))
                     .position(x: point.x, y: baseline - max(2, maxHeight * CGFloat(probability) / 100) / 2)
             }
@@ -529,18 +529,18 @@ struct WeatherWeekPane: View {
             ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                 HStack(spacing: 8) {
                     Text(index == 0 ? L("Today") : Self.weekdayLabel(day.date))
-                        .font(.system(size: 10, weight: index == 0 ? .semibold : .regular))
-                        .foregroundStyle(.white.opacity(index == 0 ? 0.95 : 0.8))
+                        .font(index == 0 ? NLWeather.weekdayEmph : NLWeather.weekday)
+                        .foregroundStyle(index == 0 ? NLWeather.inkTop : NLWeather.inkMid)
                         .frame(width: 36, alignment: .leading)
 
                     Image(systemName: WeatherCode.symbol(day.code, isDay: true))
-                        .font(.system(size: 11))
+                        .font(NLWeather.weekSymbol)
                         .symbolRenderingMode(.multicolor)
                         .frame(width: 18)
 
                     Text(day.precipitationProbability > 0 ? "\(day.precipitationProbability)%" : "")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(Color(red: 0.45, green: 0.82, blue: 1.0))
+                        .font(NLWeather.weekPrecip)
+                        .foregroundStyle(NLWeather.precip)
                         .frame(width: 26, alignment: .leading)
                         .monospacedDigit()
 
@@ -550,25 +550,25 @@ struct WeatherWeekPane: View {
                     // week's span, which makes the shape of the week readable
                     // at a glance.
                     Capsule()
-                        .fill(.white.opacity(0.18))
+                        .fill(NLWeather.rangeTrack)
                         .frame(width: 54, height: 4)
                         .overlay(alignment: .leading) {
                             Capsule()
                                 .fill(LinearGradient(colors: [
-                                    Color(red: 0.45, green: 0.82, blue: 1.0),
-                                    Color(red: 1.0, green: 0.83, blue: 0.4),
+                                    NLWeather.precip,
+                                    NLWeather.warm,
                                 ], startPoint: .leading, endPoint: .trailing))
                                 .frame(width: max(8, 54 * spanFraction(for: day)), height: 4)
                                 .offset(x: 54 * startFraction(for: day))
                         }
 
                     Text("\(Int(day.low.rounded()))°")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .font(NLWeather.weekTemp)
+                        .foregroundStyle(NLWeather.inkFaint)
                         .frame(width: 24, alignment: .trailing)
                         .monospacedDigit()
                     Text("\(Int(day.high.rounded()))°")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(NLWeather.weekTempEmph)
                         .foregroundStyle(.white)
                         .frame(width: 24, alignment: .trailing)
                         .monospacedDigit()
@@ -579,11 +579,11 @@ struct WeatherWeekPane: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(.white.opacity(0.13))
+        .background(NLWeather.cardFill)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
+                .strokeBorder(NLWeather.cardStroke, lineWidth: 0.5)
         )
     }
 
@@ -618,12 +618,12 @@ struct WeatherSectionHeader: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 8, weight: .semibold))
+                .font(NLWeather.sectionIcon)
             Text(title)
-                .font(.system(size: 9, weight: .semibold))
+                .font(NLWeather.sectionText)
                 .tracking(0.6)
         }
-        .foregroundStyle(.white.opacity(0.6))
+        .foregroundStyle(NLWeather.inkMute)
     }
 }
 
@@ -636,8 +636,8 @@ struct WeatherLoadingPane: View {
                 .controlSize(.small)
                 .tint(.white)
             Text(L("Loading weather…"))
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.7))
+                .font(NLWeather.stateText)
+                .foregroundStyle(NLWeather.inkLow)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -650,18 +650,18 @@ struct WeatherEmptyPane: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "cloud.fill")
-                .font(.system(size: 26))
-                .foregroundStyle(.white.opacity(0.55))
+                .font(NLWeather.emptyIcon)
+                .foregroundStyle(NLWeather.inkFaint)
             Text(message ?? L("No weather data"))
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.8))
+                .font(NLWeather.stateText)
+                .foregroundStyle(NLWeather.inkMid)
                 .multilineTextAlignment(.center)
             Button(action: retry) {
                 Text(L("Try Again"))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(NLWeather.emptyButton)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(.white.opacity(0.16))
+                    .background(NLWeather.emptyButtonFill)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)

@@ -56,19 +56,19 @@ struct ShelfView: View {
     }
 
     var panel: some View {
-        RoundedRectangle(cornerRadius: 16)
+        RoundedRectangle(cornerRadius: NLShelf.panelRadius)
             .stroke(
                 vm.dragDetectorTargeting
-                    ? Color.accentColor.opacity(0.9)
-                    : Color.white.opacity(0.1),
-                style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [10])
+                    ? NLShelf.dropBorderActive
+                    : NLShelf.dropBorderIdle,
+                style: StrokeStyle(lineWidth: NLShelf.dropBorderWidth, lineCap: .round, dash: NLShelf.dropBorderDash)
             )
             .overlay {
                 content
                     .padding()
             }
             .transaction { transaction in
-                transaction.animation = vm.animation
+                transaction.animation = NotchAnimations.shelfInteraction
             }
             .contentShape(Rectangle())
             .onTapGesture { selection.clear() }

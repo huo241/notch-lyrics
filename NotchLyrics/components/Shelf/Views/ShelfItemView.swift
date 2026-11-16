@@ -36,7 +36,7 @@ struct ShelfItemView: View {
                     iconView
                     textView
                 }
-                .frame(width: 105)
+                .frame(width: NLShelf.itemWidth)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 5)
                 .background(backgroundView)
@@ -58,7 +58,7 @@ struct ShelfItemView: View {
                 )
             } else {
                 Color.clear
-                    .frame(width: 105)
+                    .frame(width: NLShelf.itemWidth)
                     .padding(.vertical, 10)
                     .padding(.horizontal, 5)
             }
@@ -98,14 +98,13 @@ struct ShelfItemView: View {
         Image(nsImage: viewModel.thumbnail ?? item.icon)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 2)
+            .frame(width: NLShelf.iconSize, height: NLShelf.iconSize)
+            .clipShape(RoundedRectangle(cornerRadius: NLShelf.cardRadius))
     }
 
     private var textView: some View {
         Text(item.displayName)
-            .font(.system(size: 12, weight: .medium))
+            .font(NLShelf.nameFont)
             .foregroundStyle(.primary)
             .lineLimit(2)
             .truncationMode(.middle)
@@ -114,10 +113,10 @@ struct ShelfItemView: View {
     }
 
     private var backgroundView: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: NLShelf.cardRadius, style: .continuous)
             .fill(backgroundColor)
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: NLShelf.cardRadius, style: .continuous)
                     .strokeBorder(
                         strokeColor,
                         lineWidth: strokeWidth

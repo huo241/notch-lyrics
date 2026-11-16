@@ -8,12 +8,14 @@
 import AppKit
 import SwiftUI
 import Defaults
+import Combine
 import Sparkle
 
 class SettingsWindowController: NSWindowController {
     static let shared = SettingsWindowController()
     private var updaterController: SPUStandardUpdaterController?
     private var outsideClickMonitor: Any?
+    private var backgroundCancellable: AnyCancellable?
     
     private init() {
         let window = NSWindow(
@@ -65,9 +67,18 @@ class SettingsWindowController: NSWindowController {
         // The cost is that dragging the window background no longer moves the
         // window. The titlebar still does, and it is visible here.
         window.isMovableByWindowBackground = false
-        // Window background is --content-bg (grey); the sidebar and titlebar
-        // lay a --material layer on top of it.
-        window.backgroundColor = NLColor.contentNSColor
+        // SettingsView installs one system material plus a single scrim over
+        // the content area, with the sidebar and group cards as translucent
+        // layers on top. The transparent titlebar is outside that view, so the
+        // window needs its own opaque colour — otherwise a strip of desktop
+        // shows above a dark window.
+        window.isOpaque = false
+        window.backgroundColor = NLSettingsSurface.titlebarNSColor(Defaults[.notchBackground])
+        backgroundCancellable = Defaults.publisher(.notchBackground)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] change in
+                self?.window?.backgroundColor = NLSettingsSurface.titlebarNSColor(change.newValue)
+            }
 
         // Debug: `-appearance-dark` / `-appearance-light` force the appearance.
         if ProcessInfo.processInfo.arguments.contains("-appearance-dark") {
@@ -90,6 +101,8 @@ class SettingsWindowController: NSWindowController {
         // Create the SwiftUI content
         let settingsView = SettingsView(updaterController: updaterController)
         let hostingView = NSHostingView(rootView: settingsView)
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         window.contentView = hostingView
 
         // Handle window closing

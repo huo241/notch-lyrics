@@ -62,14 +62,14 @@ struct SystemEventIndicatorModifier: View {
                 DraggableProgressBar(value: $value)
                 if Defaults[.showClosedNotchHUDPercentage] {
                     Text("\(Int(value * 100))%")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(NLNotch.hudEventFont)
                         .foregroundStyle(.white)
                         .monospacedDigit()
                         .frame(width: 35, alignment: .trailing)
                 }
             } else {
                 Text("Mic \(value > 0 ? "unmuted" : "muted")")
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(NLNotch.hudForeground)
                     .lineLimit(1)
                     .allowsTightening(true)
             }
@@ -115,7 +115,7 @@ struct DraggableProgressBar: View {
                                 AnyShapeStyle(LinearGradient(
                                     colors: Defaults[.systemEventIndicatorUseAccent] ?
                                         [Color.effectiveAccent, Color.effectiveAccent.ensureMinimumBrightness(factor: 0.2)] :
-                                        [Color.white, Color.white.opacity(0.2)],
+                                        NLNotch.hudEventGradient,
                                     startPoint: .trailing,
                                     endPoint: .leading
                                 )) :

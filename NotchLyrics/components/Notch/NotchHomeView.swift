@@ -7,21 +7,65 @@
 //
 
 import AppKit
+import AVFoundation
 import Combine
 import Defaults
 import SwiftUI
 
 // MARK: - Music Player Components
 
+/// 媒体页:左边一整块封面,右边标题、进度、控制 —— 布局保持原样,只在外面
+/// 套一层 Liquid Glass 底板。
 struct MusicPlayerView: View {
     @EnvironmentObject var vm: NotchViewModel
     let albumArtNamespace: Namespace.ID
 
+    /// 面板可用高度约 149,卡片给 142 留一圈边,玻璃才不会贴着面板边读成
+    /// 一块板子。里面扣掉上下 8 的留白,右栏拿到 126 —— 正好装得下
+    /// 标题行(43)+ 进度(36)+ 控制行(30)。高度取自 `openPaneCardHeight`,
+    /// 右栏歌词卡读的是同一个数,两张卡才对得齐。
     var body: some View {
-        HStack {
-            AlbumArtView(vm: vm, albumArtNamespace: albumArtNamespace).padding(.all, 5)
-            MusicControlsView().drawingGroup().compositingGroup()
+        NotchGlassCard {
+            HStack(spacing: 0) {
+                AlbumArtView(vm: vm, albumArtNamespace: albumArtNamespace)
+                    .padding(.all, 5)
+                MusicControlsView()
+                    .drawingGroup()
+                    .compositingGroup()
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 8)
+            .frame(width: musicPaneWidth, height: openPaneCardHeight, alignment: .center)
         }
+        .frame(width: musicPaneWidth, height: openPaneCardHeight)
+    }
+}
+
+/// 媒体页的玻璃底板 —— 用的是统计页那套卡片配方。
+///
+/// 统计页的 tile(见 `StatRingCell` / `networkCard`)只做两件事:6% 白填充
+/// 加 8% 白描边。它在全黑面板上读起来是"一片薄玻璃浮在底下",而不是一块
+/// 实心灰板 —— 关键恰恰在于**几乎不填**,厚度只由那 1pt 描边交代。
+///
+/// 之前的版本给到 13% 提亮 + 0.34 亮边,还想叠 `.glassEffect`。方向是反的:
+/// 提亮越重,越像贴上去的塑料板;玻璃感来自"底下还能看见"和"边缘有一道线"。
+/// 所以这里不叠 Liquid Glass,直接复用 `NLNotch.cellFill` / `cellStroke`,
+/// 保证媒体页和统计页是同一套表面语言,而不是两个各自为政的白。
+struct NotchGlassCard<Content: View>: View {
+    var cornerRadius: CGFloat = 14
+    @ViewBuilder var content: () -> Content
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    }
+
+    var body: some View {
+        content()
+            .background(
+                shape
+                    .fill(NLNotch.cellFill)
+                    .overlay(shape.stroke(NLNotch.cellStroke, lineWidth: 1))
+            )
     }
 }
 
@@ -29,31 +73,79 @@ struct AlbumArtView: View {
     @ObservedObject var musicManager = MusicManager.shared
     @ObservedObject var vm: NotchViewModel
     let albumArtNamespace: Namespace.ID
+    @Default(.animatedArtwork) private var animatedArtworkEnabled
+    @State private var animatedPlayer: AVQueuePlayer?
+    @State private var loopObserver: NSObjectProtocol?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            if Defaults[.lightingEffect] {
-                albumArtBackground
-            }
             albumArtButton
+        }
+        // 换歌即重查;目录 ID 不变时 Provider 的会话缓存直接命中。ID 和标题
+        // 都进 key:播放器分批推送元数据,标题到齐后要用完整信息再查一次。
+        .task(id: "\(musicManager.catalogID ?? "")|\(musicManager.songTitle)|\(musicManager.album)") {
+            await refreshAnimatedCover()
+        }
+        .onAppear {
+            // 收起时整个视图被拆掉,期间播放状态的变化收不到,展开时按现状补。
+            setAnimatedPlaying(musicManager.isPlaying)
+        }
+        .onChange(of: musicManager.isPlaying) { _, playing in
+            setAnimatedPlaying(playing)
+        }
+        .onDisappear {
+            setAnimatedPlaying(false)
         }
     }
 
-    private var albumArtBackground: some View {
-        Image(nsImage: musicManager.albumArt)
-            .resizable()
-            .clipped()
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: Defaults[.cornerRadiusScaling]
-                        ? MusicPlayerImageSizes.cornerRadiusInset.opened
-                        : MusicPlayerImageSizes.cornerRadiusInset.closed)
-            )
-            .aspectRatio(1, contentMode: .fit)
-            .scaleEffect(x: 1.3, y: 1.4)
-            .rotationEffect(.degrees(92))
-            .blur(radius: 40)
-            .opacity(musicManager.isPlaying ? 0.5 : 0)
+    /// 动态封面:目录里有动画资源时用 HLS 循环播放替掉静图,否则维持现状。
+    /// 查询是异步的,期间静图照常显示 —— 迟到或落空都不产生可见的空窗。
+    private func refreshAnimatedCover() async {
+        let requestedID = musicManager.catalogID
+        animatedPlayer?.pause()
+        animatedPlayer = nil
+
+        guard animatedArtworkEnabled,
+              musicManager.isPlaying,
+              vm.notchState == .open,
+              let requestedID
+        else { return }
+
+        guard let cover = await AnimatedArtworkProvider.shared.animatedCover(
+            catalogID: requestedID,
+            title: musicManager.songTitle,
+            artist: musicManager.artistName,
+            album: musicManager.album),
+              musicManager.catalogID == requestedID,
+              musicManager.isPlaying
+        else { return }
+
+        let item = AVPlayerItem(url: cover.videoURL)
+        let player = AVQueuePlayer(items: [item])
+        player.isMuted = true
+        player.actionAtItemEnd = .none
+        animatedPlayer = player
+
+        if let observer = loopObserver { NotificationCenter.default.removeObserver(observer) }
+        loopObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+        ) { [weak player] _ in
+            MainActor.assumeIsolated {
+                player?.seek(to: .zero)
+                player?.play()
+            }
+        }
+        setAnimatedPlaying(true)
+    }
+
+    /// 暂停/收起就停,省的既费电又抢主线程;恢复播放时从当前帧继续。
+    private func setAnimatedPlaying(_ playing: Bool) {
+        guard animatedArtworkEnabled else { return }
+        if playing {
+            animatedPlayer?.play()
+        } else {
+            animatedPlayer?.pause()
+        }
     }
 
     private var albumArtButton: some View {
@@ -73,27 +165,44 @@ struct AlbumArtView: View {
         }
     }
 
+    /// 暂停时压暗封面。原来是外扩 50pt 的模糊黑雾,现在封面底下是玻璃卡而
+    /// 不是纯黑面板,那层雾会溢出到卡面上,所以裁进封面形状里再压。
     private var albumArtDarkOverlay: some View {
         Rectangle()
             .aspectRatio(1, contentMode: .fit)
             .foregroundColor(Color.black)
             .opacity(musicManager.isPlaying ? 0 : 0.8)
             .blur(radius: 50)
-    }
-                
-
-    private var albumArtImage: some View {
-        Image(nsImage: musicManager.albumArt)
-            .resizable()
-            .aspectRatio(1, contentMode: .fit)
-            .matchedGeometryEffect(id: "albumArt", in: albumArtNamespace)
-            .clipped()
             .clipShape(
                 RoundedRectangle(
                     cornerRadius: Defaults[.cornerRadiusScaling]
                         ? MusicPlayerImageSizes.cornerRadiusInset.opened
                         : MusicPlayerImageSizes.cornerRadiusInset.closed)
             )
+    }
+                
+
+    private var albumArtImage: some View {
+        ZStack {
+            Image(nsImage: musicManager.albumArt)
+                .resizable()
+                .aspectRatio(1, contentMode: .fit)
+
+            // 动画层铺在静图上,加载完成前看到的是静图;裁剪与静图同心。
+            if animatedArtworkEnabled, let player = animatedPlayer, musicManager.isPlaying {
+                AnimatedArtworkVideoLayer(player: player)
+                    .transition(.opacity)
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .matchedGeometryEffect(id: "albumArt", in: albumArtNamespace)
+        .clipped()
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: Defaults[.cornerRadiusScaling]
+                    ? MusicPlayerImageSizes.cornerRadiusInset.opened
+                    : MusicPlayerImageSizes.cornerRadiusInset.closed)
+        )
     }
 
     @ViewBuilder
@@ -108,6 +217,58 @@ struct AlbumArtView: View {
                 .zIndex(2)
         }
     }
+}
+
+/// 静音、铺满、无控件的 HLS 播放层。AVPlayerLayer 的尺寸跟住容器,不参与
+/// 布局 —— 封面的圆角与裁剪仍由外层的 `albumArtImage` 决定。
+private struct AnimatedArtworkVideoLayer: NSViewRepresentable {
+    let player: AVQueuePlayer
+
+    func makeNSView(context: Context) -> NSView {
+        let container = NSView()
+        container.wantsLayer = true
+        container.postsFrameChangedNotifications = true
+
+        let layer = AVPlayerLayer()
+        layer.videoGravity = .resizeAspectFill
+        layer.player = player
+        container.layer?.addSublayer(layer)
+
+        context.coordinator.frameObserver = NotificationCenter.default.addObserver(
+            forName: NSView.frameDidChangeNotification, object: container, queue: .main
+        ) { _ in
+            // 关闭隐式动画,否则拖动窗口时视频层会拖着边走。
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.frame = container.bounds
+            CATransaction.commit()
+        }
+        return container
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.syncLayerFrame(of: nsView)
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        if let observer = coordinator.frameObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    final class Coordinator {
+        var frameObserver: NSObjectProtocol?
+        /// 首次布局先于任何 frame 通知发生,所以挂载与更新时都要同步一次。
+        func syncLayerFrame(of container: NSView) {
+            guard let layer = container.layer?.sublayers?.first as? AVPlayerLayer else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.frame = container.bounds
+            CATransaction.commit()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
 }
 
 struct MusicControlsView: View {
@@ -146,20 +307,24 @@ struct MusicControlsView: View {
     }
 
     private func songInfo(width: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 3) {
             MarqueeText(
-                $musicManager.songTitle, font: .headline, nsFont: .headline, textColor: .white,
+                $musicManager.songTitle,
+                font: NLNotch.playerTitle,
+                nsFont: .title3,
+                textColor: NLNotch.playerTitleInk,
                 frameWidth: width)
             MarqueeText(
                 $musicManager.artistName,
-                font: .headline,
-                nsFont: .headline,
+                font: NLNotch.playerArtist,
+                nsFont: .callout,
+                // Keep the tint switch meaningful without sacrificing legibility:
+                // blend the cover hue toward white only as far as 4.5:1 requires.
                 textColor: Defaults[.playerColorTinting]
-                    ? Color(nsColor: musicManager.avgColor)
-                        .ensureMinimumBrightness(factor: 0.6) : .gray,
+                    ? Color(nsColor: musicManager.avgColor).slabLegibleInk()
+                    : NLNotch.playerArtistInk,
                 frameWidth: width
             )
-            .fontWeight(.medium)
         }
     }
 
@@ -172,10 +337,11 @@ struct MusicControlsView: View {
     /// outline pin in gray. The previous accent-color tint was too subtle and
     /// users read the pinned state as "did nothing".
     private var keepLyricsPin: some View {
-        HoverButton(
+        GlyphButton(
             icon: keepMusicOpen ? "pin.fill" : "pin",
-            iconColor: keepMusicOpen ? .white : .gray,
-            scale: .medium
+            size: 11,
+            color: keepMusicOpen ? .white : .white.opacity(0.5),
+            box: 22
         ) {
             Defaults[.keepMusicOpen] = !Defaults[.keepMusicOpen]
         }
@@ -190,13 +356,15 @@ struct MusicControlsView: View {
         // lyrics froze with no way to notice that state had changed — which is
         // exactly what happened after a track change, when MediaRemote briefly
         // reports rate 0. Refreshing unconditionally lets the data layer decide
-        // whether the position should advance.
-        TimelineView(.animation(minimumInterval: 0.1)) { timeline in
-            MusicSliderView(
+        // whether the position should advance. During the ~0.3 s layout
+        // animation the tick slows down so the animation owns the main thread;
+        // at rest it returns to 0.1 s and progress accuracy is unchanged.
+        TimelineView(.animation(minimumInterval: vm.isExpansionAnimating ? 0.5 : 0.1)) { timeline in
+            NowPlayingProgress(
                 sliderValue: $sliderValue,
                 duration: $musicManager.songDuration,
                 lastDragged: $lastDragged,
-                color: musicManager.avgColor,
+                color: sliderColor,
                 dragging: $dragging,
                 currentDate: timeline.date,
                 timestampDate: musicManager.timestampDate,
@@ -211,12 +379,23 @@ struct MusicControlsView: View {
         }
     }
 
+    private var sliderColor: Color {
+        switch Defaults[.sliderColor] {
+        case .albumArt:
+            return Color(nsColor: musicManager.avgColor).ensureMinimumBrightness(factor: 0.8)
+        case .accent:
+            return .effectiveAccent
+        default:
+            return .white
+        }
+    }
+
     private var slotToolbar: some View {
         let slots = activeSlots
         return HStack(spacing: 6) {
-            ForEach(Array(slots.enumerated()), id: \.offset) { index, slot in
+            ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
                 slotView(for: slot)
-                    .frame(alignment: .center)
+                    .frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -227,55 +406,70 @@ struct MusicControlsView: View {
             max(slotLimit, MusicControlButton.minSlotCount),
             MusicControlButton.maxSlotCount
         )
-        // The favorite slot collapses entirely when the current player offers
-        // no write path (NetEase, Spotify) — an invisible slot beats a dead
-        // button, and the remaining controls close the gap.
-        let configuredSlots = musicManager.canFavoriteTrack
-            ? slotConfig
-            : slotConfig.filter { $0 != .favorite }
-        let padded = configuredSlots.padded(to: sanitizedLimit, filler: .none)
-        return Array(padded.prefix(sanitizedLimit))
+        // 空槽位在这一行里不再有意义:整行是等分宽度,一个空槽只会把右边留出
+        // 一段空白、让按钮整体偏左。原来的实现用空槽把按钮往中间挤,那是
+        // 「按钮定宽、整行居中」的老布局。
+        //
+        // 心形槽在当前播放器没有写入通道时(网易云、Spotify)整个消失 —— 一颗
+        // 按了没反应的死心形,不如不出现。
+        return slotConfig
+            .filter { $0 != .none && (musicManager.canFavoriteTrack || $0 != .favorite) }
+            .prefix(sanitizedLimit)
+            .map { $0 }
     }
 
     @ViewBuilder
     private func slotView(for slot: MusicControlButton) -> some View {
+        // 尺寸分三档:走带键 15、辅助键 14、播放键 20(它必须在视觉上重一档)。
         switch slot {
         case .shuffle:
-            HoverButton(icon: "shuffle", iconColor: musicManager.isShuffled ? .red : .primary, scale: .medium) {
+            GlyphButton(icon: "shuffle", size: 14, color: musicManager.isShuffled ? NLNotch.musicPink : glyph) {
                 MusicManager.shared.toggleShuffle()
             }
         case .previous:
-            HoverButton(icon: "backward.fill", scale: .medium) {
+            GlyphButton(icon: "backward.fill", size: 15, color: glyph) {
                 MusicManager.shared.previousTrack()
             }
         case .playPause:
-            HoverButton(icon: musicManager.isPlaying ? "pause.fill" : "play.fill", scale: .large) {
+            GlyphButton(
+                icon: musicManager.isPlaying ? "pause.fill" : "play.fill",
+                size: 20,
+                color: .white,
+                box: 30,
+                weight: .semibold
+            ) {
                 MusicManager.shared.togglePlay()
             }
         case .next:
-            HoverButton(icon: "forward.fill", scale: .medium) {
+            GlyphButton(icon: "forward.fill", size: 15, color: glyph) {
                 MusicManager.shared.nextTrack()
             }
         case .repeatMode:
-            HoverButton(icon: repeatIcon, iconColor: repeatIconColor, scale: .medium) {
+            GlyphButton(icon: repeatIcon, size: 14, color: repeatIconColor) {
                 MusicManager.shared.toggleRepeat()
             }
         case .volume:
             VolumeControlView()
         case .favorite:
-            FavoriteControlButton()
+            GlyphButton(
+                icon: musicManager.isFavoriteTrack ? "heart.fill" : "heart",
+                size: 14,
+                color: musicManager.isFavoriteTrack ? NLNotch.musicPink : glyph
+            ) {
+                MusicManager.shared.toggleFavoriteTrack()
+            }
         case .share:
-            HoverButton(icon: "square.and.arrow.up", scale: .medium) {
+            GlyphButton(icon: "square.and.arrow.up", size: 14, color: glyph) {
                 Task { await QuickShareService.shared.shareNowPlaying() }
             }
             .disabled(!musicManager.hasActiveTrack)
             .opacity(musicManager.hasActiveTrack ? 1 : 0.35)
         case .goBackward:
-            HoverButton(icon: "gobackward.15", scale: .medium) {
+            GlyphButton(icon: "gobackward.15", size: 14, color: glyph) {
                 MusicManager.shared.skip(seconds: -15)
             }
         case .goForward:
-            HoverButton(icon: "goforward.15", scale: .medium) {
+            GlyphButton(icon: "goforward.15", size: 14, color: glyph) {
                 MusicManager.shared.skip(seconds: 15)
             }
         case .none:
@@ -297,40 +491,44 @@ struct MusicControlsView: View {
     private var repeatIconColor: Color {
         switch musicManager.repeatMode {
         case .off:
-            return .primary
+            return glyph
         case .all, .one:
-            return .red
+            return NLNotch.musicPink
         }
     }
+
+    /// 非激活态的字形色。比纯白低一档,播放键才好"跳"出来。
+    private var glyph: Color { .white.opacity(0.82) }
 }
 
-struct FavoriteControlButton: View {
-    @ObservedObject var musicManager = MusicManager.shared
+/// 可调尺寸的小图标按钮。
+///
+/// 现成的 `HoverButton` 把尺寸钉死在 30/40 与 `.body`/`.largeTitle` 上:大号
+/// 那颗字形 34pt,进到玻璃卡里会把整行撑高、也会把卡片撑到贴住面板底边。
+/// 这里单独做一只尺寸可控的,顺便把 hover 底从胶囊换成圆。
+struct GlyphButton: View {
+    var icon: String
+    var size: CGFloat = 14
+    var color: Color = .white.opacity(0.85)
+    var box: CGFloat = 26
+    var weight: Font.Weight = .medium
+    var action: () -> Void
+
+    @State private var hovering = false
 
     var body: some View {
-        // No favorite write path exists for this player (e.g. NetEase Cloud
-        // Music) — hide the heart instead of showing a dead one that ignores
-        // taps and reads as broken.
-        if musicManager.canFavoriteTrack {
-            HoverButton(icon: iconName, iconColor: iconColor, scale: .medium) {
-                MusicManager.shared.toggleFavoriteTrack()
-            }
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: size, weight: weight))
+                .foregroundStyle(color)
+                .frame(width: box, height: box)
+                .background(Circle().fill(Color.white.opacity(hovering ? 0.12 : 0)))
+                .contentShape(Circle())
         }
-    }
-
-    private var iconName: String {
-        musicManager.isFavoriteTrack ? "heart.fill" : "heart"
-    }
-
-    private var iconColor: Color {
-        musicManager.isFavoriteTrack ? .red : .primary
-    }
-}
-
-private extension Array where Element == MusicControlButton {
-    func padded(to length: Int, filler: MusicControlButton) -> [MusicControlButton] {
-        if count >= length { return self }
-        return self + Array(repeating: filler, count: length - count)
+        .buttonStyle(PlainButtonStyle())
+        .onHover { isHovering in
+            withAnimation(.smooth(duration: 0.2)) { hovering = isHovering }
+        }
     }
 }
 
@@ -354,7 +552,7 @@ struct VolumeControlView: View {
                 }
             }) {
                 Image(systemName: volumeIcon)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(NLNotch.controlGlyph)
                     .foregroundColor(musicManager.volumeControlSupported ? .white : .gray)
             }
             .buttonStyle(PlainButtonStyle())
@@ -453,41 +651,60 @@ struct NotchHomeView: View {
     }
 
     private var mainContent: some View {
-        HStack(alignment: .top, spacing: openNotchPaneSpacing) {
-            MusicPlayerView(albumArtNamespace: albumArtNamespace)
-                .frame(width: musicPaneWidth)
+        // The ZStack is intentional: its `.top` alignment pins the row when the
+        // parent offers more height than the content needs.
+        ZStack(alignment: .top) {
+            HStack(alignment: .top, spacing: openNotchPaneSpacing) {
+                MusicPlayerView(albumArtNamespace: albumArtNamespace)
+                    .frame(width: musicPaneWidth)
 
-            secondaryPane
+                secondaryPane
+            }
+            .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
         }
-        .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
-        .blur(radius: vm.notchState == .closed ? 30 : 0)
     }
 
-    /// Right-hand pane: lyrics, else the calendar. When neither applies the pane
-    /// is omitted entirely, so the notch does not carry an empty gap on the right.
-    @ViewBuilder
+    /// Right-hand pane: lyrics, else the calendar.
+    ///
+    /// The card is drawn unconditionally — with neither lyrics nor events it is
+    /// simply an empty sheet of glass. Two reasons. It keeps the two panes on
+    /// one surface language instead of a card next to a bare patch of panel;
+    /// and an empty 186 pt hole on the right made the music card read as
+    /// shoved off to the left. `Color.clear` is the empty content, not a
+    /// placeholder string: there is nothing to explain.
     private var secondaryPane: some View {
-        if isShowingLyrics {
-            ScrollingLyricsView(width: secondaryPaneWidth)
-                .frame(width: secondaryPaneWidth)
-                .transition(.opacity)
-        } else if Defaults[.showCalendar] {
-            CalendarView()
-                .onHover { isHovering in
-                    vm.isHoveringCalendar = isHovering
+        NotchGlassCard {
+            Group {
+                if isShowingLyrics {
+                    ScrollingLyricsView(width: secondaryPaneWidth - 12)
+                } else if Defaults[.showCalendar] {
+                    CalendarView()
+                        .onHover { isHovering in
+                            vm.isHoveringCalendar = isHovering
+                        }
+                        .environmentObject(vm)
+                } else {
+                    Color.clear
                 }
-                .environmentObject(vm)
-                .frame(width: secondaryPaneWidth)
-                .transition(.opacity)
+            }
+            // 横向只让 6:日历自带 120 的固定高、宽度却要装下月份和滚轮,
+            // 比媒体卡少让 3 pt 也换得回来,不至于把月份挤断。
+            .padding(.horizontal, 6)
+            .padding(.vertical, 8)
+            .frame(width: secondaryPaneWidth, height: openPaneCardHeight)
         }
+        .frame(width: secondaryPaneWidth, height: openPaneCardHeight)
+        .transition(.opacity)
     }
 }
 
-struct MusicSliderView: View {
+/// 进度行:左已播、右剩余(带负号),两端夹住一条细轨 —— 和锁屏正在播放
+/// 组件一致。两侧给固定宽度,数字翻位时轨道不会左右跳。
+struct NowPlayingProgress: View {
     @Binding var sliderValue: Double
     @Binding var duration: Double
     @Binding var lastDragged: Date
-    var color: NSColor
+    var color: Color
     @Binding var dragging: Bool
     let currentDate: Date
     let timestampDate: Date
@@ -496,33 +713,32 @@ struct MusicSliderView: View {
     let isPlaying: Bool
     var onValueChange: (Double) -> Void
 
-
     var body: some View {
-        VStack {
+        HStack(spacing: 6) {
+            Text(timeString(from: sliderValue))
+                .lineLimit(1)
+                .frame(width: 30, alignment: .leading)
+
             CustomSlider(
                 value: $sliderValue,
-                range: 0...duration,
-                color: Defaults[.sliderColor] == SliderColorEnum.albumArt
-                    ? Color(nsColor: color).ensureMinimumBrightness(factor: 0.8)
-                    : Defaults[.sliderColor] == SliderColorEnum.accent ? .effectiveAccent : .white,
+                range: 0...max(duration, 0),
+                color: color,
                 dragging: $dragging,
                 lastDragged: $lastDragged,
                 onValueChange: onValueChange
             )
-            .frame(height: 10, alignment: .center)
+            .frame(height: 12, alignment: .center)
 
-            HStack {
-                Text(timeString(from: sliderValue))
-                Spacer()
-                Text(timeString(from: duration))
-            }
-            .fontWeight(.medium)
-            .foregroundColor(
-                Defaults[.playerColorTinting]
-                    ? Color(nsColor: color).ensureMinimumBrightness(factor: 0.6) : .gray
-            )
-            .font(.caption)
+            // "-15:53" 是六个字符,10pt 等宽下 34 放不下会折行,给到 40;
+            // 超过一小时的曲目会变成八字符,允许它轻微缩一点而不是截断。
+            Text("-" + timeString(from: max(0, duration - sliderValue)))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .frame(width: 40, alignment: .trailing)
         }
+        .font(NLNotch.playerTime)
+        .monospacedDigit()
+        .foregroundStyle(NLNotch.inkSoft)
         .onChange(of: currentDate) {
            guard !dragging, timestampDate.timeIntervalSince(lastDragged) > -1 else { return }
             sliderValue = MusicManager.shared.estimatedPlaybackPosition(at: currentDate)
@@ -563,7 +779,7 @@ struct CustomSlider: View {
 
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(.gray.opacity(0.3))
+                    .fill(NLNotch.trackFill)
                     .frame(height: height)
 
                 Rectangle()

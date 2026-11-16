@@ -13,10 +13,14 @@ class NotchViewModel: NSObject, ObservableObject {
     @ObservedObject var coordinator = NotchViewCoordinator.shared
     @ObservedObject var detector = FullscreenMediaDetector.shared
 
-    let animationLibrary: NotchAnimations = .init()
-    let animation: Animation?
-
     @Published private(set) var notchState: NotchState = .closed
+
+    /// True for the short window while the panel is expanding or collapsing.
+    /// High-frequency timelines drop to a slower tick during that window so
+    /// the layout animation gets the main thread; they return to their normal
+    /// cadence as soon as it settles (lyric sync accuracy is unchanged at rest).
+    @Published private(set) var isExpansionAnimating: Bool = false
+    private var expansionWorkItem: DispatchWorkItem?
 
     @Published var dragDetectorTargeting: Bool = false
     @Published var generalDropTargeting: Bool = false
@@ -43,11 +47,26 @@ class NotchViewModel: NSObject, ObservableObject {
     func destroy() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+        expansionWorkItem?.cancel()
+    }
+
+    /// Marks the layout animation window. The flag is a load-shedding signal,
+    /// not a value the user sees animated; several callers reach `open()` and
+    /// `close()` from inside `withAnimation`, which does not affect it. Both
+    /// callers only mark when the state actually changes, so a repeated hover
+    /// or a close on an already-closed panel cannot extend the low-refresh
+    /// window.
+    func markExpansionAnimation() {
+        expansionWorkItem?.cancel()
+        isExpansionAnimating = true
+        let work = DispatchWorkItem { [weak self] in
+            self?.isExpansionAnimating = false
+        }
+        expansionWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.34, execute: work)
     }
 
     init(screenUUID: String? = nil) {
-        animation = animationLibrary.animation
-
         super.init()
         
         self.screenUUID = screenUUID
@@ -137,9 +156,17 @@ class NotchViewModel: NSObject, ObservableObject {
     }
 
     func open() {
+        guard notchState != .open else {
+            // An already-open panel still refreshes the track, as before. It
+            // must not restart the expansion window or re-publish a size and
+            // state that have not changed.
+            MusicManager.shared.forceUpdate()
+            return
+        }
+        markExpansionAnimation()
         self.notchSize = openNotchSize
         self.notchState = .open
-        
+
         // Force music information update when notch is opened
         MusicManager.shared.forceUpdate()
     }
@@ -149,6 +176,10 @@ class NotchViewModel: NSObject, ObservableObject {
         if SharingStateManager.shared.preventNotchClose {
             return
         }
+        // Every side effect below stays untouched: some callers invoke close()
+        // on an already-closed panel to reset the home view and clear transient
+        // state. Only the load-shedding window is guarded.
+        if notchState != .closed { markExpansionAnimation() }
         self.notchSize = getClosedNotchSize(screenUUID: self.screenUUID)
         self.closedNotchSize = self.notchSize
         self.notchState = .closed
@@ -168,7 +199,7 @@ class NotchViewModel: NSObject, ObservableObject {
 
     func closeHello() {
         Task { @MainActor in
-            withAnimation(animationLibrary.animation) {
+            withAnimation(NotchAnimations.openClose) {
                 coordinator.helloAnimationRunning = false
                 close()
             }

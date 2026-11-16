@@ -12,8 +12,9 @@
 //  - Spacing 4 / 8 / 12 / 16 / 24 / 32 / 48; radii only 6 / 10 / 12 / pill.
 //  - Exactly three shadows exist (window / popover / hero art). Controls and
 //    cards are always flat and rely on a 1px stroke.
-//  - Settings layout: content area on --content-bg (grey) with --card-bg group
-//    cards (white, borderless) and 44pt rows.
+//  - Settings layout: one system material + a themed scrim under the whole
+//    window; sidebar, page and group cards are translucent layers on top of it.
+//    Keep controls opaque so they stay readable. 44pt rows.
 //
 
 import AppKit
@@ -52,6 +53,198 @@ private func nlDynamic(
     }
 }
 
+// MARK: - Notch colour theme
+
+/// Palette of the notch slab and its metric readings. This is a setting, not a
+/// system-appearance branch: the notch is always dark, so the choice is between
+/// the saturated cool slab and the original neutral black one.
+enum NLTheme: String, CaseIterable, Identifiable {
+    /// Cool gradient slab, saturated per-metric accents, tinted card strokes.
+    case vivid
+    /// Original pure-black slab and muted accents.
+    case standard
+
+    static let storageKey = "notchColorTheme"
+    static let defaultTheme: NLTheme = .vivid
+
+    var id: String { rawValue }
+    var isVivid: Bool { self == .vivid }
+
+    var label: String {
+        switch self {
+        case .vivid: return L("Vivid")
+        case .standard: return L("Standard")
+        }
+    }
+
+    /// The palette is no longer a user-facing choice: the background picker
+    /// replaced it, so every colour token stays on the cool, saturated set.
+    static var current: NLTheme { .vivid }
+}
+
+// MARK: - Notch background
+
+/// Three surfaces, one choice. They are qualities of the same panel rather than
+/// effects stacked on top of each other: a deep black surface still uses a
+/// system material, and a frosted one can still carry the artwork's colour.
+///
+/// These are product names. The user is choosing what the notch looks like,
+/// not which blur or tint to switch on.
+enum NLBackground: String, CaseIterable, Identifiable, Defaults.Serializable {
+    case deep
+    case frosted
+    case clear
+
+    static let defaultStyle: NLBackground = .frosted
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .deep: return L("深黑")
+        case .frosted: return L("磨砂")
+        case .clear: return L("透光")
+        }
+    }
+
+    /// Black laid over the system material. Even Deep Black is not a flat
+    /// opaque fill — the material stays faintly present underneath it.
+    var scrim: Double {
+        switch self {
+        case .deep: return 0.92
+        case .frosted: return 0.31
+        case .clear: return 0.17
+        }
+    }
+
+    /// Strength of the flat cool field over the black scrim. One hue, one
+    /// direction, only the opacity changes: the three tiers stay distinct
+    /// without a gradient or a glow.
+    var glowStrength: Double {
+        switch self {
+        case .deep: return 0.45
+        case .frosted: return 1.0
+        case .clear: return 1.2
+        }
+    }
+}
+
+// MARK: - Settings window surface
+
+/// A settings-window colour whose light value never changes. The three
+/// backgrounds are qualities of a dark surface; in Light Mode the window keeps
+/// its original white/grey appearance and follows the system as before. Only
+/// the dark branch consults the selected background.
+///
+/// `nlDynamic` keeps the light/dark flip automatic. The style is passed in by
+/// a view holding `@Default(.notchBackground)`, so switching the picker
+/// invalidates that view and the new value is read immediately — a dynamic
+/// provider that reads the default itself can be cached and go stale.
+private func nlSettingsDynamic(
+    _ light: UInt32,
+    lightAlpha: Double = 1,
+    _ style: NLBackground,
+    deep: (UInt32, Double),
+    frosted: (UInt32, Double),
+    clear: (UInt32, Double)
+) -> NSColor {
+    let dark: (UInt32, Double)
+    switch style {
+    case .deep: dark = deep
+    case .frosted: dark = frosted
+    case .clear: dark = clear
+    }
+    return nlDynamic(light, dark.0, lightAlpha: lightAlpha, darkAlpha: dark.1)
+}
+
+/// The four layers that make up the settings window. They are transparent in
+/// varying degrees so the system material underneath is not painted over — a
+/// card that stays opaque is the one thing that makes glass impossible to see.
+enum NLSettingsSurface {
+    /// Window / page background. Deep Black is near-opaque but still a thin
+    /// scrim over the material, never a flat black fill.
+    static func page(_ style: NLBackground) -> Color {
+        Color(nsColor: pageNSColor(style))
+    }
+
+    /// The same scrim for AppKit. A transparent titlebar is filled with the
+    /// window's own background colour, so leaving it clear would show a strip
+    /// of desktop above a dark window.
+    static func pageNSColor(_ style: NLBackground) -> NSColor {
+        nlSettingsDynamic(
+            0xF5F5F7, style,
+            deep: (0x08080B, 0.95),
+            frosted: (0x1F2025, 0.62),
+            clear: (0x1F2128, 0.34)
+        )
+    }
+
+    /// Group cards. In Deep Black they read as solid dark tiles; in Frosted and
+    /// Translucent they become a faint white lift so the material shows through.
+    static func card(_ style: NLBackground) -> Color {
+        Color(nsColor: nlSettingsDynamic(
+            0xFFFFFF, style,
+            deep: (0x18181B, 0.94),
+            frosted: (0xFFFFFF, 0.055),
+            clear: (0xFFFFFF, 0.048)
+        ))
+    }
+
+    /// Sidebar / titlebar material tint, laid over the same system material.
+    static func sidebar(_ style: NLBackground) -> Color {
+        Color(nsColor: nlSettingsDynamic(
+            0xF9F9FB, lightAlpha: 0.82, style,
+            deep: (0x101013, 0.86),
+            frosted: (0x2E2E32, 0.55),
+            clear: (0x2E2F36, 0.34)
+        ))
+    }
+
+    /// The AppKit titlebar is outside the material, so it cannot use a
+    /// translucent scrim — a partly clear window colour would show a bright
+    /// strip of desktop above a dark window. Match each theme's sidebar tone
+    /// with an opaque colour instead. Light Mode keeps the original grey.
+    static func titlebarNSColor(_ style: NLBackground) -> NSColor {
+        let dark: UInt32
+        switch style {
+        case .deep: dark = 0x101013
+        case .frosted: dark = 0x333335
+        case .clear: dark = 0x434347
+        }
+        return nlDynamic(0xF5F5F7, dark)
+    }
+
+    /// A group card stops being an opaque tile in the two glass themes, so it
+    /// needs a hairline to stay legible against the page. Light Mode keeps the
+    /// original borderless white card: this is fully transparent there.
+    static func cardStroke(_ style: NLBackground) -> Color {
+        Color(nsColor: nlSettingsDynamic(
+            0xFFFFFF, lightAlpha: 0, style,
+            deep: (0xFFFFFF, 0.07),
+            frosted: (0xFFFFFF, 0.09),
+            clear: (0xFFFFFF, 0.10)
+        ))
+    }
+}
+
+/// The settings window is one system material with a single scrim over it.
+/// Every other surface (sidebar, group cards) is a translucent layer on top —
+/// painting any of them opaque is what would hide the material.
+///
+/// The scrim is fully opaque in Light Mode, so the original white/grey window
+/// is unchanged there; the three backgrounds are qualities of a dark surface.
+struct NLSettingsBackdrop: View {
+    var style: NLBackground
+
+    var body: some View {
+        ZStack {
+            VisualEffectView(material: .popover, blendingMode: .behindWindow)
+            NLSettingsSurface.page(style)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 // MARK: - Color tokens
 
 enum NLColor {
@@ -86,28 +279,47 @@ enum NLColor {
     static var panel: Color { Color(nsColor: nlDynamic(0xF5F5F7, 0x2A2A2C)) }
     static var elevated: Color { Color(nsColor: nlDynamic(0xFAFAFC, 0x333336)) }
 
-    /// --content-bg: settings content background (grey). #f5f5f7 / #232325
-    static var contentBg: Color { Color(nsColor: nlDynamic(0xF5F5F7, 0x232325)) }
-    /// --card-bg: settings group card background (white). #ffffff / #333336
-    static var cardBg: Color { Color(nsColor: nlDynamic(0xFFFFFF, 0x333336)) }
     /// --search-bg: sidebar search field background. #ffffff / rgba(255,255,255,.08)
     static var searchBg: Color {
         Color(nsColor: nlDynamic(0xFFFFFF, 0xFFFFFF, lightAlpha: 1, darkAlpha: 0.08))
     }
-    /// --material: titlebar / sidebar material (rgba(249,249,251,.82) / rgba(46,46,48,.82)).
-    static var material: Color {
-        Color(nsColor: nlDynamic(0xF9F9FB, 0x2E2E30, lightAlpha: 0.82, darkAlpha: 0.82))
-    }
-
-    /// For use from the AppKit window layer.
-    static var contentNSColor: NSColor { nlDynamic(0xF5F5F7, 0x232325) }
-    static var panelNSColor: NSColor { nlDynamic(0xF5F5F7, 0x2A2A2C) }
-    static var canvasNSColor: NSColor { nlDynamic(0xFFFFFF, 0x272729) }
 
     /// --border-hairline / --border-divider / --border-strong
     static var borderHairline: Color { Color(nsColor: nlDynamic(0xE0E0E0, 0x3A3A3C)) }
     static var borderDivider: Color { Color(nsColor: nlDynamic(0xF0F0F0, 0x2F2F31)) }
     static var borderStrong: Color { Color(nsColor: nlDynamic(0xD2D2D7, 0x48484A)) }
+
+    // MARK: - Metric accents
+    //
+    // These name a metric, they do not grade it. The stats panel is forced to
+    // darkAqua in the notch, so the dark value is what reads there; the light
+    // value keeps the settings window and previews legible. Never substitute a
+    // load colour (red for "GPU 100%") for one of these — Device Utilization
+    // only means the chip had work in flight.
+    //
+    // The saturated dark values belong to the vivid theme; the standard theme
+    // keeps the original muted set. Both are tokens — views never spell a hex.
+    private static func metric(_ light: UInt32, _ muted: UInt32, _ vivid: UInt32) -> Color {
+        Color(nsColor: nlDynamic(light, NLTheme.current.isVivid ? vivid : muted))
+    }
+
+    static var metricCPU: Color { metric(0x185FA5, 0x85B7EB, 0x4A9EFF) }
+    static var metricGPU: Color { metric(0x534AB7, 0xAFA9EC, 0xB861FF) }
+    static var metricMemory: Color { metric(0x993C1D, 0xF0997B, 0xFF477A) }
+    static var metricDisk: Color { metric(0x854F0B, 0xFAC775, 0xFFC942) }
+    static var metricNetwork: Color { metric(0x0F6E56, 0x5DCAA5, 0x3DDB66) }
+    static var metricUpload: Color { metric(0x0F6E56, 0x5DCAA5, 0x29D6F0) }
+
+    // MARK: - Notch slab
+    //
+    // A static opaque colour field, not a live blur. It reads as cool glass
+    // without depending on a material, so it behaves identically on every
+    // supported macOS version and ignores Reduce Transparency.
+    static var slabGradient: [Color] {[
+        Color(red: 0.085, green: 0.155, blue: 0.205),
+        Color(red: 0.105, green: 0.120, blue: 0.160),
+        Color(red: 0.145, green: 0.098, blue: 0.155),
+    ]}
 
     /// --fill-neutral
     static var fillNeutral: Color { Color(nsColor: nlDynamic(0xD2D2D7, 0x48484A)) }
@@ -129,6 +341,100 @@ enum NLColor {
     /// Sheet / modal scrim.
     static var scrim: Color {
         Color(nsColor: nlDynamic(0x000000, 0x000000, lightAlpha: 0.25, darkAlpha: 0.45))
+    }
+}
+
+// MARK: - Notch backdrop
+
+/// The open notch is one system material carrying three possible surfaces.
+/// AppKit decides how that material looks, including the frosted replacement
+/// when Reduce Transparency is on; the chosen background only decides how much
+/// black sits over it and how strong the flat cool field is.
+///
+/// The closed pill stays pure black so it still reads as part of the physical
+/// notch rather than a floating translucent object.
+struct NotchBackdrop: View {
+    var style: NLBackground
+    var isOpen: Bool
+    var palette: [NSColor]
+
+    var body: some View {
+        ZStack {
+            if isOpen {
+                VisualEffectView(material: .popover, blendingMode: .behindWindow)
+
+                // A translucent black rather than an opaque fill, so even the
+                // deepest theme still has a material faintly present under it.
+                Color.black.opacity(style.scrim)
+
+                // The cover's own palette, scattered as soft light.
+                NotchScatterLight(palette: palette, strength: style.glowStrength)
+
+                // 底部压暗:状态带的白字正好落在最亮的色团下方,这里保住对比度。
+                LinearGradient(
+                    stops: [
+                        .init(color: .black.opacity(0), location: 0),
+                        .init(color: .black.opacity(0.30), location: 1),
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+            } else {
+                Color.black
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+}
+
+/// 把当前封面的色板铺成几团柔光:主色在封面后面,副色沿面板往外排。
+///
+/// 光的颜色来自封面本身(封面带粉,光就带粉),而不是一个固定色。三件事
+/// 让它读作"光"而不是"染黑":screen 混合(深色只能加光)、颜色朝白提一档、
+/// 渐隐到透明。黑白封面没有色板,这层就是空的 —— 没有可散的色,散光缺席。
+///
+/// 全部是静态层:每次换歌才算一次色板,不逐帧重算。
+struct NotchScatterLight: View {
+    let palette: [NSColor]
+    /// 三档背景给出的强度:deep 0.45 / frosted 1.0 / clear 1.2。
+    var strength: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            let scale = min(geo.size.width, geo.size.height) / 190
+            let spots: [(center: UnitPoint, radius: CGFloat, opacity: Double)] = [
+                (UnitPoint(x: 0.14, y: 0.50), 230, 0.50),
+                (UnitPoint(x: 0.46, y: 0.30), 180, 0.30),
+                (UnitPoint(x: 0.78, y: 0.72), 160, 0.22),
+            ]
+
+            ZStack {
+                ForEach(Array(zip(palette, spots).prefix(3).enumerated()), id: \.offset) { _, pair in
+                    let (colour, spot) = pair
+                    RadialGradient(
+                        stops: [
+                            .init(color: lifted(colour).opacity(spot.opacity * strength), location: 0),
+                            .init(color: lifted(colour).opacity(spot.opacity * 0.32 * strength), location: 0.42),
+                            .init(color: .clear, location: 1),
+                        ],
+                        center: spot.center,
+                        startRadius: 0,
+                        endRadius: spot.radius * scale
+                    )
+                }
+            }
+            .blendMode(.screen)
+            .allowsHitTesting(false)
+        }
+    }
+
+    /// 封面可能很暗;朝白提一档,才读作"发光"而不是"染黑"。
+    private func lifted(_ ns: NSColor) -> Color {
+        guard let rgb = ns.usingColorSpace(.deviceRGB) else { return .white.opacity(0.5) }
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        rgb.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let lift: CGFloat = 0.34
+        return Color(red: r + (1 - r) * lift, green: g + (1 - g) * lift, blue: b + (1 - b) * lift)
     }
 }
 
@@ -190,7 +496,7 @@ enum NLRadius {
     static let pill: CGFloat = 9999
 }
 
-/// Only three shadows exist. Controls and cards are always flat.
+/// Window and popover chrome only. Surfaces, controls and cards are flat.
 enum NLShadow {
     /// Window: 0 24px 48px rgba(0,0,0,.18) + 0 0 0 1px rgba(0,0,0,.08)
     static let window = (color: Color.black.opacity(0.18), radius: 24.0, y: 24.0)
@@ -198,8 +504,6 @@ enum NLShadow {
     /// Popover: 0 8px 24px rgba(0,0,0,.12) + 0 0 0 1px rgba(0,0,0,.06)
     static let popover = (color: Color.black.opacity(0.12), radius: 12.0, y: 8.0)
     static let popoverDark = (color: Color.black.opacity(0.40), radius: 12.0, y: 8.0)
-    /// Hero art (illustrations only): rgba(0,0,0,.22) 3px 5px 30px
-    static let hero = (color: Color.black.opacity(0.22), radius: 15.0, y: 5.0)
 }
 
 enum NLMotion {
@@ -208,6 +512,261 @@ enum NLMotion {
     static let popover: Double = 0.18
     /// Switch knob travel.
     static let toggle: Double = 0.18
+}
+
+// MARK: - Notch surface tokens
+//
+// The notch is always drawn on a dark slab, so its text is a fixed ladder of
+// white opacities rather than the dynamic light/dark pairs the settings window
+// uses. Centralising them — and the notch's type sizes — keeps every reading in
+// StatsView, NotchHomeView and NotchHeader on one disciplined scale instead of
+// scattering `.white.opacity(...)` and `.system(size:)` literals through the views.
+
+enum NLNotch {
+    // White-on-dark text tints. Hierarchy comes from opacity + size, never colour.
+    static let inkStrong: Color = .white.opacity(0.92)
+    static let ink: Color = .white.opacity(0.82)
+    static let inkSoft: Color = .white.opacity(0.72)
+    static let detail: Color = .white.opacity(0.5)
+    static let dim: Color = .white.opacity(0.45)
+    static let faint: Color = .white.opacity(0.4)
+    static let whisper: Color = .white.opacity(0.36)
+
+    // Type — fixed sizes, but declared once so the strip stays coherent.
+    static let metricNumber = Font.system(size: 19, weight: .semibold, design: .rounded)
+    /// The one hero value on the stats strip — the reading itself. It is the
+    /// only thing that earns a large size; everything else defers to it.
+    static let metricHero = Font.system(size: 21, weight: .semibold, design: .rounded)
+    static let metricUnit = Font.system(size: 9, weight: .semibold)
+    static let metricLabel = Font.system(size: 10, weight: .semibold)
+    static let metricDetail = Font.system(size: 9, weight: .medium)
+    static let ringNumber = Font.system(size: 20, weight: .semibold, design: .rounded)
+    static let ringLabel = Font.system(size: 11, weight: .semibold)
+    static let captionMedium = Font.system(size: 9, weight: .medium)
+    static let footerReading = Font.system(size: 9, weight: .medium)
+    static let glyphSmall = Font.system(size: 7, weight: .bold)
+
+    // MARK: - Now Playing (renders on the notch slab)
+    // The title owns the heaviest weight on this surface; nothing else exceeds it.
+    // Hierarchy comes from size + weight + white opacity, never from the album
+    // accent colour — that colour is reserved for the slider and active controls.
+    // macOS HIG built-in text styles: Title 3 (15pt, emphasized Semibold),
+    // Callout (12pt Regular), Caption 2 (10pt Medium). macOS has no Dynamic
+    // Type, so styles are used for Apple's leading/tracking and as a single
+    // source of truth, not for scaling. Weights stay explicit because the
+    // marquee renderer applies the Font directly, bypassing view modifiers.
+    static let playerTitle = Font.system(.title3, design: .default, weight: .semibold)
+    static let playerArtist = Font.system(.callout, design: .default, weight: .regular)
+    static let playerTime = Font.system(.caption2, design: .default, weight: .medium)
+    static let playerTitleInk: Color = .white.opacity(0.95)
+    static let playerArtistInk: Color = .white.opacity(0.72)
+
+    // The player and header reuse a few system colours and sizes by name.
+    // Sourcing them here keeps every notch surface — stats, player, header —
+    // on the same token set instead of scattering literals.
+    static let trackFill: Color = .gray.opacity(0.3)
+    static let controlGlyph = Font.system(size: 14, weight: .medium)
+    static let hudFont = Font.system(.headline, design: .rounded)
+
+    // Now Playing brand accent — Apple Music pink. Reserved for active control
+    // states (shuffle / repeat / favourite) only, so it stays a brand signal
+    // instead of being diluted into a generic highlight.
+    static let musicPink: Color = Color(red: 0.980, green: 0.137, blue: 0.231)
+
+    // Notch container + HUD chrome.
+    static let hudForeground: Color = .gray
+    // Stats capsule card — standard-theme fill / stroke (vivid uses the metric accent).
+    static let cellFill: Color = Color.white.opacity(0.06)
+    static let cellStroke: Color = Color.white.opacity(0.08)
+    // Network metric default tints (download reads brighter than upload).
+    static let netDown: Color = Color.white.opacity(0.85)
+    static let netDownSoft: Color = Color.white.opacity(0.78)
+    static let netUp: Color = Color.white.opacity(0.4)
+    static let netUpSoft: Color = Color.white.opacity(0.45)
+
+    // Stats ring accents — four fixed index colours, one per metric, so the eye
+    // maps colour → reading without having to read the label. These are
+    // semantic indices, never ambient mood colours: each value is a constant,
+    // never sampled from the wallpaper, and none of them ever means "alarm".
+    static let statCpu: Color = Color(red: 1.000, green: 0.478, blue: 0.361)   // coral
+    static let statGpu: Color = Color(red: 0.655, green: 0.545, blue: 0.980)   // violet
+    static let statMemory: Color = Color(red: 0.310, green: 0.765, blue: 0.969) // sky
+    static let statDisk: Color = Color(red: 0.239, green: 0.863, blue: 0.592)  // mint
+
+    // MARK: - Lyrics tab (renders on the notch)
+    // Current line stays below the song title's weight; the title is the
+    // heaviest thing on the notch surface.
+    static let lyricCurrent = Font.system(size: 13, weight: .medium)
+    static let lyricOther = Font.system(size: 12, weight: .regular)
+    /// The unfilled portion of the line currently being sung.
+    static let lyricUnfilled: Color = .white.opacity(0.35)
+    static let lyricCaption = Font.system(size: 9, weight: .regular)
+    static let lyricMuted: Color = .gray.opacity(0.6)
+    static let lyricStatic = Font.system(size: 11, weight: .regular)
+    static let lyricPlaceholder: Color = .gray.opacity(0.7)
+
+    // MARK: - Live-activity HUD overlays (volume / brightness / battery / events)
+    static let hudValue = Font.system(size: 14, weight: .medium)
+    static let hudLabel = Font.system(size: 13, weight: .medium)
+    static let hudPercent = Font.system(size: 12, weight: .medium)
+    static let hudStroke: Color = Color.white.opacity(0.1)
+    static let hudBattery: Color = .white.opacity(0.5)
+    static let hudEventFont = Font.system(size: 12, weight: .medium)
+    static let hudEventGradient: [Color] = [.white, .white.opacity(0.2)]
+}
+
+// MARK: - Weather surface tokens
+//
+// The weather tab renders on its own sky card (a MeshGradient or layered
+// LinearGradient with a dark scrim), not the shared black slab. Its white-text
+// ladder and feature colours are tuned for that brighter surface, so they live
+// in a feature-scoped set rather than being folded into `NLNotch` — keeping the
+// shared tokens free of ~30 weather-specific values. Every member wraps the
+// expression it replaces, so routing a view to these tokens changes nothing
+// visible.
+
+enum NLWeather {
+    // White-on-sky text ladder. Hierarchy comes from opacity, never colour.
+    static let inkTop: Color = .white.opacity(0.95) // "Now" / today emphasis
+    static let inkHigh: Color = .white.opacity(0.90) // place name, curve endpoint
+    static let ink: Color = .white.opacity(0.88) // condition, stat chip value
+    static let inkMid: Color = .white.opacity(0.80) // weekday normal, empty message
+    static let inkLow: Color = .white.opacity(0.70) // hour non-now, refresh, loading
+    static let inkDim: Color = .white.opacity(0.65) // H/L range
+    static let inkMute: Color = .white.opacity(0.60) // section header, toolbar idle
+    static let inkFaint: Color = .white.opacity(0.55) // pin, chip icon, week low, empty icon
+    static let inkWhisper: Color = .white.opacity(0.50) // updated label
+    static let inkPin: Color = .white.opacity(0.45) // location-fill glyph
+
+    // Surfaces — fills, strokes and the legibility scrim over the sky.
+    static let cardFill: Color = .white.opacity(0.13)
+    static let cardStroke: Color = .white.opacity(0.12)
+    static let chipFill: Color = .white.opacity(0.12)
+    static let toolbarOn: Color = .white.opacity(0.22)
+    static let toolbarOff: Color = .white.opacity(0.08)
+    static let skyScrimTop: Color = .black.opacity(0.18)
+    static let skyScrimBottom: Color = .black.opacity(0.34)
+
+    // Feature colours: the precipitation blue and the warm-temperature gold.
+    static let precip: Color = Color(red: 0.45, green: 0.82, blue: 1.0)
+    static let warm: Color = Color(red: 1.0, green: 0.83, blue: 0.4)
+
+    // Type — role-named, each declared once so the tab stays coherent.
+    static let toolbar = Font.system(size: 10, weight: .semibold)
+    static let updated = Font.system(size: 9)
+    static let refresh = Font.system(size: 10, weight: .semibold)
+    static let place = Font.system(size: 12, weight: .semibold)
+    static let pin = Font.system(size: 7)
+    static let heroTemp = Font.system(size: 36, weight: .thin)
+    static let condition = Font.system(size: 12, weight: .medium)
+    static let range = Font.system(size: 10, weight: .medium)
+    static let chipIcon = Font.system(size: 8, weight: .medium)
+    static let chipText = Font.system(size: 9, weight: .semibold)
+    static let hourLabel = Font.system(size: 10, weight: .medium)
+    static let hourGlyph = Font.system(size: 14)
+    static let hourTemp = Font.system(size: 12, weight: .semibold)
+    static let curveTemp = Font.system(size: 9, weight: .semibold)
+    static let weekday = Font.system(size: 10, weight: .regular)
+    static let weekdayEmph = Font.system(size: 10, weight: .semibold)
+    static let weekPrecip = Font.system(size: 9, weight: .medium)
+    static let weekSymbol = Font.system(size: 11)
+    static let weekTemp = Font.system(size: 10, weight: .regular)
+    static let weekTempEmph = Font.system(size: 10, weight: .semibold)
+    static let sectionIcon = Font.system(size: 8, weight: .semibold)
+    static let sectionText = Font.system(size: 9, weight: .semibold)
+    static let stateText = Font.system(size: 11)
+    static let emptyIcon = Font.system(size: 26)
+    static let emptyButton = Font.system(size: 11, weight: .medium)
+
+    // A few one-off sizes/fills that still belong to this surface, not NLNotch.
+    static let nowGlyph = Font.system(size: 30)
+    static let rangeTrack: Color = .white.opacity(0.18)
+    static let emptyButtonFill: Color = .white.opacity(0.16)
+}
+
+// MARK: - QuickNote surface tokens
+//
+// The quick-note tab draws its own dark capsule controls (the comment in the
+// source explains why: a bordered system button clashes with the notch's
+// self-drawn chrome). Its text ladder, capsule fills and glyph sizes form a
+// small coherent set, scoped here so they don't bleed into the shared tokens.
+// Semantic system colours (`.accentColor`, `.orange`, `.green`) are left alone.
+
+enum NLQuickNote {
+    // White-on-dark text ladder.
+    static let inkTop: Color = .white.opacity(0.95)
+    static let inkStrong: Color = .white.opacity(0.85)
+    static let inkSoft: Color = .white.opacity(0.80)
+    static let inkMid: Color = .white.opacity(0.75)
+    static let inkMuted: Color = .white.opacity(0.60)
+    static let inkDim: Color = .white.opacity(0.55)
+    static let inkFaint: Color = .white.opacity(0.50)
+    static let inkWhisper: Color = .white.opacity(0.30)
+
+    // Capsule / panel fills.
+    static let rowFill: Color = .white.opacity(0.06)
+    static let divider: Color = .white.opacity(0.15)
+    static let tabOn: Color = .white.opacity(0.22)
+    static let tabOff: Color = .white.opacity(0.07)
+    static let chipFill: Color = .white.opacity(0.14)
+    static let formatOff: Color = .white.opacity(0.08)
+    static let editorFill: Color = .white.opacity(0.08)
+
+    // Glyph + label type.
+    static let glyphSmall = Font.system(size: 11)
+    static let glyphMini = Font.system(size: 10)
+    static let title = Font.system(size: 12, weight: .semibold)
+    static let caption12 = Font.system(size: 12)
+    static let body = Font.system(size: 11)
+    static let fine = Font.system(size: 10)
+    static let tab = Font.system(size: 10, weight: .regular)
+    static let tabEmph = Font.system(size: 10, weight: .semibold)
+    static let chip = Font.system(size: 11, weight: .medium)
+    static let chipSmall = Font.system(size: 10, weight: .medium)
+    static let formatGlyph = Font.system(size: 11, weight: .semibold)
+
+    // Corner radii used by this surface's capsules and panels.
+    static let folderRowRadius: CGFloat = 5
+    static let formatButtonRadius: CGFloat = 4
+    static let editorRadius: CGFloat = 8
+}
+
+// MARK: - Shelf surface tokens
+//
+// The shelf tab is its own surface: a row of file/link/text tiles plus the
+// AirDrop share square, drawn on the notch slab. Its tile geometry, the
+// share-square drop-zone styling and the drag-preview chip form a small
+// coherent set, scoped here so they don't bleed into the shared notch tokens.
+// Semantic system colours (`.accentColor`, `.gray`) are left alone.
+
+enum NLShelf {
+    // Tile geometry — the file/link/text tile and its thumbnail.
+    static let itemWidth: CGFloat = 105
+    static let iconSize: CGFloat = 56
+    static let cardRadius: CGFloat = 12
+    /// Outer panel stroke radius (slightly larger than the tile).
+    static let panelRadius: CGFloat = 16
+
+    // Tile / drag-preview name text.
+    static let nameFont = Font.system(size: 12, weight: .medium)
+    /// Text sitting on the accent-filled drag-preview chip.
+    static let nameOnAccent: Color = .white
+    /// The drag-preview chip radius (accent-filled label behind the name).
+    static let chipRadius: CGFloat = 4
+
+    // MARK: - Drop zone (the AirDrop / share square + the panel outline)
+    static let dropTop: Color = .black.opacity(0.35)
+    static let dropBottom: Color = .black.opacity(0.20)
+    /// Active border is accent-tinted; idle is a faint white hairline.
+    static let dropBorderActive: Color = Color.accentColor.opacity(0.9)
+    static let dropBorderIdle: Color = Color.white.opacity(0.1)
+    static let dropBorderWidth: CGFloat = 3
+    static let dropBorderDash: [CGFloat] = [10]
+    /// Inner circle fill, brightening when a drop is targeted.
+    static let circleFillActive: Color = .white.opacity(0.11)
+    static let circleFillIdle: Color = .white.opacity(0.09)
+    static let providerText: Color = .white.opacity(0.8)
+    static let loadingFill: Color = .black.opacity(0.3)
 }
 
 // MARK: - Dividers
@@ -256,9 +815,11 @@ struct NLBadge: View {
     }
 }
 
-// MARK: - Settings group (--card-bg + radius-card, clipped; no stroke, no shadow)
+// MARK: - Settings group (themed translucent card + radius-card; hairline only in Dark Mode)
 
 struct NLSection<Content: View>: View {
+    @Default(.notchBackground) private var background
+
     private let title: String?
     private let badge: String?
     private let footer: String?
@@ -293,8 +854,12 @@ struct NLSection<Content: View>: View {
                 content
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(NLColor.cardBg)
+            .background(NLSettingsSurface.card(background))
             .clipShape(RoundedRectangle(cornerRadius: NLRadius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NLRadius.card, style: .continuous)
+                    .strokeBorder(NLSettingsSurface.cardStroke(background), lineWidth: 1)
+            )
 
             if let footer {
                 Text(LocalizedStringKey(footer))
@@ -944,6 +1509,8 @@ struct NLMenuSeparator: View {
 /// sits a shade darker than the white group cards underneath. It reads as "you
 /// are here" rather than as a document title, which is why the icon leads.
 struct NLPageHeader: View {
+    @Default(.notchBackground) private var background
+
     let title: String
     var subtitle: String?
     var icon: String?
@@ -977,8 +1544,12 @@ struct NLPageHeader: View {
         .padding(.vertical, NLSpace.s6)
         .padding(.horizontal, NLSpace.s4)
         .frame(maxWidth: .infinity, alignment: .center)
-        .background(NLColor.panel)
+        .background(NLSettingsSurface.card(background))
         .clipShape(RoundedRectangle(cornerRadius: NLRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: NLRadius.card, style: .continuous)
+                .strokeBorder(NLSettingsSurface.cardStroke(background), lineWidth: 1)
+        )
     }
 }
 
@@ -1008,11 +1579,13 @@ struct NLPage<Content: View>: View {
             .frame(maxWidth: 720, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(NLColor.contentBg)
+        // No page fill: the window's single scrim sits behind this scroll view.
+        // Painting it here as well would stack two translucent layers and make
+        // the material disappear behind them.
     }
 }
 
-// MARK: - Sidebar (232pt, material background, 1px divider on the right, search + account + nav)
+// MARK: - Sidebar (232pt, themed translucent tint, 1px divider on the right, search + account + nav)
 
 struct NLSidebarItem: Identifiable, Hashable {
     let id: String
@@ -1027,6 +1600,7 @@ struct NLSidebarGroup: Identifiable {
 }
 
 struct NLSidebar: View {
+    @Default(.notchBackground) private var background
     @Binding var selection: String
     let groups: [NLSidebarGroup]
     /// Pass a binding to show the search field and filter the nav items by it.
@@ -1099,7 +1673,7 @@ struct NLSidebar: View {
         .padding(.bottom, 10)
         .frame(width: 232, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(NLColor.material)
+        .background(NLSettingsSurface.sidebar(background))
         .overlay(alignment: .trailing) {
             Rectangle()
                 .fill(NLColor.borderDivider)
@@ -1453,8 +2027,6 @@ struct NLEmptyState: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(NLColor.panel)
                 .frame(width: 96, height: 96)
-                .shadow(
-                    color: NLShadow.hero.color, radius: NLShadow.hero.radius, y: NLShadow.hero.y)
                 .overlay {
                     if let icon {
                         Image(systemName: icon)

@@ -39,28 +39,25 @@ struct FileShareView: View {
 
     private var dropArea: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: NLShelf.cardRadius)
                 .fill(
-                    LinearGradient(colors: [Color.black.opacity(0.35), Color.black.opacity(0.20)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [NLShelf.dropTop, NLShelf.dropBottom], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: NLShelf.cardRadius)
                         .stroke(
                             vm.dropZoneTargeting
-                                ? Color.accentColor.opacity(0.9)
-                                : Color.white.opacity(0.1),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [10])
+                                ? NLShelf.dropBorderActive
+                                : NLShelf.dropBorderIdle,
+                            style: StrokeStyle(lineWidth: NLShelf.dropBorderWidth, lineCap: .round, dash: NLShelf.dropBorderDash)
                         )
                 )
-                .shadow(color: Color.black.opacity(0.6), radius: 6, x: 0, y: 2)
 
             // Content
             VStack(spacing: 5) {
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(
-                            vm.dropZoneTargeting ? 0.11 : 0.09
-                        ))
+                        .fill(vm.dropZoneTargeting ? NLShelf.circleFillActive : NLShelf.circleFillIdle)
                         .frame(width: 55, height: 55)
                     Image(systemName: "square.and.arrow.up")
                     Group {
@@ -84,15 +81,15 @@ struct FileShareView: View {
 
                 Text(selectedProvider.id)
                     .font(.system(.headline, design: .rounded))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(NLShelf.providerText)
 
             }
             .padding(18)
             
             // Loading overlay
             if isProcessing || quickShare.isPickerOpen {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.black.opacity(0.3))
+                RoundedRectangle(cornerRadius: NLShelf.cardRadius)
+                    .fill(NLShelf.loadingFill)
                     .overlay(
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
@@ -100,7 +97,7 @@ struct FileShareView: View {
                     )
             }
         }
-        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .contentShape(RoundedRectangle(cornerRadius: NLShelf.cardRadius))
     }
 
     // MARK: - Actions

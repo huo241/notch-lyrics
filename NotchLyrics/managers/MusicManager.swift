@@ -67,6 +67,11 @@ class MusicManager: ObservableObject {
     @Published var isPlayerIdle: Bool = true
     @Published var avgColor: NSColor = .white
     @Published var bundleIdentifier: String? = nil
+    /// 当前曲目的 Apple Music 目录 ID。只有 Apple Music 控制器给得出;
+    /// 动态封面按它查目录,拿不到就走静态封面。
+    @Published var catalogID: String? = nil
+    /// 封面的主要色系(2–3 个),驱动刘海的散光。黑白封面为空 → 无散光。
+    @Published var coverPalette: [NSColor] = []
     @Published var songDuration: TimeInterval = 0
     @Published var elapsedTime: TimeInterval = 0
     @Published var timestampDate: Date = .init()
@@ -351,6 +356,10 @@ class MusicManager: ObservableObject {
 
         if state.album != self.album {
             self.album = state.album
+        }
+
+        if state.catalogID != self.catalogID {
+            self.catalogID = state.catalogID
         }
 
         if timeChanged {
@@ -1076,9 +1085,11 @@ class MusicManager: ObservableObject {
         workItem?.cancel()
         withAnimation(.smooth) {
             self.albumArt = newAlbumArt
-            if Defaults[.coloredSpectrogram] {
-                self.calculateAverageColor()
-            }
+            // Always derive the album's dominant colour. It drives the ambient
+            // glow, the player tint and the progress-bar colour alike, so it must
+            // not be gated behind the spectrogram-colouring toggle.
+            self.calculateAverageColor()
+            self.updateCoverPalette()
         }
     }
 
@@ -1102,6 +1113,17 @@ class MusicManager: ObservableObject {
             DispatchQueue.main.async {
                 withAnimation(.smooth) {
                     self?.avgColor = color ?? .white
+                }
+            }
+        }
+    }
+
+    /// 封面色板:散光的颜色来源。黑白封面给空数组,散光随之缺席。
+    func updateCoverPalette() {
+        albumArt.dominantColors(count: 3) { [weak self] colours in
+            DispatchQueue.main.async {
+                withAnimation(.smooth) {
+                    self?.coverPalette = colours
                 }
             }
         }

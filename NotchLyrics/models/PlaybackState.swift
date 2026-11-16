@@ -28,6 +28,9 @@ struct PlaybackState {
     var artwork: Data?
     var volume: Double = 0.5
     var isFavorite: Bool = false
+    /// Apple Music 目录 ID(`database id`)。只有 Apple Music 控制器给得出;
+    /// 目录 API 拿动画封面、跳转详情页都靠它,本地导入的曲目对不上目录。
+    var catalogID: String?
 }
 
 extension PlaybackState: Equatable {
@@ -43,5 +46,6 @@ extension PlaybackState: Equatable {
             && lhs.repeatMode == rhs.repeatMode
             && lhs.artwork == rhs.artwork
             && lhs.isFavorite == rhs.isFavorite
+            && lhs.catalogID == rhs.catalogID
     }
 }

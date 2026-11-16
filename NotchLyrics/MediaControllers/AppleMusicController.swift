@@ -174,9 +174,9 @@ class AppleMusicController: MediaControllerProtocol {
             AppleScriptHelper.logDebug("updatePlaybackInfo: fetch failed (script threw)")
             return
         }
-        guard descriptor.numberOfItems >= 11 else { return }
+        guard descriptor.numberOfItems >= 12 else { return }
         var updatedState = self.playbackState
-        
+
         updatedState.isPlaying = descriptor.atIndex(1).map(AppleScriptBoolean.isTrue) ?? false
         updatedState.title = descriptor.atIndex(2)?.stringValue ?? "Unknown"
         updatedState.artist = descriptor.atIndex(3)?.stringValue ?? "Unknown"
@@ -191,6 +191,9 @@ class AppleMusicController: MediaControllerProtocol {
         updatedState.artwork = descriptor.atIndex(10)?.data as Data?
         let lovedState = descriptor.atIndex(11).map(AppleScriptBoolean.isTrue) ?? false
         updatedState.isFavorite = lovedState
+        updatedState.catalogID = descriptor.atIndex(12)?.stringValue.flatMap {
+            $0.isEmpty ? nil : $0
+        }
         updatedState.lastUpdated = Date()
         AppleScriptHelper.logDebug("chain: fetched playing=\(updatedState.isPlaying) title=\(updatedState.title)")
         self.playbackState = updatedState
@@ -248,12 +251,20 @@ class AppleMusicController: MediaControllerProtocol {
                 on error
                     set artData to ""
                 end try
-                
+
+                try
+                    -- 目录 ID 是动画封面的钥匙;本地导入的曲目也有这个值,
+                    -- 但它对不上 Apple Music 目录,由查询侧失败兜底。
+                    set catalogID to (database id of current track as text)
+                on error
+                    set catalogID to ""
+                end try
+
                 set currentVolume to sound volume
                 set favoriteState to favorited of current track
-                return {playerState, currentTrackName, currentTrackArtist, currentTrackAlbum, trackPosition, trackDuration, shuffleState, repeatValue, currentVolume, artData, favoriteState}
+                return {playerState, currentTrackName, currentTrackArtist, currentTrackAlbum, trackPosition, trackDuration, shuffleState, repeatValue, currentVolume, artData, favoriteState, catalogID}
             on error
-                return {false, "Not Playing", "Unknown", "Unknown", 0, 0, false, 0, 50, "", false}
+                return {false, "Not Playing", "Unknown", "Unknown", 0, 0, false, 0, 50, "", false, ""}
             end try
         end tell
         """

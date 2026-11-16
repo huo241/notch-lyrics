@@ -14,6 +14,9 @@ private let availableDirectories = FileManager
 let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
 let bundleIdentifier = Bundle.main.bundleIdentifier!
 let appVersion = "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))"
+/// Release codename. Display only — never written into version fields that
+/// Sparkle or the App Store parse. All channels spell it the same way.
+let releaseName = "Kiso"
 
 let temporaryDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
 let spacing: CGFloat = 16
@@ -107,7 +110,17 @@ extension Defaults.Keys {
     static let showEmojis = Key<Bool>("showEmojis", default: false)
     //static let alwaysShowTabs = Key<Bool>("alwaysShowTabs", default: true)
     static let settingsIconInNotch = Key<Bool>("settingsIconInNotch", default: true)
-    static let lightingEffect = Key<Bool>("lightingEffect", default: true)
+    /// Which surface the open notch uses. One choice, not a set of stacked
+    /// effects; frosted is the default so the existing look is unchanged.
+    static let notchBackground = Key<NLBackground>("notchBackground", default: .frosted)
+    /// Play the animated cover Apple Music ships for some albums, instead of the
+    /// still artwork. Requires the Apple Music source; a lookup miss falls back
+    /// to the still cover.
+    static let animatedArtwork = Key<Bool>("animatedArtwork", default: true)
+    // 动态封面的目录令牌缓存(非设置项)。网页播放器 bundle 里烤着的 developer
+    // token 约两个月一换,按过期时间缓存,过期才重新拉一次 bundle。
+    static let animatedArtworkDeveloperToken = Key<String>("animatedArtworkDeveloperToken", default: "")
+    static let animatedArtworkDeveloperTokenExpiry = Key<Date>("animatedArtworkDeveloperTokenExpiry", default: .distantPast)
     static let cornerRadiusScaling = Key<Bool>("cornerRadiusScaling", default: true)
     /// Panels the user switched off (raw values of `NotchViews`). Stored as what
     /// is *hidden* rather than what is shown, so a panel added in a later version

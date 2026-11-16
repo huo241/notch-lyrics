@@ -14,6 +14,7 @@ import SwiftUI
 /// scrollable block rather than pretending to follow playback.
 struct ScrollingLyricsView: View {
     @ObservedObject var musicManager = MusicManager.shared
+    @EnvironmentObject var vm: NotchViewModel
     let width: CGFloat
 
     /// Number of lines in the scrolling window (current line plus two either side).
@@ -44,8 +45,9 @@ struct ScrollingLyricsView: View {
 
     private var syncedLyricsBody: some View {
         // 0.1s keeps line changes within ~100ms of the beat; the previous 0.25s
-        // was noticeable on lyrics.
-        TimelineView(.animation(minimumInterval: 0.1)) { timeline in
+        // was noticeable on lyrics. Only the short expand/collapse window slows
+        // the tick — at rest the cadence is untouched.
+        TimelineView(.animation(minimumInterval: vm.isExpansionAnimating ? 0.5 : 0.1)) { timeline in
             let elapsed = currentElapsed(at: timeline.date)
             let current = musicManager.currentLyricIndex(at: elapsed) ?? 0
             let progress = musicManager.currentLineProgress(at: elapsed)
@@ -88,7 +90,7 @@ struct ScrollingLyricsView: View {
             ZStack {
                 Text(text)
                     .font(font)
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(NLNotch.lyricUnfilled)
                 Text(text)
                     .font(font)
                     .foregroundStyle(.white)
@@ -130,10 +132,12 @@ struct ScrollingLyricsView: View {
     }
 
     private func opacity(forDistance distance: Int) -> Double {
+        // 0.22 on the translucent slab measured ~1.04:1 — effectively invisible.
+        // The edge fade mask still supplies the falloff, so the floor can rise.
         switch abs(distance) {
         case 0: return 1
-        case 1: return 0.45
-        default: return 0.22
+        case 1: return 0.55
+        default: return 0.34
         }
     }
 
@@ -143,8 +147,8 @@ struct ScrollingLyricsView: View {
 
     private func font(forDistance distance: Int) -> Font {
         abs(distance) == 0
-            ? .system(size: 13, weight: .semibold)
-            : .system(size: 12, weight: .regular)
+            ? NLNotch.lyricCurrent
+            : NLNotch.lyricOther
     }
 
     // MARK: - Plain fallback
@@ -156,15 +160,15 @@ struct ScrollingLyricsView: View {
 
         return VStack(alignment: .leading, spacing: 4) {
             Text(L("No timeline"))
-                .font(.system(size: 9))
-                .foregroundStyle(.gray.opacity(0.6))
+                .font(NLNotch.lyricCaption)
+                .foregroundStyle(NLNotch.lyricMuted)
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(lines.indices, id: \.self) { index in
                         if !lines[index].isEmpty {
                             Text(lines[index])
-                                .font(.system(size: 11))
-                                .foregroundStyle(.gray)
+                                .font(NLNotch.lyricStatic)
+                                .foregroundStyle(NLNotch.hudForeground)
                         }
                     }
                 }
@@ -180,8 +184,8 @@ struct ScrollingLyricsView: View {
         VStack {
             Spacer(minLength: 0)
             Text(text)
-                .font(.system(size: 11))
-                .foregroundStyle(.gray.opacity(0.7))
+                .font(NLNotch.lyricStatic)
+                .foregroundStyle(NLNotch.lyricPlaceholder)
                 .frame(width: width, alignment: .center)
             Spacer(minLength: 0)
         }

@@ -352,6 +352,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Same idea as the others: open the notch straight on the home (media)
+        // tab so the vivid backdrop can be screenshotted without hovering.
+        if ProcessInfo.processInfo.arguments.contains("-home-selftest") {
+            QuickNoteSelfTest.log("home selftest: scheduled")
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(1.5))
+                NotchViewCoordinator.shared.currentView = .home
+                self?.vm.open()
+                QuickNoteSelfTest.log("home selftest: open() done, state=\(self?.vm.notchState == .open ? "open" : "closed")")
+            }
+        }
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screenConfigurationDidChange),

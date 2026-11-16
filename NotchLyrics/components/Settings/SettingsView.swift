@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var selectedTab = "General"
     @State private var sidebarSearch = ""
     @State private var accentColorUpdateTrigger = UUID()
+    @Default(.notchBackground) private var background
 
     let updaterController: SPUStandardUpdaterController?
 
@@ -50,7 +51,10 @@ struct SettingsView: View {
             title: L("Features"),
             items: [
                 panelItem("Media", .home),
-                NLSidebarItem(id: "Calendar", label: L("Calendar"), icon: "calendar"),
+                // 日历暂时不上线:入口从侧栏拿掉,`CalendarSettings` 和
+                // `detailPane` 的分支都原样留着,恢复时把这一行加回来即可。
+                // 开关藏起来 + `showCalendar` 默认 false,刘海右侧就永远不会
+                // 落到日历分支上去。
                 NLSidebarItem(id: "HUD", label: "HUD", icon: "dial.medium.fill"),
                 NLSidebarItem(id: "Battery", label: L("Battery"), icon: "battery.100.bolt"),
                 panelItem("Shelf", .shelf),
@@ -71,19 +75,26 @@ struct SettingsView: View {
     ]
 
     var body: some View {
-        HStack(spacing: 0) {
-            NLSidebar(
-                selection: $selectedTab,
-                groups: Self.sidebarGroups,
-                searchText: $sidebarSearch,
-                brandIcon: NSApp.applicationIconImage,
-                brandTitle: "Notch Lyrics",
-                brandSubtitle: String(localized: "Version \(Bundle.main.releaseVersionNumber ?? "—")")
-            )
-            detailPane
+        ZStack(alignment: .topLeading) {
+            // Full-bleed so the material and its scrim also sit under the
+            // transparent titlebar. A .background on the HStack only covers
+            // the safe area and leaves a clear strip across the top.
+            NLSettingsBackdrop(style: background)
+                .ignoresSafeArea()
+
+            HStack(spacing: 0) {
+                NLSidebar(
+                    selection: $selectedTab,
+                    groups: Self.sidebarGroups,
+                    searchText: $sidebarSearch,
+                    brandIcon: NSApp.applicationIconImage,
+                    brandTitle: "Notch Lyrics",
+                    brandSubtitle: String(localized: "Version \(Bundle.main.releaseVersionNumber ?? "—") \(releaseName)")
+                )
+                detailPane
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(NLColor.contentBg)
         .tint(NLColor.accent)
         .id(accentColorUpdateTrigger)
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AccentColorChanged"))) { _ in
@@ -1255,6 +1266,9 @@ struct About: View {
                         Text(Bundle.main.releaseVersionNumber ?? L("Unknown"))
                             .font(NLFont.mono)
                             .foregroundStyle(NLColor.textSecondary)
+                        Text(releaseName)
+                            .font(NLFont.mono)
+                            .foregroundStyle(NLColor.textTertiary)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -1381,14 +1395,37 @@ struct Appearance: View {
     @Default(.settingsIconInNotch) private var settingsIconInNotch
     @Default(.coloredSpectrogram) private var coloredSpectrogram
     @Default(.playerColorTinting) private var playerColorTinting
-    @Default(.lightingEffect) private var lightingEffect
     @Default(.hiddenTabs) private var hiddenTabs: [String]
+    @Default(.animatedArtwork) private var animatedArtwork
+    @Default(.notchBackground) private var background
 
     var body: some View {
         NLPage(L("Appearance"), subtitle: L("Tabs and player tinting."), icon: "eye") {
+            backgroundSection
             generalSection
             tabsSection
             mediaSection
+        }
+    }
+
+    // MARK: - Background
+
+    /// One choice for the whole surface. The three names describe what the
+    /// panel looks like, not which effects are enabled: deep black still uses
+    /// a system material, and frosted still lets the artwork's colour through.
+    private var backgroundSection: some View {
+        NLSection(
+            L("背景"),
+            footer: L("深黑保留一点材质感；磨砂是系统磨砂玻璃；透光让封面颜色从左侧漫过面板。")
+        ) {
+            NLRow(icon: "rectangle.fill", title: L("质感")) {
+                NLSegmented(
+                    options: NLBackground.allCases.map {
+                        NLSegmentedOption(value: $0, label: $0.label)
+                    },
+                    selection: $background
+                )
+            }
         }
     }
 
@@ -1463,14 +1500,19 @@ struct Appearance: View {
 
     private var mediaSection: some View {
         NLSection(L("Player")) {
+            NLRow(
+                icon: "play.rectangle.on.rectangle",
+                title: L("Animated cover art"),
+                subtitle: L("Only some Apple Music albums ship an animated cover; every other track keeps the still artwork."),
+                showsDivider: true
+            ) {
+                NLSwitch(isOn: $animatedArtwork, accessibilityLabel: L("Animated cover art"))
+            }
             NLRow(icon: "waveform", title: L("Colored spectrogram"), showsDivider: true) {
                 NLSwitch(isOn: $coloredSpectrogram, accessibilityLabel: L("Colored spectrogram"))
             }
             NLRow(icon: "eyedropper", title: L("Tint player with album art"), showsDivider: true) {
                 NLSwitch(isOn: $playerColorTinting, accessibilityLabel: L("Tint player with album art"))
-            }
-            NLRow(icon: "sparkles", title: L("Enable blur effect behind album art"), showsDivider: true) {
-                NLSwitch(isOn: $lightingEffect, accessibilityLabel: L("Enable blur effect behind album art"))
             }
             NLRow(icon: "paintpalette", title: L("Slider color")) {
                 NLSelect(
@@ -1802,20 +1844,13 @@ struct Shortcuts: View {
 
 // MARK: - Stats
 
-/// Stats settings — the colour scheme the four rings use, plus the two
-/// thresholds that decide when the alert colour appears. The gauges themselves
-/// are self-explanatory in the notch.
+/// Stats settings — the two thresholds that decide when the alert colour
+/// appears. The readings themselves no longer offer a shape or colour choice:
+/// the single white-on-dark layout reads as one instrument, and colour is
+/// reserved for status, so there is nothing left to switch.
 struct StatsSettings: View {
-    @AppStorage(StatsPalette.storageKey) private var paletteRaw: String = StatsPalette.mono.rawValue
     @AppStorage(StatsTuning.hotTemperatureKey) private var hotTemperature: Double = StatsTuning.defaultHotTemperature
     @AppStorage(StatsTuning.lowDiskKey) private var lowDiskGB: Double = StatsTuning.defaultLowDiskGB
-
-    private var palette: Binding<StatsPalette> {
-        Binding(
-            get: { StatsPalette(rawValue: paletteRaw) ?? .mono },
-            set: { paletteRaw = $0.rawValue }
-        )
-    }
 
     var body: some View {
         NLPage(
@@ -1823,17 +1858,6 @@ struct StatsSettings: View {
             subtitle: L("CPU, GPU, memory and disk, in the notch."),
             icon: NotchViews.stats.panelIcon
         ) {
-            NLSection(L("Appearance")) {
-                NLRow(icon: "paintpalette", title: L("Color scheme")) {
-                    NLSegmented(
-                        options: StatsPalette.allCases.map {
-                            NLSegmentedOption(value: $0, label: $0.label)
-                        },
-                        selection: palette
-                    )
-                }
-            }
-
             NLSection(
                 L("Alerts"),
                 footer: L("Red appears only when the temperature is high or disk space is low.")

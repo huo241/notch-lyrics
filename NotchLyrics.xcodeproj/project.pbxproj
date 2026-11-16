@@ -44,6 +44,7 @@
 		AA100000000000000000000C /* LyricsQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100000000000000000000D /* LyricsQuery.swift */; };
 		AA100000000000000000000E /* LyricsDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100000000000000000000F /* LyricsDebug.swift */; };
 		AA1000000000000000000011 /* LyricsNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000000000000000000010 /* LyricsNetwork.swift */; };
+		AA1000000000000000000017 /* AnimatedArtworkProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000000000000000000016 /* AnimatedArtworkProvider.swift */; };
 		AA4000000000000000000001 /* MusicSourcePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000000002 /* MusicSourcePolicy.swift */; };
 		AA4000000000000000000003 /* InstrumentalDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000000004 /* InstrumentalDetector.swift */; };
 		1153BD9A2D98824300979FB0 /* SpotifyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1153BD992D98824300979FB0 /* SpotifyController.swift */; };
@@ -215,6 +216,7 @@
 		AA100000000000000000000D /* LyricsQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsQuery.swift; sourceTree = "<group>"; };
 		AA100000000000000000000F /* LyricsDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsDebug.swift; sourceTree = "<group>"; };
 		AA1000000000000000000010 /* LyricsNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsNetwork.swift; sourceTree = "<group>"; };
+		AA1000000000000000000016 /* AnimatedArtworkProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedArtworkProvider.swift; sourceTree = "<group>"; };
 		AA4000000000000000000002 /* MusicSourcePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSourcePolicy.swift; sourceTree = "<group>"; };
 		AA4000000000000000000004 /* InstrumentalDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentalDetector.swift; sourceTree = "<group>"; };
 		1153BD992D98824300979FB0 /* SpotifyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyController.swift; sourceTree = "<group>"; };
@@ -467,6 +469,7 @@
 				AA100000000000000000000D /* LyricsQuery.swift */,
 				AA100000000000000000000F /* LyricsDebug.swift */,
 				AA1000000000000000000010 /* LyricsNetwork.swift */,
+				AA1000000000000000000016 /* AnimatedArtworkProvider.swift */,
 				AA4000000000000000000002 /* MusicSourcePolicy.swift */,
 				AA4000000000000000000004 /* InstrumentalDetector.swift */,
 				14288DD62C6E015000B9F80C /* AudioPlayer.swift */,
@@ -1031,6 +1034,7 @@
 				AA100000000000000000000C /* LyricsQuery.swift in Sources */,
 				AA100000000000000000000E /* LyricsDebug.swift in Sources */,
 				AA1000000000000000000011 /* LyricsNetwork.swift in Sources */,
+				AA1000000000000000000017 /* AnimatedArtworkProvider.swift in Sources */,
 				AA4000000000000000000001 /* MusicSourcePolicy.swift in Sources */,
 				AA4000000000000000000003 /* InstrumentalDetector.swift in Sources */,
 				11CFC6612E097F6800748C80 /* PermissionsRequestView.swift in Sources */,
@@ -1064,14 +1068,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 286;
+				CURRENT_PROJECT_VERSION = 300;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NotchLyricsXPCHelper/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NotchLyricsXPCHelper;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = blog.snappy.notchlyrics.XPCHelper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1089,14 +1093,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 286;
+				CURRENT_PROJECT_VERSION = 300;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NotchLyricsXPCHelper/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NotchLyricsXPCHelper;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = blog.snappy.notchlyrics.XPCHelper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -1243,7 +1247,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 286;
+				CURRENT_PROJECT_VERSION = 300;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"NotchLyrics/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
@@ -1271,7 +1275,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = blog.snappy.notchlyrics;
 				PRODUCT_NAME = "Notch Lyrics";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1298,7 +1302,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 286;
+				CURRENT_PROJECT_VERSION = 300;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"NotchLyrics/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
@@ -1325,7 +1329,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = blog.snappy.notchlyrics;
 				PRODUCT_NAME = "Notch Lyrics";
 				PROVISIONING_PROFILE_SPECIFIER = "";

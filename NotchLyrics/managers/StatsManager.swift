@@ -476,31 +476,19 @@ private struct SMCKeyData {
 final class StatsManager: ObservableObject {
     static let shared = StatsManager()
 
+    /// One frame of current readings. The stats tab shows live rates and no time
+    /// series, so the manager keeps no history buffer.
     @Published private(set) var snapshot: StatsSnapshot?
-
-    /// Last minute of network throughput, oldest first, in bytes per second.
-    /// Kept here rather than in the view so the trace survives a tab switch
-    /// without restarting the clock.
-    ///
-    /// Published even though `snapshot` already fires every tick: the two are
-    /// assigned one after the other, and a view that only heard about
-    /// `snapshot` would draw the trace from the previous tick. One extra
-    /// objectWillChange per second is cheaper than a trace that lags.
-    @Published private(set) var downloadHistory: [Double] = []
-    @Published private(set) var uploadHistory: [Double] = []
-    /// How many one-second samples the trace shows. Static so the view can lay
-    /// its x-axis out against the same window the manager fills.
-    static let historyLength = 60
 
     /// Sampling runs here, off the main thread. See `StatsSamplerBox`.
     private let samplerBox = StatsSamplerBox()
     private var timer: Timer?
     /// Held only while the clock runs. Without it App Nap coalesces the timer
-    /// down to roughly one fire every ten seconds — measured, not guessed: the
-    /// curve stalled at 16 of its 60 points after two minutes. A background app
-    /// with a static window naps, and the notch is exactly that most of the
-    /// time. `userInitiatedAllowingIdleSystemSleep` blocks the nap without
-    /// keeping the display awake.
+    /// down to roughly one fire every ten seconds (measured), so the live
+    /// readings look frozen. A background app with a static window naps, and
+    /// the notch is exactly that most of the time.
+    /// `userInitiatedAllowingIdleSystemSleep` blocks the nap without keeping
+    /// the display awake.
     private var activity: NSObjectProtocol?
     /// A reading takes single-digit milliseconds; skipping the next tick while
     /// one is still in flight keeps a loaded machine from stacking them up.
@@ -556,15 +544,6 @@ final class StatsManager: ObservableObject {
 
     private func publish(_ reading: StatsSnapshot) {
         snapshot = reading
-
-        downloadHistory.append(reading.downBytesPerSecond)
-        uploadHistory.append(reading.upBytesPerSecond)
-        if downloadHistory.count > Self.historyLength {
-            downloadHistory.removeFirst(downloadHistory.count - Self.historyLength)
-        }
-        if uploadHistory.count > Self.historyLength {
-            uploadHistory.removeFirst(uploadHistory.count - Self.historyLength)
-        }
     }
 }
 

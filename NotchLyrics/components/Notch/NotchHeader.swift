@@ -28,8 +28,11 @@ struct NotchHeader: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Both header halves are already fully transparent when closed, so
+            // a blur that interpolates 20 → 0 during the expand animation is
+            // invisible work: a full-radius gaussian on every frame for no
+            // visual result. The opacity cross-fade carries the transition.
             .opacity(vm.notchState == .closed ? 0 : 1)
-            .blur(radius: vm.notchState == .closed ? 20 : 0)
             .zIndex(2)
 
             if vm.notchState == .open {
@@ -81,13 +84,16 @@ struct NotchHeader: View {
                     }
                 }
             }
-            .font(.system(.headline, design: .rounded))
+            .font(NLNotch.hudFont)
             .frame(maxWidth: .infinity, alignment: .trailing)
+            // Both header halves are already fully transparent when closed, so
+            // a blur that interpolates 20 → 0 during the expand animation is
+            // invisible work: a full-radius gaussian on every frame for no
+            // visual result. The opacity cross-fade carries the transition.
             .opacity(vm.notchState == .closed ? 0 : 1)
-            .blur(radius: vm.notchState == .closed ? 20 : 0)
             .zIndex(2)
         }
-        .foregroundColor(.gray)
+        .foregroundColor(NLNotch.hudForeground)
         .environmentObject(vm)
     }
 
