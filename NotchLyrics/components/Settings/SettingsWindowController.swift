@@ -80,11 +80,18 @@ class SettingsWindowController: NSWindowController {
                 self?.window?.backgroundColor = NLSettingsSurface.titlebarNSColor(change.newValue)
             }
 
-        // Debug: `-appearance-dark` / `-appearance-light` force the appearance.
-        if ProcessInfo.processInfo.arguments.contains("-appearance-dark") {
-            window.appearance = NSAppearance(named: .darkAqua)
-        } else if ProcessInfo.processInfo.arguments.contains("-appearance-light") {
+        // The settings window is always dark. The three backgrounds are
+        // qualities of a dark surface (NLSettingsSurface's dark branch), so on
+        // a light-mode system the window would otherwise resolve every
+        // nlDynamic token to its light value and render as a plain white
+        // window no matter which background the user picked. Forcing darkAqua
+        // pins the palette to the dark branch and lets the chosen background
+        // (deep / frosted / clear) tint it. -appearance-light stays as a
+        // debug escape hatch for comparing both palettes.
+        if ProcessInfo.processInfo.arguments.contains("-appearance-light") {
             window.appearance = NSAppearance(named: .aqua)
+        } else {
+            window.appearance = NSAppearance(named: .darkAqua)
         }
         
         // Make it behave like a regular app window with proper Spaces support

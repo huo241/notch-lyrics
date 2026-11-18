@@ -131,15 +131,15 @@ enum NLBackground: String, CaseIterable, Identifiable, Defaults.Serializable {
 
 // MARK: - Settings window surface
 
-/// A settings-window colour whose light value never changes. The three
-/// backgrounds are qualities of a dark surface; in Light Mode the window keeps
-/// its original white/grey appearance and follows the system as before. Only
-/// the dark branch consults the selected background.
-///
-/// `nlDynamic` keeps the light/dark flip automatic. The style is passed in by
-/// a view holding `@Default(.notchBackground)`, so switching the picker
-/// invalidates that view and the new value is read immediately — a dynamic
-/// provider that reads the default itself can be cached and go stale.
+/// A settings-window colour whose dark value is chosen per background style.
+/// The window is pinned to darkAqua (see SettingsWindowController), so the
+/// dark branch is what actually renders: the three backgrounds are qualities
+/// of a dark surface, and the style is passed in by a view holding
+/// `@Default(.notchBackground)` so switching the picker re-resolves
+/// immediately. A dynamic provider that reads the default itself can be
+/// cached and go stale, which is why the style is threaded through explicitly.
+/// The light branch only serves Xcode previews and the `-appearance-light`
+/// debug override.
 private func nlSettingsDynamic(
     _ light: UInt32,
     lightAlpha: Double = 1,
@@ -203,7 +203,8 @@ enum NLSettingsSurface {
     /// The AppKit titlebar is outside the material, so it cannot use a
     /// translucent scrim — a partly clear window colour would show a bright
     /// strip of desktop above a dark window. Match each theme's sidebar tone
-    /// with an opaque colour instead. Light Mode keeps the original grey.
+    /// with an opaque colour instead. The window is darkAqua, so the dark
+    /// value is the one that renders.
     static func titlebarNSColor(_ style: NLBackground) -> NSColor {
         let dark: UInt32
         switch style {
@@ -231,8 +232,8 @@ enum NLSettingsSurface {
 /// Every other surface (sidebar, group cards) is a translucent layer on top —
 /// painting any of them opaque is what would hide the material.
 ///
-/// The scrim is fully opaque in Light Mode, so the original white/grey window
-/// is unchanged there; the three backgrounds are qualities of a dark surface.
+/// The window is pinned to darkAqua by SettingsWindowController, so the dark
+/// values below are what render in the app; the light branch is preview-only.
 struct NLSettingsBackdrop: View {
     var style: NLBackground
 
