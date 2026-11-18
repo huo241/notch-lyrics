@@ -23,6 +23,14 @@
         <description>Notch Lyrics release feed.</description>
         <language>en</language>
         <item>
+            <title>3.0.1</title>
+            <pubDate>Wed, 18 Nov 2026 11:43:38 +0800</pubDate>
+            <sparkle:version>301</sparkle:version>
+            <sparkle:shortVersionString>3.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v3.0.1/NotchLyrics-3.0.1.zip" length="8219820" type="application/octet-stream" sparkle:edSignature="5F9+z2vHLoN9gJhr9m7XSfx9uYUXdkBfywg5t7RS/Y1jv14CzMW8IuVGoPaUxA+9bc3ddf2+Gq5TkqFe/sDBAA=="/>
+        </item>
+        <item>
             <title>3.0.0</title>
             <pubDate>Mon, 16 Nov 2026 22:41:34 +0800</pubDate>
             <sparkle:version>300</sparkle:version>
@@ -37,14 +45,6 @@
             <sparkle:shortVersionString>2.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v2.0.0/NotchLyrics-2.0.0.zip" length="8098326" type="application/octet-stream" sparkle:edSignature="MMkcAGaj4HJXpRNB/3Rh9xCNyTd1UfriMW6lx77d/cY1zAVDmFVKHi3eReZDRGRpD+GGj8FisgAaXlJi0AX/DQ=="/>
-        </item>
-        <item>
-            <title>1.2.1</title>
-            <pubDate>Wed, 28 Oct 2026 09:31:06 +0800</pubDate>
-            <sparkle:version>284</sparkle:version>
-            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/huo241/notch-lyrics/releases/download/v1.2.1/NotchLyrics-1.2.1.zip" length="9946463" type="application/octet-stream" sparkle:edSignature="iEpF33rN2aTQEFyBYqBOq+dST/JWjFj/3PpUGSRJ3ixCxRIkCNiQ4XajBAM2r2Q6+S0cX1jh1/ZMRey5v70IAg=="/>
         </item>
         <!--
             1.0.0 is deliberately absent. The archive was signed ad-hoc with the
